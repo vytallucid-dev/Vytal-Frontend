@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Stock, Sector } from "@/lib/indian-stocks-data";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Stock, Sector, indianStocks } from "@/lib/indian-stocks-data";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { SelectionRectangle } from "@/components/comparison/SelectionRectangle";
@@ -11,12 +11,39 @@ import { SelectionModal } from "@/components/comparison/SelectionModal";
 type SelectionType = "stock" | "sector" | null;
 type SelectionItem = Stock | Sector | null;
 
-export default function ComparisonPage() {
+function ComparisonContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectionType, setSelectionType] = useState<SelectionType>(null);
   const [leftSelection, setLeftSelection] = useState<SelectionItem>(null);
   const [rightSelection, setRightSelection] = useState<SelectionItem>(null);
   const [activeRectangle, setActiveRectangle] = useState<"left" | "right" | null>(null);
+
+  // Pre-fill selections from URL params
+  useEffect(() => {
+    const leftParam = searchParams.get("left");
+    const rightParam = searchParams.get("right");
+
+    if (leftParam) {
+      const leftStock = indianStocks.find(
+        (stock) => stock.symbol.toUpperCase() === leftParam.toUpperCase()
+      );
+      if (leftStock) {
+        setLeftSelection(leftStock);
+        setSelectionType("stock");
+      }
+    }
+
+    if (rightParam) {
+      const rightStock = indianStocks.find(
+        (stock) => stock.symbol.toUpperCase() === rightParam.toUpperCase()
+      );
+      if (rightStock) {
+        setRightSelection(rightStock);
+        setSelectionType("stock");
+      }
+    }
+  }, [searchParams]);
 
   const handleLeftSelect = () => {
     setActiveRectangle("left");
@@ -144,5 +171,17 @@ export default function ComparisonPage() {
         }
       />
     </div>
+  );
+}
+
+export default function ComparisonPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    }>
+      <ComparisonContent />
+    </Suspense>
   );
 }

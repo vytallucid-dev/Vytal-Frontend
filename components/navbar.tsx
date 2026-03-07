@@ -10,7 +10,15 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import ToggleToProMode from "./pro-mode-toggle";
-import { LayoutDashboard, Target, MessageCircle, Bell, TrendingUp, Notebook } from "lucide-react";
+import {
+  LayoutDashboard,
+  Target,
+  MessageCircle,
+  Bell,
+  TrendingUp,
+  Notebook,
+  CalendarIcon,
+} from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { usePathname } from "next/navigation";
 
@@ -20,72 +28,82 @@ const Navbar = () => {
   // Define page configurations
   const getPageConfig = () => {
     switch (pathname) {
-      case '/dashboard':
+      case "/dashboard":
         return {
-          title: 'Dashboard',
+          title: "Dashboard",
           icon: LayoutDashboard,
           breadcrumb: [
-            { label: 'Home', href: '/' },
-            { label: 'Dashboard', href: '/dashboard', isActive: true }
-          ]
+            { label: "Home", href: "/" },
+            { label: "Dashboard", href: "/dashboard", isActive: true },
+          ],
         };
-      case '/health-score':
+      case "/health-score":
         return {
-          title: 'Health Scores',
+          title: "Health Scores",
           icon: Target,
           breadcrumb: [
-            { label: 'Home', href: '/' },
-            { label: 'Analytics', href: '#' },
-            { label: 'Health Scores', href: '/health-score', isActive: true }
-          ]
+            { label: "Home", href: "/" },
+            { label: "Analytics", href: "#" },
+            { label: "Health Scores", href: "/health-score", isActive: true },
+          ],
         };
-      case '/portfolio':
+      case "/portfolio":
         return {
-          title: 'Portfolio',
+          title: "Portfolio",
           icon: TrendingUp,
           breadcrumb: [
-            { label: 'Home', href: '/' },
-            { label: 'Investment', href: '#' },
-            { label: 'Portfolio', href: '/portfolio', isActive: true }
-          ]
+            { label: "Home", href: "/" },
+            { label: "Investment", href: "#" },
+            { label: "Portfolio", href: "/portfolio", isActive: true },
+          ],
         };
-      case '/chat':
+      case "/chat":
         return {
-          title: 'AI Chat',
+          title: "AI Chat",
           icon: MessageCircle,
           breadcrumb: [
-            { label: 'Home', href: '/' },
-            { label: 'AI Tools', href: '#' },
-            { label: 'AI Chat', href: '/chat', isActive: true }
-          ]
+            { label: "Home", href: "/" },
+            { label: "AI Tools", href: "#" },
+            { label: "AI Chat", href: "/chat", isActive: true },
+          ],
         };
-      case '/alerts':
+      case "/alerts":
         return {
-          title: 'Alerts',
+          title: "Alerts",
           icon: Bell,
           breadcrumb: [
-            { label: 'Home', href: '/' },
-            { label: 'Monitoring', href: '#' },
-            { label: 'Alerts', href: '/alerts', isActive: true }
-          ]
+            { label: "Home", href: "/" },
+            { label: "Monitoring", href: "#" },
+            { label: "Alerts", href: "/alerts", isActive: true },
+          ],
         };
-      case '/watchlist':
+      case "/calendar":
         return {
-          title: 'Watchlist',
+          title: "Market Calendar",
+          icon: CalendarIcon,
+          breadcrumb: [
+            { label: "Home", href: "/" },
+            { label: "Monitoring", href: "#" },
+            { label: "Market Calendar", href: "/calendar", isActive: true },
+          ],
+        };
+      case "/watchlist":
+        return {
+          title: "Watchlist",
           icon: Notebook,
           breadcrumb: [
-            { label: 'Home', href: '/' },
-            { label: 'Watchlist', href: '/watchlist', isActive: true }
-          ]
+            { label: "Home", href: "/" },
+            { label: "Watchlist", href: "/watchlist", isActive: true },
+          ],
         };
       default:
         return {
-          title: 'Dashboard',
+          title: "Dashboard",
           icon: LayoutDashboard,
           breadcrumb: [
-            { label: 'Home', href: '/' },
-            { label: 'Dashboard', href: '/dashboard', isActive: true }
-          ]
+            { label: "Home", href: "/" },
+            { label: "Dashboard", href: "/dashboard", isActive: true },
+          ],
         };
     }
   };
@@ -94,13 +112,13 @@ const Navbar = () => {
   const IconComponent = pageConfig.icon;
 
   return (
-    <div className="w-full mb-2 px-4 py-2 flex flex-col gap-2">
+    <div className="w-full mb-2 px-4 py-2 flex flex-col gap-2 ">
       <div className=" w-full flex items-center justify-between ">
         <div className="hidden sm:flex items-center gap-2">
           <IconComponent />
           <h1 className="text-xl">{pageConfig.title}</h1>
         </div>
-        <SidebarTrigger className="sm:hidden"  />
+        <SidebarTrigger className="sm:hidden" />
 
         <div className="flex items-center gap-4">
           {/* Switch to Pro mode */}

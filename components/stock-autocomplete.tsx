@@ -108,10 +108,10 @@ export function StockAutocomplete({
 
     if (onStockSelect) {
       onStockSelect(stock);
+    } else {
+      // Only navigate to stock screener if no custom handler is provided
+      router.push(`/research/stock-screener/${stock.symbol}`);
     }
-
-    // Navigate to stock detail page
-    router.push(`/research/stock-screener/${stock.symbol}`);
   };
 
   const highlightMatch = (text: string, query: string) => {

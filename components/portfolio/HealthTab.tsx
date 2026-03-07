@@ -749,34 +749,6 @@ const HealthTab = () => {
     { symbol: "INFY", healthScore: 75, allocation: 4.8, status: "good" },
   ];
 
-  const redFlags = [
-    {
-      type: "deteriorating",
-      severity: "high",
-      title: "Deteriorating Health",
-      description:
-        "Tesla's health score dropped from 70 to 32 after Q3 results.",
-      stock: "TSLA",
-      icon: TrendingDown,
-    },
-    {
-      type: "valuation",
-      severity: "medium",
-      title: "Valuation Spike",
-      description: "Apple is now trading at 90% of its 5Y historical P/E high.",
-      stock: "AAPL",
-      icon: AlertTriangle,
-    },
-    {
-      type: "dividend",
-      severity: "high",
-      title: "Dividend At Risk",
-      description: "HDFC's payout ratio has exceeded 100% of free cash flow.",
-      stock: "HDFC",
-      icon: DollarSign,
-    },
-  ];
-
   return (
     <div className="space-y-8">
       {/* ═══════════════════════════════════════════════════════════════
@@ -870,7 +842,7 @@ const HealthTab = () => {
                   <h4 className="text-sm font-semibold mb-2">
                     Overall Portfolio Health
                   </h4>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="border p-2 rounded-sm border-blue-500/80 bg-blue-500/30  text-xs text-blue-200">
                     Your portfolio shows moderate health with room for
                     improvement in valuation metrics.
                   </p>
@@ -1043,18 +1015,6 @@ const HealthTab = () => {
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      label={{
-                        value: "Strong",
-                        position: "right",
-                        offset: 45,
-                        angle: 0,
-                        style: {
-                          fontSize: 12,
-                          fill: "#10b981",
-                          textAnchor: "start",
-                        },
-                        dy: -120,
-                      }}
                     />
 
                     <ChartTooltip
@@ -1079,7 +1039,7 @@ const HealthTab = () => {
               </ChartContainer>
 
               {/* Zone labels on right */}
-              <div className="absolute right-0 top-0 bottom-0 w-20 flex flex-col justify-evenly text-xs py-6 pointer-events-none">
+              <div className="absolute -right-7 top-0 bottom-0 w-20 flex flex-col justify-around text-xs py-6 pointer-events-none">
                 <span className="text-green-600 dark:text-green-400 font-medium">
                   Strong
                 </span>
@@ -1114,11 +1074,15 @@ const HealthTab = () => {
                         <span className="text-muted-foreground">
                           Started at:
                         </span>
-                        <span className="font-semibold">78</span>
+                        <Badge variant={"success"} className="font-semibold">
+                          78
+                        </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Now at:</span>
-                        <span className="font-semibold">82</span>
+                        <Badge variant={"success"} className="font-semibold">
+                          82
+                        </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Change:</span>
@@ -1156,7 +1120,10 @@ const HealthTab = () => {
                       <span className="font-medium">HDFC Bank</span>
                       <div className="flex items-center gap-1 text-green-600">
                         <span className="text-xs">75 → 85</span>
-                        <Badge className="bg-green-500 text-white text-xs">
+                        <Badge
+                          variant={"success"}
+                          className="text-xs min-w-10 ml-2"
+                        >
                           +10
                         </Badge>
                       </div>
@@ -1165,7 +1132,10 @@ const HealthTab = () => {
                       <span className="font-medium">TCS</span>
                       <div className="flex items-center gap-1 text-green-600">
                         <span className="text-xs">78 → 88</span>
-                        <Badge className="bg-green-500 text-white text-xs">
+                        <Badge
+                          variant={"success"}
+                          className="text-xs min-w-10 ml-2"
+                        >
                           +10
                         </Badge>
                       </div>
@@ -1174,7 +1144,10 @@ const HealthTab = () => {
                       <span className="font-medium">Reliance</span>
                       <div className="flex items-center gap-1 text-green-600">
                         <span className="text-xs">70 → 79</span>
-                        <Badge className="bg-green-500 text-white text-xs">
+                        <Badge
+                          variant={"success"}
+                          className="text-xs min-w-10 ml-2"
+                        >
                           +9
                         </Badge>
                       </div>
@@ -1203,7 +1176,10 @@ const HealthTab = () => {
                       <span className="font-medium">Tech Mahindra</span>
                       <div className="flex items-center gap-1 text-red-600">
                         <span className="text-xs">75 → 68</span>
-                        <Badge className="bg-red-500 text-white text-xs">
+                        <Badge
+                          variant={"destructive"}
+                          className="text-xs min-w-10 ml-2"
+                        >
                           -7
                         </Badge>
                       </div>
@@ -1212,7 +1188,10 @@ const HealthTab = () => {
                       <span className="font-medium">Asian Paints</span>
                       <div className="flex items-center gap-1 text-red-600">
                         <span className="text-xs">82 → 78</span>
-                        <Badge className="bg-red-500 text-white text-xs">
+                        <Badge
+                          variant={"destructive"}
+                          className="text-xs min-w-10 ml-2"
+                        >
                           -4
                         </Badge>
                       </div>
@@ -1292,8 +1271,8 @@ const HealthTab = () => {
                             stock.status === "ideal"
                               ? "bg-green-500"
                               : stock.status === "good"
-                              ? "bg-blue-500"
-                              : "bg-red-500"
+                                ? "bg-blue-500"
+                                : "bg-red-500"
                           }
                         `}
                       />
@@ -2240,7 +2219,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getScoreBgColor(
-                          stock.score
+                          stock.score,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.score}
@@ -2249,7 +2228,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.profitability
+                          stock.profitability,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.profitability}
@@ -2258,7 +2237,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.growth
+                          stock.growth,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.growth}
@@ -2267,7 +2246,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.stability
+                          stock.stability,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.stability}
@@ -2276,7 +2255,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.efficiency
+                          stock.efficiency,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.efficiency}
@@ -2285,7 +2264,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.valuation
+                          stock.valuation,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.valuation}
@@ -2294,7 +2273,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.momentum
+                          stock.momentum,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.momentum}
@@ -2303,7 +2282,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.trend
+                          stock.trend,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.trend}
@@ -2312,7 +2291,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center border-r border-border/20">
                       <div
                         className={`${getMetricClass(
-                          stock.activity
+                          stock.activity,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.activity}
@@ -2321,7 +2300,7 @@ const HealthTab = () => {
                     <TableCell className="p-0 text-center">
                       <div
                         className={`${getMetricClass(
-                          stock.sentiment
+                          stock.sentiment,
                         )} h-full w-full flex items-center justify-center py-2 text-sm font-medium`}
                       >
                         {stock.sentiment}
@@ -2483,10 +2462,10 @@ const HealthTab = () => {
                     data.score >= 80
                       ? "border-l-green-500"
                       : data.score >= 60
-                      ? "border-l-blue-500"
-                      : data.score >= 40
-                      ? "border-l-yellow-500"
-                      : "border-l-red-500"
+                        ? "border-l-blue-500"
+                        : data.score >= 40
+                          ? "border-l-yellow-500"
+                          : "border-l-red-500"
                   }`}
                 >
                   <CardContent
@@ -2494,10 +2473,10 @@ const HealthTab = () => {
                       data.score >= 80
                         ? "bg-green-500/5"
                         : data.score >= 60
-                        ? "bg-blue-500/5"
-                        : data.score >= 40
-                        ? "bg-yellow-500/5"
-                        : "bg-red-500/5"
+                          ? "bg-blue-500/5"
+                          : data.score >= 40
+                            ? "bg-yellow-500/5"
+                            : "bg-red-500/5"
                     }`}
                   >
                     <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
@@ -2546,7 +2525,7 @@ const HealthTab = () => {
                                     <td className="text-right font-mono text-muted-foreground">
                                       {metric.vsMarket.replace(
                                         "vs Market ",
-                                        ""
+                                        "",
                                       )}
                                     </td>
                                     <td
@@ -2562,7 +2541,7 @@ const HealthTab = () => {
                                         parseFloat(
                                           metric.vsMarket
                                             .replace("vs Market ", "")
-                                            .replace("%", "")
+                                            .replace("%", ""),
                                         )
                                       ).toFixed(1)}
                                       %
@@ -2579,7 +2558,7 @@ const HealthTab = () => {
                                       )}
                                     </td>
                                   </tr>
-                                )
+                                ),
                               )}
                             </tbody>
                           </table>
@@ -2638,10 +2617,10 @@ const HealthTab = () => {
                                   data.score >= 80
                                     ? "text-green-500"
                                     : data.score >= 60
-                                    ? "text-blue-500"
-                                    : data.score >= 40
-                                    ? "text-yellow-500"
-                                    : "text-red-500"
+                                      ? "text-blue-500"
+                                      : data.score >= 40
+                                        ? "text-yellow-500"
+                                        : "text-red-500"
                                 }
                                 strokeLinecap="round"
                               />
@@ -2668,8 +2647,8 @@ const HealthTab = () => {
                             data.score >= 80
                               ? "bg-green-500/10 border-green-500/20"
                               : data.score >= 60
-                              ? "bg-blue-500/10 border-blue-500/20"
-                              : "bg-yellow-500/10 border-yellow-500/20"
+                                ? "bg-blue-500/10 border-blue-500/20"
+                                : "bg-yellow-500/10 border-yellow-500/20"
                           }`}
                         >
                           <p className="text-xs font-semibold">

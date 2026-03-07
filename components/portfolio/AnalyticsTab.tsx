@@ -204,7 +204,7 @@ interface DividendProjection {
   amount: number;
 }
 
-const AnalyticsTab: React.FC = () => {
+const AnalyticsTab = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("YTD");
   const [chartType, setChartType] = useState<ChartType>("value");
   const [showBenchmark, setShowBenchmark] = useState(true);
@@ -214,10 +214,10 @@ const AnalyticsTab: React.FC = () => {
   const [sectorSortField, setSectorSortField] =
     useState<SectorSortField>("allocation");
   const [sectorSortOrder, setSectorSortOrder] = useState<"asc" | "desc">(
-    "desc"
+    "desc",
   );
   const [transactionSortBy, setTransactionSortBy] = useState<"return" | "date">(
-    "return"
+    "return",
   );
   const [showReturnsTable, setShowReturnsTable] = useState(true);
   const [showSectorTable, setShowSectorTable] = useState(true);
@@ -364,8 +364,8 @@ const AnalyticsTab: React.FC = () => {
           selectedPeriod === "1M"
             ? `Day ${i + 1}`
             : selectedPeriod === "3M"
-            ? `Day ${i + 1}`
-            : `${Math.floor(i / 30) + 1} Mon`,
+              ? `Day ${i + 1}`
+              : `${Math.floor(i / 30) + 1} Mon`,
         portfolio: Math.round(portfolioValue),
         invested: Math.round(investedValue),
         nifty: Math.round(niftyValue),
@@ -503,112 +503,6 @@ const AnalyticsTab: React.FC = () => {
       bestStockReturn: 85,
       worstStock: "WIPRO",
       worstStockReturn: 35,
-    },
-  ];
-
-  // Stock performance data
-  const topPerformers: StockPerformance[] = [
-    {
-      id: 1,
-      symbol: "HDFC",
-      name: "HDFC Bank",
-      return: 35.2,
-      gainAmount: 9000,
-      contribution: 0.72,
-      holdingPeriod: "18 months",
-      sectorOutperformance: 12,
-      healthScore: 85,
-      status: "Strong fundamentals, strong returns",
-    },
-    {
-      id: 2,
-      symbol: "TCS",
-      name: "Tata Consultancy Services",
-      return: 28.5,
-      gainAmount: 6300,
-      contribution: 0.51,
-      holdingPeriod: "22 months",
-      sectorOutperformance: 8,
-      healthScore: 88,
-      status: "Consistent performer",
-    },
-    {
-      id: 3,
-      symbol: "RELIANCE",
-      name: "Reliance Industries",
-      return: 26.8,
-      gainAmount: 5200,
-      contribution: 0.42,
-      holdingPeriod: "15 months",
-      sectorOutperformance: 10,
-      healthScore: 83,
-      status: "Sector leader",
-    },
-    {
-      id: 4,
-      symbol: "ITC",
-      name: "ITC Limited",
-      return: 22.4,
-      gainAmount: 4100,
-      contribution: 0.33,
-      holdingPeriod: "20 months",
-      sectorOutperformance: 6,
-      healthScore: 82,
-      status: "Stable growth",
-    },
-    {
-      id: 5,
-      symbol: "ICICI",
-      name: "ICICI Bank",
-      return: 19.8,
-      gainAmount: 3800,
-      contribution: 0.31,
-      holdingPeriod: "14 months",
-      sectorOutperformance: 5,
-      healthScore: 84,
-      status: "Good momentum",
-    },
-  ];
-
-  const underperformers: StockPerformance[] = [
-    {
-      id: 15,
-      symbol: "INFY",
-      name: "Infosys",
-      return: -2.8,
-      gainAmount: -2400,
-      contribution: -0.19,
-      holdingPeriod: "14 months",
-      sectorOutperformance: -8,
-      healthScore: 76,
-      status: "Strong fundamentals, weak returns",
-      insight: "Health score still good - temporary underperformance",
-    },
-    {
-      id: 14,
-      symbol: "WIPRO",
-      name: "Wipro Limited",
-      return: 2.1,
-      gainAmount: 800,
-      contribution: 0.06,
-      holdingPeriod: "10 months",
-      sectorOutperformance: -12,
-      healthScore: 72,
-      status: "Lagging sector",
-      insight: "Consider reviewing position",
-    },
-    {
-      id: 13,
-      symbol: "TECHM",
-      name: "Tech Mahindra",
-      return: 4.5,
-      gainAmount: 1200,
-      contribution: 0.1,
-      holdingPeriod: "8 months",
-      sectorOutperformance: -6,
-      healthScore: 74,
-      status: "Below expectations",
-      insight: "Monitor closely",
     },
   ];
 
@@ -811,20 +705,6 @@ const AnalyticsTab: React.FC = () => {
     },
   ];
 
-  // Stock risk-return data
-  const stockRiskReturn: StockRiskReturn[] = [
-    { symbol: "HDFC", risk: 15, return: 35, allocation: 18 },
-    { symbol: "TCS", risk: 16, return: 28, allocation: 15 },
-    { symbol: "RELIANCE", risk: 18, return: 27, allocation: 12 },
-    { symbol: "ITC", risk: 12, return: 22, allocation: 10 },
-    { symbol: "ICICI", risk: 17, return: 20, allocation: 9 },
-    { symbol: "TATA", risk: 22, return: 28, allocation: 8 },
-    { symbol: "WIPRO", risk: 24, return: 2, allocation: 5 },
-    { symbol: "INFY", risk: 20, return: -3, allocation: 8 },
-    { symbol: "MARUTI", risk: 19, return: 18, allocation: 7 },
-    { symbol: "SUN", risk: 21, return: 20, allocation: 6 },
-  ];
-
   // Rolling returns data
   const rollingReturns = [
     { period: "Jan-Mar", return: 6.5 },
@@ -855,58 +735,6 @@ const AnalyticsTab: React.FC = () => {
         return "bg-gray-100 text-gray-700 border-gray-300";
     }
   };
-
-  // Attribution waterfall data
-  const attributionWaterfall = [
-    { name: "Starting", value: 1000000, cumulative: 1000000 },
-    { name: "Stock Selection", value: 120000, cumulative: 1120000 },
-    { name: "Sector Allocation", value: 45000, cumulative: 1165000 },
-    { name: "Market Timing", value: 15000, cumulative: 1180000 },
-    { name: "Dividends", value: 12400, cumulative: 1192400 },
-    { name: "Underperformers", value: -18000, cumulative: 1174400 },
-    { name: "Fees/Charges", value: -8600, cumulative: 1165800 },
-    { name: "Current Value", value: 1245800, cumulative: 1245800 },
-  ];
-
-  // Attribution by factor
-  const attributionFactors: AttributionFactor[] = [
-    {
-      factor: "Stock Selection",
-      contribution: 120000,
-      percentOfTotal: 48.8,
-      explanation: "Picked HDFC, TCS vs index picks",
-    },
-    {
-      factor: "Sector Allocation",
-      contribution: 45000,
-      percentOfTotal: 18.3,
-      explanation: "Overweight Banking, underweight FMCG",
-    },
-    {
-      factor: "Market Beta",
-      contribution: 65000,
-      percentOfTotal: 26.4,
-      explanation: "Market went up 12.8%",
-    },
-    {
-      factor: "Dividends",
-      contribution: 12400,
-      percentOfTotal: 5.0,
-      explanation: "Dividend income from holdings",
-    },
-    {
-      factor: "Stock Timing",
-      contribution: 15000,
-      percentOfTotal: 6.1,
-      explanation: "Bought dips, sold peaks",
-    },
-    {
-      factor: "Alpha Generated",
-      contribution: 55000,
-      percentOfTotal: 22.4,
-      explanation: "Pure skill-based outperformance",
-    },
-  ];
 
   // Benchmark comparison data
   const benchmarkData: BenchmarkComparison[] = [
@@ -967,7 +795,6 @@ const AnalyticsTab: React.FC = () => {
     { month: "Dec", amount: 1500, stocks: ["ITC"], isUpcoming: true },
   ];
 
-  const totalDividends = dividendMonths.reduce((sum, m) => sum + m.amount, 0);
   const receivedDividends = dividendMonths
     .filter((m) => !m.isUpcoming)
     .reduce((sum, m) => sum + m.amount, 0);
@@ -999,27 +826,6 @@ const AnalyticsTab: React.FC = () => {
       healthScore: 58,
       returns: -4.2,
       category: "concern",
-    },
-  ];
-
-  const healthTrends: HealthTrend[] = [
-    {
-      stock: "HDFC Bank",
-      currentHealth: 92,
-      healthChange: 5,
-      outlook: "Likely to perform well",
-    },
-    {
-      stock: "Reliance",
-      currentHealth: 84,
-      healthChange: 3,
-      outlook: "Positive outlook",
-    },
-    {
-      stock: "Tech Mahindra",
-      currentHealth: 58,
-      healthChange: -7,
-      outlook: "May underperform",
     },
   ];
 
@@ -1144,7 +950,7 @@ const AnalyticsTab: React.FC = () => {
   const sortedClosedPositions = [...closedPositions].sort((a, b) =>
     transactionSortBy === "return"
       ? b.return - a.return
-      : new Date(b.sellDate).getTime() - new Date(a.sellDate).getTime()
+      : new Date(b.sellDate).getTime() - new Date(a.sellDate).getTime(),
   );
 
   return (
@@ -1219,7 +1025,7 @@ const AnalyticsTab: React.FC = () => {
                 {outperformance > 0 && (
                   <Badge
                     variant="outline"
-                    className="px-4 py-2 text-sm bg-green-50 text-green-700 border-green-300 dark:bg-green-950/20"
+                    className="px-4 py-2 text-sm bg-green-500/50 text-green-200 border-green-500 dark:bg-green-500/20"
                   >
                     <TrendingUp className="w-4 h-4 mr-2" />
                     Beat Nifty by +{outperformance.toFixed(2)}%
@@ -1228,7 +1034,7 @@ const AnalyticsTab: React.FC = () => {
                 {winRate >= 70 && (
                   <Badge
                     variant="outline"
-                    className="px-4 py-2 text-sm bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/20"
+                    className="px-4 py-2 text-sm bg-blue-500/50 text-blue-200 border-blue-500 dark:bg-blue-500/20"
                   >
                     <Trophy className="w-4 h-4 mr-2" />
                     Top 15% of investors
@@ -1236,7 +1042,7 @@ const AnalyticsTab: React.FC = () => {
                 )}
                 <Badge
                   variant="outline"
-                  className="px-4 py-2 text-sm bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/20"
+                  className="px-4 py-2 text-sm bg-purple-500/50 text-purple-200 border-purple-500 dark:bg-purple-500/20"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Positive in {performance.positiveMonths}/
@@ -1372,9 +1178,9 @@ const AnalyticsTab: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Your return</span>
-                  <span className="font-bold text-green-600">
+                  <Badge variant={"success"} className="font-bold">
                     +{performance.percentReturn.toFixed(2)}%
-                  </span>
+                  </Badge>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Nifty 50</span>
@@ -1385,14 +1191,13 @@ const AnalyticsTab: React.FC = () => {
                 <div className="pt-2 border-t">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Outperformance</span>
-                    <span
-                      className={`font-bold text-lg ${
-                        outperformance >= 0 ? "text-green-600" : "text-red-600"
-                      }`}
+                    <Badge
+                      variant={outperformance >= 0 ? "success" : "destructive"}
+                      className="font-bold text-lg"
                     >
                       {outperformance >= 0 ? "+" : ""}
                       {outperformance.toFixed(2)}%
-                    </span>
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -1436,15 +1241,15 @@ const AnalyticsTab: React.FC = () => {
               <div className="pt-2 space-y-2 text-sm border-t">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Max gain</span>
-                  <span className="font-semibold text-green-600">
+                  <Badge variant="success" className="font-semibold">
                     +{performance.maxGain}%
-                  </span>
+                  </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Max loss</span>
-                  <span className="font-semibold text-red-600">
+                  <Badge variant="destructive" className="font-semibold">
                     {performance.maxLoss}%
-                  </span>
+                  </Badge>
                 </div>
               </div>
             </CardContent>
@@ -1884,8 +1689,6 @@ const AnalyticsTab: React.FC = () => {
           </h3>
         </div>
 
-  
-
         {/* Contribution Analysis */}
         <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
           <CardHeader>
@@ -1922,10 +1725,12 @@ const AnalyticsTab: React.FC = () => {
                       borderRadius: "8px",
                       color: "var(--popover-foreground)",
                     }}
-                    formatter={(value: any) => [
-                      `₹${value.toLocaleString()}`,
-                      "",
-                    ]}
+                    formatter={(value: any) => {
+                      return [
+                        <span className="font-bold text-foreground">{`₹${value.toLocaleString()}`}</span>,
+                        "",
+                      ];
+                    }}
                   />
                   <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                     {contributionData.map((entry, index) => (
@@ -2265,7 +2070,16 @@ const AnalyticsTab: React.FC = () => {
                         borderRadius: "8px",
                         color: "var(--popover-foreground)",
                       }}
-                      formatter={(value: any) => [`${value}%`, ""]}
+                      formatter={(value: any, name: string, props: any) => {
+                        const color = props.color; // 👈 this gives correct bar color
+
+                        return [
+                          <span style={{ color, fontWeight: 600 }}>
+                            {value}%
+                          </span>,
+                          "",
+                        ];
+                      }}
                     />
                     <Legend />
                     <ReferenceLine
@@ -2282,6 +2096,7 @@ const AnalyticsTab: React.FC = () => {
                     <Bar
                       dataKey="contributionToReturns"
                       name="Contribution to Returns %"
+                      fill="#10b981"
                     >
                       {sectorPerformance.map((entry, index) => (
                         <Cell
@@ -2858,8 +2673,8 @@ const AnalyticsTab: React.FC = () => {
                     month.isUpcoming
                       ? "border-2 border-dashed border-blue-300 bg-blue-50/50 dark:bg-blue-950/10"
                       : month.amount > 0
-                      ? "bg-green-50/50 dark:bg-green-950/10"
-                      : "bg-muted/30"
+                        ? "bg-green-50/50 dark:bg-green-950/10"
+                        : "bg-muted/30"
                   }`}
                 >
                   <CardContent className="pt-4 text-center">
@@ -3160,7 +2975,7 @@ const AnalyticsTab: React.FC = () => {
                   </div>
                   <div className="space-y-1">
                     {healthPerformanceStocks.filter(
-                      (s) => s.category === "lucky"
+                      (s) => s.category === "lucky",
                     ).length > 0 ? (
                       healthPerformanceStocks
                         .filter((s) => s.category === "lucky")
@@ -3349,8 +3164,8 @@ const AnalyticsTab: React.FC = () => {
                         pos.timingQuality === "excellent"
                           ? "default"
                           : pos.timingQuality === "good"
-                          ? "secondary"
-                          : "outline"
+                            ? "secondary"
+                            : "outline"
                       }
                     >
                       {pos.timingQuality}
@@ -3464,7 +3279,6 @@ const AnalyticsTab: React.FC = () => {
           <h2 className="text-2xl font-bold">🔮 Performance Outlook</h2>
         </div>
 
-     
         {/* Risk Scenarios */}
         <Card className="backdrop-blur-sm bg-background/95">
           <CardHeader>

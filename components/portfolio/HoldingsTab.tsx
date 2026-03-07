@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Plus,
@@ -63,6 +64,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import AddStockModal from "../watchlist/AddStockModal";
 
 interface Holding {
   id: string;
@@ -94,8 +96,9 @@ interface Transaction {
 }
 
 const HoldingsPage = () => {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<"table" | "card" | "compact">(
-    "table"
+    "table",
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<keyof Holding>("currentValue");
@@ -104,9 +107,16 @@ const HoldingsPage = () => {
   const [healthFilter, setHealthFilter] = useState<string>("all");
   const [returnFilter, setReturnFilter] = useState<string>("all");
   const [selectedHoldings, setSelectedHoldings] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [watchlists, setWatchlists] = useState<string[]>([
+    "Main Watchlist",
+    "Banking Stocks",
+    "IT Sector",
+    "High Growth",
+  ]);
 
   // Sector concentration data
   const sectorConcentration = [
@@ -464,39 +474,22 @@ const HoldingsPage = () => {
   // Computed values
   const totalValue = useMemo(
     () => holdings.reduce((sum, h) => sum + h.currentValue, 0),
-    [holdings]
+    [holdings],
   );
 
   const totalInvested = useMemo(
     () => holdings.reduce((sum, h) => sum + h.quantity * h.avgCost, 0),
-    [holdings]
+    [holdings],
   );
 
   const totalGain = useMemo(
     () => holdings.reduce((sum, h) => sum + h.plAmount, 0),
-    [holdings]
+    [holdings],
   );
 
   const totalGainPercent = useMemo(
     () => (totalGain / totalInvested) * 100,
-    [totalGain, totalInvested]
-  );
-
-  const todaysChange = useMemo(
-    () =>
-      holdings.reduce(
-        (sum, h) => sum + (h.currentValue * h.dayChange) / 100,
-        0
-      ),
-    [holdings]
-  );
-
-  const avgHealth = useMemo(
-    () =>
-      Math.round(
-        holdings.reduce((sum, h) => sum + h.healthScore, 0) / holdings.length
-      ),
-    [holdings]
+    [totalGain, totalInvested],
   );
 
   // Filtering and sorting
@@ -553,18 +546,18 @@ const HoldingsPage = () => {
   // Get unique sectors
   const sectors = useMemo(
     () => Array.from(new Set(holdings.map((h) => h.sector))),
-    [holdings]
+    [holdings],
   );
 
   // Best and worst performers
   const bestPerformer = useMemo(
     () => [...holdings].sort((a, b) => b.totalReturn - a.totalReturn)[0],
-    [holdings]
+    [holdings],
   );
 
   const worstPerformer = useMemo(
     () => [...holdings].sort((a, b) => a.totalReturn - b.totalReturn)[0],
-    [holdings]
+    [holdings],
   );
 
   // Helper functions
@@ -579,10 +572,25 @@ const HoldingsPage = () => {
   };
 
   const getHealthBadge = (score: number) => {
-    if (score >= 85) return { label: "Excellent", color: "bg-green-500" };
-    if (score >= 70) return { label: "Good", color: "bg-blue-500" };
-    if (score >= 50) return { label: "Fair", color: "bg-yellow-500" };
-    return { label: "Poor", color: "bg-red-500" };
+    if (score >= 85)
+      return {
+        label: "Excellent",
+        color: "border-green-500 bg-green-500/30 text-green-200",
+      };
+    if (score >= 70)
+      return {
+        label: "Good",
+        color: "border-amber-500 bg-amber-500/30 text-amber-200",
+      };
+    if (score >= 50)
+      return {
+        label: "Fair",
+        color: "border-yellow-500 bg-yellow-500/30 text-yellow-200",
+      };
+    return {
+      label: "Poor",
+      color: "border-red-500 bg-red-500/30 text-red-200",
+    };
   };
 
   const handleSort = (column: keyof Holding) => {
@@ -609,6 +617,33 @@ const HoldingsPage = () => {
       setSelectedHoldings(new Set());
     } else {
       setSelectedHoldings(new Set(filteredAndSortedHoldings.map((h) => h.id)));
+    }
+  };
+
+  const handleAddStock = (data:any) => {
+    // Handle adding stock to watchlist
+    console.log("Adding stock:", data);
+    // TODO: Implement actual add stock logic
+  };
+
+  const handleCreateWatchlist = (name: string) => {
+    if (!watchlists.includes(name)) {
+      setWatchlists([...watchlists, name]);
+    }
+  };
+
+  const handleCompare = () => {
+    const selectedIds = Array.from(selectedHoldings);
+    const selectedStocks = holdings.filter((h) => selectedIds.includes(h.id));
+
+    if (selectedStocks.length === 1) {
+      // Navigate to comparison page with left side pre-filled
+      router.push(`/comparison?left=${selectedStocks[0].ticker}`);
+    } else if (selectedStocks.length === 2) {
+      // Navigate directly to comparison result page
+      const ticker1 = selectedStocks[0].ticker.toLowerCase();
+      const ticker2 = selectedStocks[1].ticker.toLowerCase();
+      router.push(`/comparison/${ticker1}-vs-${ticker2}`);
     }
   };
 
@@ -715,7 +750,7 @@ const HoldingsPage = () => {
               </div>
 
               <div className="flex gap-2">
-                <Button>
+                <Button onClick={() => setShowAddModal(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Stock
                 </Button>
@@ -723,14 +758,16 @@ const HoldingsPage = () => {
                   <Download className="w-4 h-4 mr-2" />
                   Export CSV
                 </Button>
-                {selectedHoldings.size > 0 && (
-                  <Button variant="outline">
-                    <GitCompare className="w-4 h-4 mr-2" />
-                    Compare ({selectedHoldings.size})
-                  </Button>
-                )}
               </div>
             </div>
+
+            <AddStockModal
+              open={showAddModal}
+              onClose={() => setShowAddModal(false)}
+              watchlists={watchlists}
+              onAddStock={handleAddStock}
+              onCreateWatchlist={handleCreateWatchlist}
+            />
 
             {/* Filters Row */}
             <div className="flex flex-wrap gap-2">
@@ -762,12 +799,12 @@ const HoldingsPage = () => {
                     {healthFilter === "all"
                       ? "All Health Levels"
                       : healthFilter === "excellent"
-                      ? "Excellent (85+)"
-                      : healthFilter === "good"
-                      ? "Good (70-84)"
-                      : healthFilter === "fair"
-                      ? "Fair (50-69)"
-                      : "Poor (<50)"}
+                        ? "Excellent (85+)"
+                        : healthFilter === "good"
+                          ? "Good (70-84)"
+                          : healthFilter === "fair"
+                            ? "Fair (50-69)"
+                            : "Poor (<50)"}
                     <ChevronDown className="w-4 h-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -798,12 +835,12 @@ const HoldingsPage = () => {
                     {returnFilter === "all"
                       ? "All Return Ranges"
                       : returnFilter === "high"
-                      ? "High (15%+)"
-                      : returnFilter === "medium"
-                      ? "Medium (5-15%)"
-                      : returnFilter === "low"
-                      ? "Low (0-5%)"
-                      : "Negative"}
+                        ? "High (15%+)"
+                        : returnFilter === "medium"
+                          ? "Medium (5-15%)"
+                          : returnFilter === "low"
+                            ? "Low (0-5%)"
+                            : "Negative"}
                     <ChevronDown className="w-4 h-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -859,643 +896,108 @@ const HoldingsPage = () => {
           SECTION 3: MAIN HOLDINGS DISPLAY - TABLE VIEW
       ═══════════════════════════════════════════════════════════════ */}
 
-      {viewMode === "table" && (
-        <Card id="main-holdings-display">
-          <CardContent className="pt-6">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <button onClick={toggleSelectAll} className="p-0">
-                        {selectedHoldings.size ===
-                          filteredAndSortedHoldings.length &&
-                        filteredAndSortedHoldings.length > 0 ? (
-                          <CheckSquare className="w-4 h-4" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
-                    </TableHead>
-                    <TableHead>
-                      <button
-                        onClick={() => handleSort("ticker")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground"
-                      >
-                        Stock <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("quantity")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
-                      >
-                        Qty <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("avgCost")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
-                      >
-                        Avg Cost <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("currentPrice")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
-                      >
-                        Current <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("currentValue")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
-                      >
-                        Value <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("dayChange")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
-                      >
-                        Day % <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleSort("totalReturn")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
-                      >
-                        Total Return <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <button
-                        onClick={() => handleSort("healthScore")}
-                        className="flex items-center gap-2 font-semibold hover:text-foreground mx-auto"
-                      >
-                        Health <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">P/E</TableHead>
-                    <TableHead className="text-right">ROE</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAndSortedHoldings.map((holding) => (
-                    <React.Fragment key={holding.id}>
-                      <TableRow
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() =>
-                          setExpandedRow(
-                            expandedRow === holding.id ? null : holding.id
-                          )
-                        }
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => toggleSelectHolding(holding.id)}
-                            className="p-0"
-                          >
-                            {selectedHoldings.has(holding.id) ? (
-                              <CheckSquare className="w-4 h-4 text-primary" />
-                            ) : (
-                              <Square className="w-4 h-4" />
-                            )}
-                          </button>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-semibold flex items-center gap-2">
-                              {holding.ticker}
-                              {expandedRow === holding.id ? (
-                                <ChevronUp className="w-3 h-3" />
-                              ) : (
-                                <ChevronDown className="w-3 h-3" />
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {holding.name}
-                            </div>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {holding.sector}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {holding.quantity}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          ₹{holding.avgCost.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          ₹{holding.currentPrice.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          ₹{(holding.currentValue / 1000).toFixed(1)}K
-                          <div className="text-xs text-muted-foreground">
-                            {holding.weight}%
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span
-                            className={
-                              holding.dayChange >= 0
-                                ? "text-green-600 font-medium"
-                                : "text-red-600 font-medium"
-                            }
-                          >
-                            {holding.dayChange >= 0 ? "+" : ""}
-                            {holding.dayChange.toFixed(2)}%
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div
-                            className={
-                              holding.totalReturn >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }
-                          >
-                            <div className="font-semibold">
-                              {holding.totalReturn >= 0 ? "+" : ""}
-                              {holding.totalReturn.toFixed(2)}%
-                            </div>
-                            <div className="text-xs">
-                              {holding.plAmount >= 0 ? "+" : ""}₹
-                              {(holding.plAmount / 1000).toFixed(1)}K
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge
-                            className={getHealthColor(holding.healthScore)}
-                          >
-                            {holding.healthScore}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {holding.pe}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {holding.roe}%
-                        </TableCell>
-                        <TableCell
-                          className="text-right"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Bell className="w-4 h-4" />
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <ChevronDown className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Edit Position
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <BarChart3 className="w-4 h-4 mr-2" />
-                                  Full Analysis
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-600">
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Sell
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-
-                      {/* ═══════════════════════════════════════════════════════════════
-                          INLINE EXPANDED VIEW
-                      ═══════════════════════════════════════════════════════════════ */}
-                      {expandedRow === holding.id && (
-                        <TableRow>
-                          <TableCell colSpan={12} className="bg-muted/30 p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                              {/* Mini Chart */}
-                              <div className="md:col-span-2 space-y-3">
-                                <h4 className="text-sm font-semibold flex items-center gap-2">
-                                  <BarChart3 className="w-4 h-4" />1 Month
-                                  Performance
-                                </h4>
-                                <div className="bg-background rounded-lg border p-4">
-                                  <ResponsiveContainer
-                                    width="100%"
-                                    height={180}
-                                  >
-                                    <LineChart
-                                      data={getMiniChartData(holding.ticker)}
-                                      margin={{
-                                        top: 5,
-                                        right: 5,
-                                        left: 5,
-                                        bottom: 5,
-                                      }}
-                                    >
-                                      <defs>
-                                        <linearGradient
-                                          id={`colorPrice-${holding.id}`}
-                                          x1="0"
-                                          y1="0"
-                                          x2="0"
-                                          y2="1"
-                                        >
-                                          <stop
-                                            offset="5%"
-                                            stopColor="var(--primary)"
-                                            stopOpacity={0.3}
-                                          />
-                                          <stop
-                                            offset="95%"
-                                            stopColor="var(--primary)"
-                                            stopOpacity={0}
-                                          />
-                                        </linearGradient>
-                                      </defs>
-                                      <XAxis
-                                        dataKey="day"
-                                        stroke="var(--muted-foreground)"
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickFormatter={(value) => `D${value}`}
-                                      />
-                                      <YAxis
-                                        stroke="var(--muted-foreground)"
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickFormatter={(value) =>
-                                          `₹${(value / 1000).toFixed(0)}K`
-                                        }
-                                        domain={[
-                                          "dataMin - 50",
-                                          "dataMax + 50",
-                                        ]}
-                                      />
-                                      <RechartsTooltip
-                                        contentStyle={{
-                                          backgroundColor: "var(--popover)",
-                                          border: "1px solid var(--border)",
-                                          borderRadius: "6px",
-                                          fontSize: "12px",
-                                        }}
-                                        labelStyle={{
-                                          color: "var(--foreground)",
-                                          fontWeight: "600",
-                                        }}
-                                        formatter={(value: any) => [
-                                          `₹${value.toFixed(2)}`,
-                                          "Price",
-                                        ]}
-                                        labelFormatter={(label) =>
-                                          `Day ${label}`
-                                        }
-                                      />
-                                      <Line
-                                        type="monotone"
-                                        dataKey="price"
-                                        stroke="var(--primary)"
-                                        strokeWidth={2.5}
-                                        dot={false}
-                                        activeDot={{ r: 4, strokeWidth: 2 }}
-                                        fill={`url(#colorPrice-${holding.id})`}
-                                      />
-                                    </LineChart>
-                                  </ResponsiveContainer>
-                                </div>
-
-                                {/* Recent Activity */}
-                                <div className="mt-4">
-                                  <h4 className="text-sm font-semibold mb-3">
-                                    Recent Activity
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {getRecentTransactions(holding.ticker).map(
-                                      (txn) => (
-                                        <div
-                                          key={txn.id}
-                                          className="flex items-center justify-between text-sm p-2 bg-background rounded border"
-                                        >
-                                          <div className="flex items-center gap-3">
-                                            <Badge
-                                              variant={
-                                                txn.type === "buy"
-                                                  ? "default"
-                                                  : "secondary"
-                                              }
-                                            >
-                                              {txn.type.toUpperCase()}
-                                            </Badge>
-                                            <span className="text-muted-foreground">
-                                              {txn.date}
-                                            </span>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="font-medium">
-                                              {txn.quantity} shares @ ₹
-                                              {txn.price}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Key Metrics */}
-                              <div className="space-y-3">
-                                <h4 className="text-sm font-semibold">
-                                  Key Metrics
-                                </h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="p-3 bg-background rounded-lg border">
-                                    <p className="text-xs text-muted-foreground">
-                                      P/E Ratio
-                                    </p>
-                                    <p className="text-lg font-bold">
-                                      {holding.pe}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-background rounded-lg border">
-                                    <p className="text-xs text-muted-foreground">
-                                      ROE
-                                    </p>
-                                    <p className="text-lg font-bold">
-                                      {holding.roe}%
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-background rounded-lg border">
-                                    <p className="text-xs text-muted-foreground">
-                                      Market Cap
-                                    </p>
-                                    <p className="text-sm font-bold">
-                                      {holding.marketCap}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-background rounded-lg border">
-                                    <p className="text-xs text-muted-foreground">
-                                      52W High
-                                    </p>
-                                    <p className="text-sm font-bold">
-                                      ₹{holding.weekHigh52}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-background rounded-lg border">
-                                    <p className="text-xs text-muted-foreground">
-                                      52W Low
-                                    </p>
-                                    <p className="text-sm font-bold">
-                                      ₹{holding.weekLow52}
-                                    </p>
-                                  </div>
-                                  <div className="p-3 bg-background rounded-lg border">
-                                    <p className="text-xs text-muted-foreground">
-                                      Current vs Avg
-                                    </p>
-                                    <p
-                                      className={`text-sm font-bold ${
-                                        holding.currentPrice > holding.avgCost
-                                          ? "text-green-600"
-                                          : "text-red-600"
-                                      }`}
-                                    >
-                                      {(
-                                        ((holding.currentPrice -
-                                          holding.avgCost) /
-                                          holding.avgCost) *
-                                        100
-                                      ).toFixed(1)}
-                                      %
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Quick Notes */}
-                                <div className="mt-4 p-3 bg-background rounded-lg border">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-semibold text-muted-foreground">
-                                      Quick Notes
-                                    </p>
-                                    <Button variant="ghost" size="sm">
-                                      <Edit className="w-3 h-3" />
-                                    </Button>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground italic">
-                                    No notes yet. Click to add your thoughts...
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Quick Actions */}
-                              <div className="md:col-span-3 flex gap-2 pt-4 border-t">
-                                <Button variant="outline" size="sm">
-                                  <BarChart3 className="w-4 h-4 mr-2" />
-                                  Full Analysis
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  <Heart className="w-4 h-4 mr-2" />
-                                  Add to Watchlist
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  <Bell className="w-4 h-4 mr-2" />
-                                  Set Alert
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  <StickyNote className="w-4 h-4 mr-2" />
-                                  Add Note
-                                </Button>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+      <Card id="main-holdings-display">
+        <CardContent className="pt-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <button onClick={toggleSelectAll} className="p-0">
+                      {selectedHoldings.size ===
+                        filteredAndSortedHoldings.length &&
+                      filteredAndSortedHoldings.length > 0 ? (
+                        <CheckSquare className="w-4 h-4" />
+                      ) : (
+                        <Square className="w-4 h-4" />
                       )}
-                    </React.Fragment>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════
-          CARD VIEW
-      ═══════════════════════════════════════════════════════════════ */}
-      {viewMode === "card" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAndSortedHoldings.map((holding) => (
-            <Card
-              key={holding.id}
-              className="hover:shadow-lg transition-all cursor-pointer relative group"
-            >
-              <div className="absolute top-4 left-4 z-10">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleSelectHolding(holding.id);
-                  }}
-                >
-                  {selectedHoldings.has(holding.id) ? (
-                    <CheckSquare className="w-5 h-5 text-primary" />
-                  ) : (
-                    <Square className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                  )}
-                </button>
-              </div>
-              <CardHeader className="pt-12">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-xl">{holding.ticker}</CardTitle>
-                    <CardDescription className="mt-1">
-                      {holding.name}
-                    </CardDescription>
-                    <Badge variant="outline" className="mt-2 text-xs">
-                      {holding.sector}
-                    </Badge>
-                  </div>
-                  <Badge className={getHealthColor(holding.healthScore)}>
-                    {holding.healthScore}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex items-baseline justify-between mb-2">
-                    <span className="text-2xl font-bold">
-                      ₹{(holding.currentValue / 1000).toFixed(1)}K
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {holding.weight}% of portfolio
-                    </span>
-                  </div>
-                  <Progress value={holding.weight * 2} className="h-2" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Today's Change</p>
-                    <p
-                      className={`font-semibold ${
-                        holding.dayChange >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("ticker")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground"
                     >
-                      {holding.dayChange >= 0 ? "+" : ""}
-                      {holding.dayChange.toFixed(2)}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Total Return</p>
-                    <p
-                      className={`font-semibold ${
-                        holding.totalReturn >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
+                      Stock <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("quantity")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
                     >
-                      {holding.totalReturn >= 0 ? "+" : ""}
-                      {holding.totalReturn.toFixed(2)}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">P/E Ratio</p>
-                    <p className="font-semibold">{holding.pe}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">ROE</p>
-                    <p className="font-semibold">{holding.roe}%</p>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Eye className="w-4 h-4 mr-2" />
-                    View
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Bell className="w-4 h-4 mr-2" />
-                    Alert
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <ChevronDown className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <BarChart3 className="w-4 h-4 mr-2" />
-                        Analyze
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Sell
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════
-          COMPACT VIEW
-      ═══════════════════════════════════════════════════════════════ */}
-      {viewMode === "compact" && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <button onClick={toggleSelectAll} className="p-0">
-                        {selectedHoldings.size ===
-                          filteredAndSortedHoldings.length &&
-                        filteredAndSortedHoldings.length > 0 ? (
-                          <CheckSquare className="w-4 h-4" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
-                    </TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead className="text-right">Return %</TableHead>
-                    <TableHead className="text-center">Health</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAndSortedHoldings.map((holding) => (
-                    <TableRow key={holding.id} className="hover:bg-muted/50">
+                      Qty <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("avgCost")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
+                    >
+                      Avg Cost <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("currentPrice")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
+                    >
+                      Current <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("currentValue")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
+                    >
+                      Value <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("dayChange")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
+                    >
+                      Day % <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("totalReturn")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground ml-auto"
+                    >
+                      Total Return <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <button
+                      onClick={() => handleSort("healthScore")}
+                      className="flex items-center gap-2 font-semibold hover:text-foreground mx-auto"
+                    >
+                      Health <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">P/E</TableHead>
+                  <TableHead className="text-right">ROE</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAndSortedHoldings.map((holding) => (
+                  <React.Fragment key={holding.id}>
+                    <TableRow
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() =>
+                        setExpandedRow(
+                          expandedRow === holding.id ? null : holding.id,
+                        )
+                      }
+                    >
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => toggleSelectHolding(holding.id)}>
+                        <button
+                          onClick={() => toggleSelectHolding(holding.id)}
+                          className="p-0"
+                        >
                           {selectedHoldings.has(holding.id) ? (
                             <CheckSquare className="w-4 h-4 text-primary" />
                           ) : (
@@ -1504,50 +1006,363 @@ const HoldingsPage = () => {
                         </button>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <div className="font-semibold">
-                              {holding.ticker}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {holding.name}
-                            </div>
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {holding.ticker}
+                            {expandedRow === holding.id ? (
+                              <ChevronUp className="w-3 h-3" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3" />
+                            )}
                           </div>
+                          <div className="text-xs text-muted-foreground">
+                            {holding.name}
+                          </div>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {holding.sector}
+                          </Badge>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {holding.quantity}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₹{holding.avgCost.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ₹{holding.currentPrice.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         ₹{(holding.currentValue / 1000).toFixed(1)}K
+                        <div className="text-xs text-muted-foreground">
+                          {holding.weight}%
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <span
                           className={
-                            holding.totalReturn >= 0
+                            holding.dayChange >= 0
                               ? "text-green-600 font-medium"
                               : "text-red-600 font-medium"
                           }
                         >
-                          {holding.totalReturn >= 0 ? "+" : ""}
-                          {holding.totalReturn.toFixed(2)}%
+                          {holding.dayChange >= 0 ? "+" : ""}
+                          {holding.dayChange.toFixed(2)}%
                         </span>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <Badge className={getHealthColor(holding.healthScore)}>
-                          {holding.healthScore}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="w-4 h-4" />
-                        </Button>
+                        <div
+                          className={
+                            holding.totalReturn >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          <div className="font-semibold">
+                            {holding.totalReturn >= 0 ? "+" : ""}
+                            {holding.totalReturn.toFixed(2)}%
+                          </div>
+                          <div className="text-xs">
+                            {holding.plAmount >= 0 ? "+" : ""}₹
+                            {(holding.plAmount / 1000).toFixed(1)}K
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getHealthBadge(holding.healthScore) && (
+                          <Badge
+                            className={
+                              getHealthBadge(holding.healthScore).color
+                            }
+                          >
+                            {holding.healthScore}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {holding.pe}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {holding.roe}%
+                      </TableCell>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex justify-end gap-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <ChevronDown className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Position
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                Full Analysis
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Bell className="w-4 h-4 mr-2" />
+                                Add Alert
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Sell
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
+                    {/* ═══════════════════════════════════════════════════════════════
+                          INLINE EXPANDED VIEW
+                      ═══════════════════════════════════════════════════════════════ */}
+                    {expandedRow === holding.id && (
+                      <TableRow>
+                        <TableCell colSpan={12} className="bg-muted/30 p-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Mini Chart */}
+                            <div className="md:col-span-2 space-y-3">
+                              <h4 className="text-sm font-semibold flex items-center gap-2">
+                                <BarChart3 className="w-4 h-4" />1 Month
+                                Performance
+                              </h4>
+                              <div className="bg-background rounded-lg border p-4">
+                                <ResponsiveContainer width="100%" height={180}>
+                                  <LineChart
+                                    data={getMiniChartData(holding.ticker)}
+                                    margin={{
+                                      top: 5,
+                                      right: 5,
+                                      left: 5,
+                                      bottom: 5,
+                                    }}
+                                  >
+                                    <defs>
+                                      <linearGradient
+                                        id={`colorPrice-${holding.id}`}
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                      >
+                                        <stop
+                                          offset="5%"
+                                          stopColor="var(--primary)"
+                                          stopOpacity={0.3}
+                                        />
+                                        <stop
+                                          offset="95%"
+                                          stopColor="var(--primary)"
+                                          stopOpacity={0}
+                                        />
+                                      </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                      dataKey="day"
+                                      stroke="var(--muted-foreground)"
+                                      fontSize={10}
+                                      tickLine={false}
+                                      axisLine={false}
+                                      tickFormatter={(value) => `D${value}`}
+                                    />
+                                    <YAxis
+                                      stroke="var(--muted-foreground)"
+                                      fontSize={10}
+                                      tickLine={false}
+                                      axisLine={false}
+                                      tickFormatter={(value) =>
+                                        `₹${(value / 1000).toFixed(0)}K`
+                                      }
+                                      domain={["dataMin - 50", "dataMax + 50"]}
+                                    />
+                                    <RechartsTooltip
+                                      contentStyle={{
+                                        backgroundColor: "var(--popover)",
+                                        border: "1px solid var(--border)",
+                                        borderRadius: "6px",
+                                        fontSize: "12px",
+                                      }}
+                                      labelStyle={{
+                                        color: "var(--foreground)",
+                                        fontWeight: "600",
+                                      }}
+                                      formatter={(value: any) => [
+                                        `₹${value.toFixed(2)}`,
+                                        "Price",
+                                      ]}
+                                      labelFormatter={(label) => `Day ${label}`}
+                                    />
+                                    <Line
+                                      type="monotone"
+                                      dataKey="price"
+                                      stroke="var(--primary)"
+                                      strokeWidth={2.5}
+                                      dot={false}
+                                      activeDot={{ r: 4, strokeWidth: 2 }}
+                                      fill={`url(#colorPrice-${holding.id})`}
+                                    />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+
+                              {/* Recent Activity */}
+                              <div className="mt-4">
+                                <h4 className="text-sm font-semibold mb-3">
+                                  Recent Activity
+                                </h4>
+                                <div className="space-y-2">
+                                  {getRecentTransactions(holding.ticker).map(
+                                    (txn) => (
+                                      <div
+                                        key={txn.id}
+                                        className="flex items-center justify-between text-sm p-2 bg-background rounded border"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <Badge
+                                            variant={
+                                              txn.type === "buy"
+                                                ? "default"
+                                                : "secondary"
+                                            }
+                                          >
+                                            {txn.type.toUpperCase()}
+                                          </Badge>
+                                          <span className="text-muted-foreground">
+                                            {txn.date}
+                                          </span>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-medium">
+                                            {txn.quantity} shares @ ₹{txn.price}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Key Metrics */}
+                            <div className="space-y-3">
+                              <h4 className="text-sm font-semibold">
+                                Key Metrics
+                              </h4>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 bg-background rounded-lg border">
+                                  <p className="text-xs text-muted-foreground">
+                                    P/E Ratio
+                                  </p>
+                                  <p className="text-lg font-bold">
+                                    {holding.pe}
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-background rounded-lg border">
+                                  <p className="text-xs text-muted-foreground">
+                                    ROE
+                                  </p>
+                                  <p className="text-lg font-bold">
+                                    {holding.roe}%
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-background rounded-lg border">
+                                  <p className="text-xs text-muted-foreground">
+                                    Market Cap
+                                  </p>
+                                  <p className="text-sm font-bold">
+                                    {holding.marketCap}
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-background rounded-lg border">
+                                  <p className="text-xs text-muted-foreground">
+                                    52W High
+                                  </p>
+                                  <p className="text-sm font-bold">
+                                    ₹{holding.weekHigh52}
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-background rounded-lg border">
+                                  <p className="text-xs text-muted-foreground">
+                                    52W Low
+                                  </p>
+                                  <p className="text-sm font-bold">
+                                    ₹{holding.weekLow52}
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-background rounded-lg border">
+                                  <p className="text-xs text-muted-foreground">
+                                    Current vs Avg
+                                  </p>
+                                  <p
+                                    className={`text-sm font-bold ${
+                                      holding.currentPrice > holding.avgCost
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    {(
+                                      ((holding.currentPrice -
+                                        holding.avgCost) /
+                                        holding.avgCost) *
+                                      100
+                                    ).toFixed(1)}
+                                    %
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Quick Notes */}
+                              <div className="mt-4 p-3 bg-background rounded-lg border">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-xs font-semibold text-muted-foreground">
+                                    Quick Notes
+                                  </p>
+                                  <Button variant="ghost" size="sm">
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground italic">
+                                  No notes yet. Click to add your thoughts...
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Quick Actions */}
+                            <div className="md:col-span-3 flex gap-2 pt-4 border-t">
+                              <Button variant="outline" size="sm">
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                Full Analysis
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                <Heart className="w-4 h-4 mr-2" />
+                                Add to Watchlist
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                <Bell className="w-4 h-4 mr-2" />
+                                Set Alert
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                <StickyNote className="w-4 h-4 mr-2" />
+                                Add Note
+                              </Button>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ═══════════════════════════════════════════════════════════════
           ALLOCATION ANALYSIS
@@ -1703,7 +1518,10 @@ const HoldingsPage = () => {
           SECTION 5: BULK ACTIONS BAR (when stocks selected)
       ═══════════════════════════════════════════════════════════════ */}
       {selectedHoldings.size > 0 && (
-        <div id="bulk-actions-bar" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4">
+        <div
+          id="bulk-actions-bar"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4"
+        >
           <Card className="shadow-2xl border-2">
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
@@ -1712,10 +1530,12 @@ const HoldingsPage = () => {
                 </div>
                 <div className="h-6 w-px bg-border" />
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline">
-                    <GitCompare className="w-4 h-4 mr-2" />
-                    Compare
-                  </Button>
+                  {selectedHoldings.size > 0 && selectedHoldings.size < 3 && (
+                    <Button size="sm" variant="outline" onClick={handleCompare}>
+                      <GitCompare className="w-4 h-4 mr-2" />
+                      Compare ({selectedHoldings.size})
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline">
                     <Download className="w-4 h-4 mr-2" />
                     Export

@@ -1,8 +1,20 @@
 "use client";
 
-import { BarChart3, TrendingUp, TrendingDown, Activity, Building2, DollarSign, Percent, Volume2, Zap, Shield } from "lucide-react";
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Building2,
+  DollarSign,
+  Percent,
+  Volume2,
+  Zap,
+  Shield,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 // Sample sector data with comprehensive metrics
 const sectorData = [
@@ -20,8 +32,8 @@ const sectorData = [
       { ticker: "AAPL", performance: 12.3, marketCap: "2.8T" },
       { ticker: "MSFT", performance: 9.1, marketCap: "2.4T" },
       { ticker: "GOOGL", performance: 7.8, marketCap: "1.6T" },
-      { ticker: "NVDA", performance: 15.2, marketCap: "1.1T" }
-    ]
+      { ticker: "NVDA", performance: 15.2, marketCap: "1.1T" },
+    ],
   },
   {
     sector: "Healthcare",
@@ -37,8 +49,8 @@ const sectorData = [
       { ticker: "JNJ", performance: 5.1, marketCap: "456B" },
       { ticker: "PFE", performance: 4.8, marketCap: "234B" },
       { ticker: "UNH", performance: 8.9, marketCap: "523B" },
-      { ticker: "MRNA", performance: 12.4, marketCap: "45B" }
-    ]
+      { ticker: "MRNA", performance: 12.4, marketCap: "45B" },
+    ],
   },
   {
     sector: "Financial",
@@ -54,8 +66,8 @@ const sectorData = [
       { ticker: "JPM", performance: 3.8, marketCap: "567B" },
       { ticker: "BAC", performance: 2.9, marketCap: "298B" },
       { ticker: "WFC", performance: 1.2, marketCap: "234B" },
-      { ticker: "GS", performance: 6.7, marketCap: "145B" }
-    ]
+      { ticker: "GS", performance: 6.7, marketCap: "145B" },
+    ],
   },
   {
     sector: "Energy",
@@ -71,8 +83,8 @@ const sectorData = [
       { ticker: "XOM", performance: -1.8, marketCap: "389B" },
       { ticker: "CVX", performance: -0.9, marketCap: "287B" },
       { ticker: "COP", performance: -3.2, marketCap: "156B" },
-      { ticker: "EOG", performance: -2.8, marketCap: "89B" }
-    ]
+      { ticker: "EOG", performance: -2.8, marketCap: "89B" },
+    ],
   },
   {
     sector: "Consumer Discretionary",
@@ -88,8 +100,8 @@ const sectorData = [
       { ticker: "AMZN", performance: 5.2, marketCap: "1.4T" },
       { ticker: "TSLA", performance: 8.9, marketCap: "785B" },
       { ticker: "HD", performance: 2.1, marketCap: "345B" },
-      { ticker: "NKE", performance: 1.8, marketCap: "178B" }
-    ]
+      { ticker: "NKE", performance: 1.8, marketCap: "178B" },
+    ],
   },
   {
     sector: "Communication",
@@ -105,8 +117,8 @@ const sectorData = [
       { ticker: "META", performance: 3.4, marketCap: "789B" },
       { ticker: "NFLX", performance: 2.8, marketCap: "167B" },
       { ticker: "DIS", performance: -0.5, marketCap: "234B" },
-      { ticker: "VZ", performance: 0.8, marketCap: "156B" }
-    ]
+      { ticker: "VZ", performance: 0.8, marketCap: "156B" },
+    ],
   },
   {
     sector: "Consumer Staples",
@@ -122,8 +134,8 @@ const sectorData = [
       { ticker: "PG", performance: 3.1, marketCap: "389B" },
       { ticker: "KO", performance: 2.9, marketCap: "267B" },
       { ticker: "PEP", performance: 2.2, marketCap: "234B" },
-      { ticker: "WMT", performance: 3.8, marketCap: "456B" }
-    ]
+      { ticker: "WMT", performance: 3.8, marketCap: "456B" },
+    ],
   },
   {
     sector: "Industrials",
@@ -139,16 +151,20 @@ const sectorData = [
       { ticker: "BA", performance: 4.2, marketCap: "145B" },
       { ticker: "CAT", performance: 6.8, marketCap: "178B" },
       { ticker: "GE", performance: 5.9, marketCap: "123B" },
-      { ticker: "MMM", performance: 3.7, marketCap: "89B" }
-    ]
-  }
+      { ticker: "MMM", performance: 3.7, marketCap: "89B" },
+    ],
+  },
 ];
 
 const getPerformanceColor = (performance: number) => {
-  if (performance >= 7) return "from-emerald-500/20 to-green-600/30 text-foreground border-emerald-400/20";
-  if (performance >= 4) return "from-green-400/20 to-emerald-500/25 text-foreground border-green-300/20";
-  if (performance >= 1) return "from-amber-400/20 to-yellow-500/25 text-foreground border-amber-300/20";
-  if (performance >= -2) return "from-orange-400/20 to-red-500/25 text-foreground border-orange-300/20";
+  if (performance >= 7)
+    return "from-emerald-500/20 to-green-600/30 text-foreground border-emerald-400/20";
+  if (performance >= 4)
+    return "from-green-400/20 to-emerald-500/25 text-foreground border-green-300/20";
+  if (performance >= 1)
+    return "from-amber-400/20 to-yellow-500/25 text-foreground border-amber-300/20";
+  if (performance >= -2)
+    return "from-orange-400/20 to-red-500/25 text-foreground border-orange-300/20";
   return "from-red-500/20 to-rose-600/30 text-foreground border-red-400/20";
 };
 
@@ -166,21 +182,23 @@ const getVolatilityColor = (volatility: string) => {
 };
 
 const getVolumeIcon = (volume: string) => {
-  if (volume === "High") return <Volume2 className="w-4 h-4 text-muted-foreground" />;
-  if (volume === "Medium") return <Volume2 className="w-4 h-4 text-muted-foreground/80" />;
+  if (volume === "High")
+    return <Volume2 className="w-4 h-4 text-muted-foreground" />;
+  if (volume === "Medium")
+    return <Volume2 className="w-4 h-4 text-muted-foreground/80" />;
   return <Volume2 className="w-4 h-4 text-muted-foreground/60" />;
 };
 
 const handleSectorClick = (sector: string) => {
   // Navigate to detailed sector page
-  window.location.href = `/research/sector-analysis/${sector.toLowerCase().replace(/\s+/g, '-')}`;
+  window.location.href = `/research/sector-analysis/${sector.toLowerCase().replace(/\s+/g, "-")}`;
 };
 
 const SectorAnalysisPage = () => {
   return (
     <div className="space-y-6 py-6 px-6">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -190,9 +208,10 @@ const SectorAnalysisPage = () => {
           Sector Analysis
         </h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Explore market sectors through an interactive heatmap showing performance and top stocks
+          Explore market sectors through an interactive heatmap showing
+          performance and top stocks
         </p>
-        
+
         {/* Performance Legend */}
         <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
@@ -211,7 +230,7 @@ const SectorAnalysisPage = () => {
       </motion.div>
 
       {/* Heatmap Grid */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
@@ -222,12 +241,12 @@ const SectorAnalysisPage = () => {
             key={sector.sector}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ 
-              duration: 0.5, 
-              delay: 0.3 + (index * 0.1),
+            transition={{
+              duration: 0.5,
+              delay: 0.3 + index * 0.1,
               type: "spring",
               stiffness: 300,
-              damping: 20
+              damping: 20,
             }}
             onClick={() => handleSectorClick(sector.sector)}
             className={`
@@ -238,7 +257,7 @@ const SectorAnalysisPage = () => {
           >
             {/* Subtle glassmorphism overlay */}
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
-            
+
             {/* Content */}
             <div className="p-6 relative z-10 h-full flex flex-col">
               {/* Header */}
@@ -252,37 +271,38 @@ const SectorAnalysisPage = () => {
                     <span>{sector.companies} companies</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2 mb-1 text-foreground">
-                    {sector.performance >= 0 ? (
-                      <TrendingUp className="w-5 h-5 text-emerald-600" />
-                    ) : (
-                      <TrendingDown className="w-5 h-5 text-red-500" />
-                    )}
-                    <span className="text-2xl font-bold">
-                      {sector.performance >= 0 ? '+' : ''}{sector.performance}%
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">YTD</div>
-                </div>
               </div>
-              
+
               {/* Key Metrics - Simplified */}
               <div className="flex items-center justify-between mb-6">
                 <div className="text-center">
-                  <div className="text-lg font-bold text-foreground">{sector.avgPE}</div>
-                  <div className="text-xs text-muted-foreground">P/E Ratio</div>
+                  <Badge className="text-sm font-bold bg-purple-500/20 text-purple-200">
+                    {sector.avgPE}
+                  </Badge>
+                  <div className="text-xs text-muted-foreground mt-2">P/E Ratio</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-foreground">{sector.marketCap}</div>
-                  <div className="text-xs text-muted-foreground">Market Cap</div>
+                  <Badge className="text-sm font-bold bg-blue-500/20 text-blue-200 ">
+                    {sector.marketCap}
+                  </Badge>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Market Cap
+                  </div>
                 </div>
                 <div className="text-center">
-                  <div className={`text-lg font-bold ${getVolatilityColor(sector.volatility)}`}>{sector.volatility}</div>
-                  <div className="text-xs text-muted-foreground">Risk</div>
+                  <Badge
+                    variant={
+                      sector.performance >= 0 ? "success" : "destructive"
+                    }
+                    className={`text-sm font-bold`}
+                  >
+                    {sector.performance >= 0 ? "+" : ""}
+                    {sector.performance}%
+                  </Badge>
+                  <div className="text-xs mt-2 text-muted-foreground">YTD</div>
                 </div>
               </div>
-              
+
               {/* Bottom Section - Simplified */}
               <div className="mt-auto">
                 {/* Momentum Bar */}
@@ -292,18 +312,20 @@ const SectorAnalysisPage = () => {
                       <Zap className="w-4 h-4" />
                       Momentum
                     </span>
-                    <span className="font-semibold text-foreground">{sector.momentum}%</span>
+                    <span className="font-semibold text-foreground">
+                      {sector.momentum}%
+                    </span>
                   </div>
                   <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${sector.momentum}%` }}
-                      transition={{ duration: 1, delay: 0.5 + (index * 0.1) }}
+                      transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
                       className="h-full rounded-full bg-gradient-to-r from-primary/80 to-primary"
                     />
                   </div>
                 </div>
-                
+
                 {/* Click indicator */}
                 <div className="text-center text-xs text-muted-foreground/75 group-hover:text-muted-foreground transition-colors">
                   Click for detailed analysis

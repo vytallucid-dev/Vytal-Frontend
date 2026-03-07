@@ -8,11 +8,12 @@ import OverviewTab from "@/components/portfolio/OverviewTab";
 import { PortfolioNavigationCommandPalette } from "@/components/portfolio/navigation-command-palette";
 import { BarChart3, Briefcase, Clock, Eye, Heart } from "lucide-react";
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const PortfolioContent = () => {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("overview");
+  const router = useRouter();
 
   // Handle URL query parameters for tab and section navigation
   useEffect(() => {
@@ -33,54 +34,6 @@ const PortfolioContent = () => {
       }, 100);
     }
   }, [searchParams]);
-
-  // Mock data for portfolio
-  const portfolioStats = {
-    totalValue: 125430.5,
-    todayChange: 2450.3,
-    todayChangePercent: 1.98,
-    totalGainLoss: 15230.5,
-    totalGainLossPercent: 13.78,
-    totalInvested: 110200.0,
-  };
-
-  const topHoldings = [
-    {
-      symbol: "AAPL",
-      name: "Apple Inc.",
-      value: 25430,
-      percentage: 20.3,
-      change: 2.4,
-    },
-    {
-      symbol: "MSFT",
-      name: "Microsoft Corp.",
-      value: 18650,
-      percentage: 14.9,
-      change: -1.2,
-    },
-    {
-      symbol: "GOOGL",
-      name: "Alphabet Inc.",
-      value: 15280,
-      percentage: 12.2,
-      change: 3.1,
-    },
-    {
-      symbol: "TSLA",
-      name: "Tesla Inc.",
-      value: 12940,
-      percentage: 10.3,
-      change: 5.6,
-    },
-    {
-      symbol: "AMZN",
-      name: "Amazon.com Inc.",
-      value: 11230,
-      percentage: 9.0,
-      change: 1.8,
-    },
-  ];
 
   const tabs = [
     { id: "overview", label: "Overview", icon: Eye },
@@ -108,16 +61,19 @@ const PortfolioContent = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 pt-2">
+    <div className="space-y-6 p-6 pt-2 ">
       {/* Modern Tab Navigation */}
-      <div className="relative w-full flex justify-between items-center">
+      <div className=" w-full flex justify-between items-center ">
         <div className="flex items-center gap-8 border-b border-border/30">
           {tabs.map((tab) => {
             const IconComponent = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  router.push(`?tab=${tab.id}`);
+                }}
                 className={`
                   relative pb-4 px-1 text-sm font-medium transition-all duration-300 ease-in-out
                   flex items-center gap-2 hover:text-foreground

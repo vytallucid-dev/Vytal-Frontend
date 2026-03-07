@@ -64,24 +64,24 @@ interface StockSearchResult {
   marketCap: "Large" | "Mid" | "Small";
 }
 
-const AddStockModal: React.FC<AddStockModalProps> = ({
+const AddStockModal = ({
   isOpen,
   onClose,
   onAdd,
   currentPortfolioValue,
   currentSectorAllocation,
-}) => {
+}: AddStockModalProps) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(
-    null
+    null,
   );
 
   // Form fields
   const [quantity, setQuantity] = useState<string>("");
   const [purchasePrice, setPurchasePrice] = useState<string>("");
   const [purchaseDate, setPurchaseDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [investmentType, setInvestmentType] = useState<string>("growth");
   const [targetPrice, setTargetPrice] = useState<string>("");
@@ -201,7 +201,7 @@ const AddStockModal: React.FC<AddStockModalProps> = ({
     return stockDatabase.filter(
       (stock) =>
         stock.symbol.toLowerCase().includes(query) ||
-        stock.name.toLowerCase().includes(query)
+        stock.name.toLowerCase().includes(query),
     );
   }, [searchQuery]);
 
@@ -249,7 +249,7 @@ const AddStockModal: React.FC<AddStockModalProps> = ({
 
     // Calculate new sector allocation
     const currentSector = currentSectorAllocation.find(
-      (s) => s.sector === selectedStock.sector
+      (s) => s.sector === selectedStock.sector,
     );
     const currentSectorPercent = currentSector?.percentage || 0;
     const newSectorPercent =
@@ -260,20 +260,20 @@ const AddStockModal: React.FC<AddStockModalProps> = ({
     if (newSectorPercent > 30) {
       warnings.push(
         `⚠️ This will make ${selectedStock.sector} ${newSectorPercent.toFixed(
-          1
-        )}% of your portfolio (high concentration)`
+          1,
+        )}% of your portfolio (high concentration)`,
       );
     }
     if (selectedStock.healthScore < 50) {
       warnings.push(
-        `⚠️ This stock has a Health Score of ${selectedStock.healthScore} (poor) - are you sure?`
+        `⚠️ This stock has a Health Score of ${selectedStock.healthScore} (poor) - are you sure?`,
       );
     }
     if (calculations.newWeight > 20) {
       warnings.push(
         `⚠️ This position will be ${calculations.newWeight.toFixed(
-          1
-        )}% of your portfolio (very large)`
+          1,
+        )}% of your portfolio (very large)`,
       );
     }
     if (
@@ -282,7 +282,7 @@ const AddStockModal: React.FC<AddStockModalProps> = ({
       selectedStock.healthScore >= 70
     ) {
       warnings.push(
-        `✅ Good diversification move! This balances your sectors.`
+        `✅ Good diversification move! This balances your sectors.`,
       );
     }
 
@@ -502,7 +502,7 @@ const AddStockModal: React.FC<AddStockModalProps> = ({
                 <div className="flex gap-2">
                   {watchlistQuickAdd.map((symbol) => {
                     const stock = stockDatabase.find(
-                      (s) => s.symbol === symbol
+                      (s) => s.symbol === symbol,
                     );
                     return stock ? (
                       <Button
@@ -855,13 +855,13 @@ const AddStockModal: React.FC<AddStockModalProps> = ({
                           {selectedStock.healthScore >= 80
                             ? `Great fundamentals! ${selectedStock.symbol} has excellent health metrics. `
                             : selectedStock.healthScore >= 60
-                            ? `Solid choice. ${selectedStock.symbol} shows good fundamentals. `
-                            : `⚠️ Caution: ${selectedStock.symbol} has a low health score. `}
+                              ? `Solid choice. ${selectedStock.symbol} shows good fundamentals. `
+                              : `⚠️ Caution: ${selectedStock.symbol} has a low health score. `}
                           {portfolioImpact.sectorChange.to > 30
                             ? `However, this increases your ${
                                 selectedStock.sector
                               } exposure to ${portfolioImpact.sectorChange.to.toFixed(
-                                1
+                                1,
                               )}%. Consider balancing with other sectors.`
                             : `This helps diversify your portfolio across sectors.`}
                         </p>

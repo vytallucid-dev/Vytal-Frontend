@@ -1,42 +1,39 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  TrendingUp,
-  TrendingDown,
+  AlertCircle,
   ArrowRight,
-  ArrowUpDown,
-  DollarSign,
-  Target,
-  Trophy,
+  ArrowUpRight,
   BarChart3,
   Calendar,
-  AlertCircle,
+  CheckCircle,
+  DollarSign,
   Heart,
   PieChart,
-  CheckCircle,
   RefreshCw,
-  ArrowUpRight,
   Shield,
+  Target,
+  TrendingDown,
+  TrendingUp
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
-  LineChart,
-  Line,
-  AreaChart,
   Area,
-  BarChart,
+  AreaChart,
   Bar,
-  Cell,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  Cell,
+  Line,
   ReferenceDot,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from "recharts";
 
 const PortfolioOverviewPage = () => {
@@ -472,7 +469,7 @@ const PortfolioOverviewPage = () => {
         {/* Grid of 4 Insight Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* CARD 1: Today's Movers */}
-          <Card className="border-border/50 bg-gradient-to-br from-blue-50/30 to-background dark:from-blue-950/10 hover:shadow-lg transition-shadow">
+          <Card className="border-border/50 bg-gradient-to-br from-blue-50/30 to-background dark:from-blue-950/10 hover:shadow-lg transition-shadow ">
             <CardContent className="pt-6 pb-6">
               <div className="space-y-4">
                 {/* Header */}
@@ -975,7 +972,7 @@ const PortfolioOverviewPage = () => {
                         <div className="relative w-full h-6 bg-muted/30 rounded-full overflow-hidden">
                           <div
                             className={`h-full ${getBarColor(
-                              holding.returns
+                              holding.returns,
                             )} transition-all duration-500`}
                             style={{ width: `${holding.percentage * 6}%` }}
                           />
@@ -1096,8 +1093,8 @@ const PortfolioOverviewPage = () => {
                               idx === 0
                                 ? "bg-green-500"
                                 : idx === 1
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
                             } transition-all duration-500 flex items-center justify-center text-xs font-semibold text-white`}
                             style={{ width: `${item.percentage}%` }}
                           >
@@ -1131,10 +1128,10 @@ const PortfolioOverviewPage = () => {
                                   idx === 0
                                     ? "bg-green-600"
                                     : idx === 1
-                                    ? "bg-green-400"
-                                    : idx === 2
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
+                                      ? "bg-green-400"
+                                      : idx === 2
+                                        ? "bg-yellow-500"
+                                        : "bg-red-500"
                                 } transition-all duration-500`}
                                 style={{
                                   width: `${(item.value / 1245800) * 100}%`,
@@ -1398,16 +1395,16 @@ const PortfolioOverviewPage = () => {
                           holding.health >= 80
                             ? "bg-green-500 text-white"
                             : holding.health >= 60
-                            ? "bg-yellow-500 text-white"
-                            : "bg-red-500 text-white"
+                              ? "bg-yellow-500 text-white"
+                              : "bg-red-500 text-white"
                         }`}
                       >
                         {holding.health}/100{" "}
                         {holding.health >= 80
                           ? "🟢"
                           : holding.health >= 60
-                          ? "🟡"
-                          : "🔴"}
+                            ? "🟡"
+                            : "🔴"}
                       </Badge>
                     </div>
                   </div>
@@ -1633,14 +1630,31 @@ const PortfolioOverviewPage = () => {
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "var(--background)",
-                      border: "1px solid var(--border)",
+                      border: "1px solid var(--primary)",
                       borderRadius: "8px",
                       color: "var(--foreground)",
                     }}
-                    formatter={(value: any) => [
-                      formatCurrency(Math.abs(value)),
-                      value >= 0 ? "Gain" : "Loss",
-                    ]}
+                    formatter={(value: any) => {
+                      const isGain = value >= 0;
+
+                      return [
+                        <span
+                          style={{
+                            color: isGain ? "green" : "red",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {formatCurrency(Math.abs(value))}
+                        </span>,
+                        <span
+                          style={{
+                            color: isGain ? "green" : "red",
+                          }}
+                        >
+                          {isGain ? "Gain" : "Loss"}
+                        </span>,
+                      ];
+                    }}
                   />
                   <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                     {[
@@ -1711,8 +1725,8 @@ const PortfolioOverviewPage = () => {
                 item.priority === "HIGH"
                   ? "border-l-red-500 bg-gradient-to-r from-red-50/30 to-background dark:from-red-950/10"
                   : item.priority === "MEDIUM"
-                  ? "border-l-yellow-500 bg-gradient-to-r from-yellow-50/30 to-background dark:from-yellow-950/10"
-                  : "border-l-blue-500 bg-gradient-to-r from-blue-50/30 to-background dark:from-blue-950/10"
+                    ? "border-l-yellow-500 bg-gradient-to-r from-yellow-50/30 to-background dark:from-yellow-950/10"
+                    : "border-l-blue-500 bg-gradient-to-r from-blue-50/30 to-background dark:from-blue-950/10"
               }`}
             >
               <CardContent>
@@ -1726,8 +1740,8 @@ const PortfolioOverviewPage = () => {
                           item.priority === "HIGH"
                             ? "bg-red-500 text-white"
                             : item.priority === "MEDIUM"
-                            ? "bg-yellow-500 text-white"
-                            : "bg-blue-500 text-white"
+                              ? "bg-yellow-500 text-white"
+                              : "bg-blue-500 text-white"
                         }`}
                       >
                         {item.priority} PRIORITY
@@ -1843,7 +1857,7 @@ const PortfolioOverviewPage = () => {
                 </div>
 
                 <div className="text-left">
-                  <Badge className="bg-green-500 text-white mb-2">
+                  <Badge className="bg-green-500/30 border border-green-500 text-green-100 mb-2">
                     Strong 🟢
                   </Badge>
                   <p className="text-sm text-muted-foreground mb-1">
@@ -1862,9 +1876,9 @@ const PortfolioOverviewPage = () => {
             {/* 5 Category Mini-Scores */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
               {/* Profitability */}
-              <div className="p-4 bg-background/50 rounded-lg border border-border/30 hover:shadow-md transition-all cursor-pointer group">
+              <div className="p-4 bg-background/50 border border-green-500/40 rounded-lg  hover:shadow-md transition-all cursor-pointer group">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <span className="text-sm font-semibold text-primary">
                     PROFITABILITY
                   </span>
                   <span className="text-green-600 dark:text-green-400">🟢</span>
@@ -1876,9 +1890,9 @@ const PortfolioOverviewPage = () => {
               </div>
 
               {/* Growth */}
-              <div className="p-4 bg-background/50 rounded-lg border border-border/30 hover:shadow-md transition-all cursor-pointer group">
+              <div className="p-4 bg-background/50 rounded-lg border border-green-500/40 hover:shadow-md transition-all cursor-pointer group">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <span className="text-sm font-semibold text-primary">
                     GROWTH
                   </span>
                   <span className="text-green-600 dark:text-green-400">🟢</span>
@@ -1890,9 +1904,9 @@ const PortfolioOverviewPage = () => {
               </div>
 
               {/* Stability */}
-              <div className="p-4 bg-background/50 rounded-lg border border-border/30 hover:shadow-md transition-all cursor-pointer group">
+              <div className="p-4 bg-background/50 rounded-lg border border-green-500/40 hover:shadow-md transition-all cursor-pointer group">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <span className="text-sm font-semibold text-primary">
                     STABILITY
                   </span>
                   <span className="text-green-600 dark:text-green-400">🟢</span>
@@ -1904,9 +1918,9 @@ const PortfolioOverviewPage = () => {
               </div>
 
               {/* Efficiency */}
-              <div className="p-4 bg-background/50 rounded-lg border border-border/30 hover:shadow-md transition-all cursor-pointer group">
+              <div className="p-4 bg-background/50 rounded-lg border border-green-500/40 hover:shadow-md transition-all cursor-pointer group">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <span className="text-sm font-semibold text-primary">
                     EFFICIENCY
                   </span>
                   <span className="text-green-600 dark:text-green-400">🟢</span>
@@ -1918,9 +1932,9 @@ const PortfolioOverviewPage = () => {
               </div>
 
               {/* Valuation */}
-              <div className="p-4 bg-background/50 rounded-lg border border-border/30 hover:shadow-md transition-all cursor-pointer group">
+              <div className="p-4 bg-background/50 rounded-lg border border-yellow-500/40 hover:shadow-md transition-all cursor-pointer group">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <span className="text-sm font-semibold text-primary">
                     VALUATION
                   </span>
                   <span className="text-yellow-600 dark:text-yellow-400">
@@ -1978,9 +1992,15 @@ const PortfolioOverviewPage = () => {
                 </p>
               </div>
 
-              <Button className="w-full" variant="outline">
-                <span>View Detailed Health Analysis</span>
-                <ArrowRight className="ml-2 w-4 h-4" />
+              <Button className="w-full" variant="gradient">
+                <Link
+                  href="?tab=health"
+                  className="w-full flex justify-center items-center gap-2"
+                >
+                  View Detailed Health Analysis
+                  <span>View Detailed Health Analysis</span>
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -2003,7 +2023,7 @@ const PortfolioOverviewPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* CARD 1: Check Portfolio Health */}
-          <Card className="border-border/50 bg-gradient-to-br from-green-50/30 to-background dark:from-green-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
+          <Card className="border-primary/30 bg-gradient-to-br from-green-50/30 to-background dark:from-green-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
             <CardContent className="pt-6 pb-6">
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 mx-auto bg-green-500/10 rounded-full flex items-center justify-center text-4xl">
@@ -2018,18 +2038,23 @@ const PortfolioOverviewPage = () => {
                   </p>
                 </div>
                 <Button
-                  variant="outline"
+                  variant="gradient"
                   className="w-full group-hover:bg-green-50 dark:group-hover:bg-green-950/20"
                 >
-                  Go to Health Tab
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <Link
+                    href="?tab=health"
+                    className="w-full flex justify-center items-center gap-2"
+                  >
+                    <span>Go to Health Tab</span>
+                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* CARD 2: View All Holdings */}
-          <Card className="border-border/50 bg-gradient-to-br from-blue-50/30 to-background dark:from-blue-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
+          <Card className="border-primary/30 bg-gradient-to-br from-blue-50/30 to-background dark:from-blue-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
             <CardContent className="pt-6 pb-6">
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 mx-auto bg-blue-500/10 rounded-full flex items-center justify-center text-4xl">
@@ -2042,18 +2067,23 @@ const PortfolioOverviewPage = () => {
                   </p>
                 </div>
                 <Button
-                  variant="outline"
+                  variant="gradient"
                   className="w-full group-hover:bg-blue-50 dark:group-hover:bg-blue-950/20"
                 >
-                  Go to Holdings Tab
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                 <Link
+                    href="?tab=holdings"
+                    className="w-full flex justify-center items-center gap-2"
+                  >
+                    <span>Go to Holdings Tab</span>
+                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* CARD 3: Analyze Performance */}
-          <Card className="border-border/50 bg-gradient-to-br from-purple-50/30 to-background dark:from-purple-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
+          <Card className="border-primary/30 bg-gradient-to-br from-purple-50/30 to-background dark:from-purple-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
             <CardContent className="pt-6 pb-6">
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 mx-auto bg-purple-500/10 rounded-full flex items-center justify-center text-4xl">
@@ -2068,18 +2098,23 @@ const PortfolioOverviewPage = () => {
                   </p>
                 </div>
                 <Button
-                  variant="outline"
+                  variant="gradient"
                   className="w-full group-hover:bg-purple-50 dark:group-hover:bg-purple-950/20"
                 >
-                  Go to Performance Tab
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <Link
+                    href="?tab=analytics"
+                    className="w-full flex justify-center items-center gap-2"
+                  >
+                    <span>Go to Analytics Tab</span>
+                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* CARD 4: Review History */}
-          <Card className="border-border/50 bg-gradient-to-br from-orange-50/30 to-background dark:from-orange-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
+          <Card className="border-primary/30 bg-gradient-to-br from-orange-50/30 to-background dark:from-orange-950/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
             <CardContent className="pt-6 pb-6">
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 mx-auto bg-orange-500/10 rounded-full flex items-center justify-center text-4xl">
@@ -2092,11 +2127,16 @@ const PortfolioOverviewPage = () => {
                   </p>
                 </div>
                 <Button
-                  variant="outline"
+                  variant="gradient"
                   className="w-full group-hover:bg-orange-50 dark:group-hover:bg-orange-950/20"
                 >
-                  Go to History Tab
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <Link
+                    href="?tab=history"
+                    className="w-full flex justify-center items-center gap-2"
+                  >
+                    <span>Go to History Tab</span>
+                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </Button>
               </div>
             </CardContent>

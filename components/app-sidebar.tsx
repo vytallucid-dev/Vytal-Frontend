@@ -4,6 +4,8 @@ import {
   BarChart3,
   Bookmark,
   Calendar,
+  CalendarDays,
+  FileText,
   GitCompare,
   Home,
   LayoutDashboard,
@@ -11,7 +13,7 @@ import {
   Search,
   Settings,
   SquareActivity,
-  TrendingUp
+  TrendingUp,
 } from "lucide-react";
 
 import {
@@ -25,7 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-  useSidebar
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -51,6 +53,11 @@ const items = [
     icon: Calendar,
   },
   {
+    title: "Calendar",
+    url: "/calendar",
+    icon: CalendarDays,
+  },
+  {
     title: "Watchlist",
     url: "/watchlist",
     icon: Bookmark,
@@ -61,14 +68,15 @@ const items = [
     icon: GitCompare,
   },
   {
+    title: "Results",
+    url: "/results",
+    icon: FileText,
+  },
+  {
     title: "Settings",
     url: "#",
     icon: Settings,
   },
-];
-
-// Research submenu items
-const researchItems = [
   {
     title: "Stock Screener",
     url: "/research/stock-screener",
@@ -137,12 +145,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-
-              <AnimatedCollapsible 
-                items={researchItems}
-                title="Research"
-                icon={TrendingUp}
-              />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
