@@ -2,7 +2,23 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { ArrowUp, ArrowDown, TrendingUp, Activity, DollarSign, BarChart3, Target, CheckCircle2, XCircle, Search, AlertTriangle, Clock, Users, Newspaper, Briefcase } from "lucide-react";
+import {
+  ArrowUp,
+  ArrowDown,
+  TrendingUp,
+  Activity,
+  DollarSign,
+  BarChart3,
+  Target,
+  CheckCircle2,
+  XCircle,
+  Search,
+  AlertTriangle,
+  Clock,
+  Users,
+  Newspaper,
+  Briefcase,
+} from "lucide-react";
 import { useState } from "react";
 import {
   Area,
@@ -19,30 +35,50 @@ import {
   ComposedChart,
   ReferenceLine,
 } from "recharts";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 // Mock data for the chart
 const generateChartData = (period: string) => {
   const basePrice = 1580;
-  const dataPoints = period === "1D" ? 78 : period === "5D" ? 390 : period === "1M" ? 22 : period === "3M" ? 66 : period === "6M" ? 132 : period === "1Y" ? 252 : period === "3Y" ? 756 : 1260;
-  
+  const dataPoints =
+    period === "1D"
+      ? 78
+      : period === "5D"
+        ? 390
+        : period === "1M"
+          ? 22
+          : period === "3M"
+            ? 66
+            : period === "6M"
+              ? 132
+              : period === "1Y"
+                ? 252
+                : period === "3Y"
+                  ? 756
+                  : 1260;
+
   const data = [];
   let currentPrice = basePrice;
-  
+
   for (let i = 0; i < dataPoints; i++) {
     const change = (Math.random() - 0.45) * 30; // Slight upward bias
     currentPrice += change;
-    
+
     const date = new Date();
     date.setDate(date.getDate() - (dataPoints - i));
-    
+
     const open = currentPrice;
     const close = currentPrice + (Math.random() - 0.5) * 20;
     const high = Math.max(open, close) + Math.random() * 15;
     const low = Math.min(open, close) - Math.random() * 15;
     const volume = 1500000 + Math.random() * 1500000;
-    
+
     data.push({
-      date: date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+      date: date.toLocaleDateString("en-IN", {
+        month: "short",
+        day: "numeric",
+      }),
       price: close,
       open,
       high,
@@ -51,13 +87,17 @@ const generateChartData = (period: string) => {
       volume,
     });
   }
-  
+
   return data;
 };
 
 const Technical = () => {
+  const params = useParams();
+  const symbol = params.symbol as string;
   const [selectedPeriod, setSelectedPeriod] = useState("6M");
-  const [chartType, setChartType] = useState<"candlestick" | "line" | "area" | "bar">("candlestick");
+  const [chartType, setChartType] = useState<
+    "candlestick" | "line" | "area" | "bar"
+  >("candlestick");
 
   const chartData = generateChartData(selectedPeriod);
   const currentPrice = 1820;
@@ -69,7 +109,8 @@ const Technical = () => {
       {/* Storytelling Introduction */}
       <div>
         <p className="text-muted-foreground text-sm">
-          Let&apos;s check the technical pulse - what&apos;s the price momentum saying?
+          Let&apos;s check the technical pulse - what&apos;s the price momentum
+          saying?
         </p>
       </div>
 
@@ -79,7 +120,7 @@ const Technical = () => {
           <TrendingUp className="h-5 w-5" />
           Technical Overview
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* CARD 1: Overall Trend */}
           <Card>
@@ -125,7 +166,9 @@ const Technical = () => {
                 </p>
                 <p className="text-xs">
                   <span className="font-medium">MACD:</span>{" "}
-                  <span className="text-green-600 dark:text-green-400">Positive ↗</span>
+                  <span className="text-green-600 dark:text-green-400">
+                    Positive ↗
+                  </span>
                 </p>
               </div>
               <p className="text-xs text-muted-foreground pt-2 border-t">
@@ -150,15 +193,21 @@ const Technical = () => {
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">20 DMA:</span>
-                  <span className="font-medium">₹1,780 <span className="text-green-600">+2.2%</span></span>
+                  <span className="font-medium">
+                    ₹1,780 <span className="text-green-600">+2.2%</span>
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">50 DMA:</span>
-                  <span className="font-medium">₹1,720 <span className="text-green-600">+5.8%</span></span>
+                  <span className="font-medium">
+                    ₹1,720 <span className="text-green-600">+5.8%</span>
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">200 DMA:</span>
-                  <span className="font-medium">₹1,580 <span className="text-green-600">+15.2%</span></span>
+                  <span className="font-medium">
+                    ₹1,580 <span className="text-green-600">+15.2%</span>
+                  </span>
                 </div>
               </div>
               <p className="text-xs text-green-600 dark:text-green-400 pt-2 border-t font-medium">
@@ -207,11 +256,15 @@ const Technical = () => {
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Support:</span>
-                  <span className="font-medium">₹1,750 <span className="text-red-500">-3.8%</span></span>
+                  <span className="font-medium">
+                    ₹1,750 <span className="text-red-500">-3.8%</span>
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Resistance:</span>
-                  <span className="font-medium">₹1,950 <span className="text-green-600">+7.1%</span></span>
+                  <span className="font-medium">
+                    ₹1,950 <span className="text-green-600">+7.1%</span>
+                  </span>
                 </div>
                 <div className="flex justify-between pt-1 border-t">
                   <span className="text-muted-foreground">Risk-Reward:</span>
@@ -231,7 +284,13 @@ const Technical = () => {
             <div className="flex gap-3">
               <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">Technical picture is positive.</span> Stock in established uptrend with momentum indicators bullish. Trading above all key moving averages with strong volume support. Next resistance at ₹1,950 (52W high), support at ₹1,750 (20 DMA).
+                <span className="font-semibold text-foreground">
+                  Technical picture is positive.
+                </span>{" "}
+                Stock in established uptrend with momentum indicators bullish.
+                Trading above all key moving averages with strong volume
+                support. Next resistance at ₹1,950 (52W high), support at ₹1,750
+                (20 DMA).
               </p>
             </div>
           </CardContent>
@@ -256,9 +315,11 @@ const Technical = () => {
             <div className="space-y-4 mb-6">
               {/* Time Period Toggles */}
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Time Period</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Time Period
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {periods.map(period => (
+                  {periods.map((period) => (
                     <button
                       key={period}
                       onClick={() => setSelectedPeriod(period)}
@@ -276,14 +337,16 @@ const Technical = () => {
 
               {/* Chart Type */}
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Chart Type</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Chart Type
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { value: "candlestick", label: "Candlestick" },
                     { value: "line", label: "Line" },
                     { value: "area", label: "Area" },
                     { value: "bar", label: "Bar" },
-                  ].map(type => (
+                  ].map((type) => (
                     <button
                       key={type.value}
                       onClick={() => setChartType(type.value as any)}
@@ -305,7 +368,10 @@ const Technical = () => {
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      className="stroke-muted"
+                    />
                     <XAxis
                       dataKey="date"
                       tick={{ fontSize: 11 }}
@@ -313,30 +379,38 @@ const Technical = () => {
                     />
                     <YAxis
                       tick={{ fontSize: 11 }}
-                      domain={['auto', 'auto']}
+                      domain={["auto", "auto"]}
                       className="text-muted-foreground"
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        padding: '6px 10px',
-                        fontSize: '12px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        fontSize: "12px",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                       }}
                       wrapperStyle={{
-                        outline: 'none',
+                        outline: "none",
                       }}
-                      cursor={{ stroke: '#6366f1', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      cursor={{
+                        stroke: "#6366f1",
+                        strokeWidth: 1,
+                        strokeDasharray: "3 3",
+                      }}
                     />
-                    
+
                     {/* Current Price Line */}
                     <ReferenceLine
                       y={currentPrice}
                       stroke="#6366f1"
                       strokeDasharray="5 5"
-                      label={{ value: `₹${currentPrice}`, position: 'right', fontSize: 11 }}
+                      label={{
+                        value: `₹${currentPrice}`,
+                        position: "right",
+                        fontSize: 11,
+                      }}
                     />
 
                     {/* Price Chart based on type */}
@@ -375,20 +449,25 @@ const Technical = () => {
 
               {/* Volume Chart */}
               <div className="h-[100px] mt-4 border-t pt-4">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Volume</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Volume
+                </p>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} hide />
-                    <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      className="text-muted-foreground"
+                    />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        padding: '4px 8px',
-                        fontSize: '11px',
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "6px",
+                        padding: "4px 8px",
+                        fontSize: "11px",
                       }}
-                      cursor={{ fill: 'rgba(96, 165, 250, 0.1)' }}
+                      cursor={{ fill: "rgba(96, 165, 250, 0.1)" }}
                     />
                     <Bar
                       dataKey="volume"
@@ -417,7 +496,8 @@ const Technical = () => {
                 <div className="flex gap-2">
                   <span className="text-primary mt-0.5">→</span>
                   <p className="text-sm text-muted-foreground flex-1">
-                    Price broke out above ₹1,750 resistance on Oct 5 with strong volume
+                    Price broke out above ₹1,750 resistance on Oct 5 with strong
+                    volume
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -429,7 +509,8 @@ const Technical = () => {
                 <div className="flex gap-2">
                   <span className="text-primary mt-0.5">→</span>
                   <p className="text-sm text-muted-foreground flex-1">
-                    No negative divergence - higher prices + higher volume = healthy
+                    No negative divergence - higher prices + higher volume =
+                    healthy
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -453,13 +534,17 @@ const Technical = () => {
             <CardContent>
               <div className="space-y-3">
                 <div className="flex gap-2">
-                  <span className="text-green-600 dark:text-green-400 mt-0.5">→</span>
+                  <span className="text-green-600 dark:text-green-400 mt-0.5">
+                    →
+                  </span>
                   <p className="text-sm text-muted-foreground flex-1">
                     Breakout above ₹1,850 targets ₹1,950 (52W high)
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-red-600 dark:text-red-400 mt-0.5">→</span>
+                  <span className="text-red-600 dark:text-red-400 mt-0.5">
+                    →
+                  </span>
                   <p className="text-sm text-muted-foreground flex-1">
                     Watch for support hold at ₹1,750 on any dips
                   </p>
@@ -503,17 +588,23 @@ const Technical = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Direction:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Direction:
+                  </span>
                   <Badge className="bg-green-500/10 text-green-700 dark:text-green-400">
                     Uptrend 🟢
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Strength:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Strength:
+                  </span>
                   <span className="text-sm font-semibold">Strong (8/10)</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Key Level:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Key Level:
+                  </span>
                   <span className="text-sm font-semibold">₹1,750</span>
                 </div>
                 <div className="pt-2 border-t">
@@ -521,8 +612,12 @@ const Technical = () => {
                   <p className="text-sm">Higher highs, higher lows</p>
                 </div>
                 <div className="pt-2 border-t">
-                  <p className="text-xs text-muted-foreground mb-1">Recent Action:</p>
-                  <p className="text-sm font-medium text-green-600">Breakout from consolidation</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Recent Action:
+                  </p>
+                  <p className="text-sm font-medium text-green-600">
+                    Breakout from consolidation
+                  </p>
                 </div>
               </div>
 
@@ -543,7 +638,9 @@ const Technical = () => {
 
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Short-term momentum is bullish. Price broke above ₹1,750 and held. As long as it stays above this level, short-term bias remains positive.
+                  Short-term momentum is bullish. Price broke above ₹1,750 and
+                  held. As long as it stays above this level, short-term bias
+                  remains positive.
                 </p>
               </div>
             </CardContent>
@@ -558,17 +655,25 @@ const Technical = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Direction:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Direction:
+                  </span>
                   <Badge className="bg-green-500/10 text-green-700 dark:text-green-400">
                     Uptrend 🟢
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Strength:</span>
-                  <span className="text-sm font-semibold">Moderate-Strong (7/10)</span>
+                  <span className="text-sm text-muted-foreground">
+                    Strength:
+                  </span>
+                  <span className="text-sm font-semibold">
+                    Moderate-Strong (7/10)
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Key Level:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Key Level:
+                  </span>
                   <span className="text-sm font-semibold">₹1,650</span>
                 </div>
                 <div className="pt-2 border-t">
@@ -577,7 +682,9 @@ const Technical = () => {
                 </div>
                 <div className="pt-2 border-t">
                   <p className="text-xs text-muted-foreground mb-1">Phase:</p>
-                  <p className="text-sm font-medium text-green-600">Trending after consolidation</p>
+                  <p className="text-sm font-medium text-green-600">
+                    Trending after consolidation
+                  </p>
                 </div>
               </div>
 
@@ -598,7 +705,9 @@ const Technical = () => {
 
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Medium-term structure is healthy. Price has been making steady higher highs within an ascending channel. Pullbacks to ₹1,650-₹1,700 zone have been buyable.
+                  Medium-term structure is healthy. Price has been making steady
+                  higher highs within an ascending channel. Pullbacks to
+                  ₹1,650-₹1,700 zone have been buyable.
                 </p>
               </div>
             </CardContent>
@@ -613,18 +722,26 @@ const Technical = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Direction:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Direction:
+                  </span>
                   <Badge className="bg-green-500/10 text-green-700 dark:text-green-400">
                     Uptrend 🟢
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Strength:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Strength:
+                  </span>
                   <span className="text-sm font-semibold">Strong (9/10)</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Key Level:</span>
-                  <span className="text-sm font-semibold">₹1,580 (200 DMA)</span>
+                  <span className="text-sm text-muted-foreground">
+                    Key Level:
+                  </span>
+                  <span className="text-sm font-semibold">
+                    ₹1,580 (200 DMA)
+                  </span>
                 </div>
                 <div className="pt-2 border-t">
                   <p className="text-xs text-muted-foreground mb-1">Pattern:</p>
@@ -632,7 +749,9 @@ const Technical = () => {
                 </div>
                 <div className="pt-2 border-t">
                   <p className="text-xs text-muted-foreground mb-1">Phase:</p>
-                  <p className="text-sm font-medium text-green-600">Established bull market</p>
+                  <p className="text-sm font-medium text-green-600">
+                    Established bull market
+                  </p>
                 </div>
               </div>
 
@@ -653,7 +772,9 @@ const Technical = () => {
 
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Long-term trend is firmly bullish. Trading 15% above 200 DMA which is sloping upward. No signs of trend reversal. Structural bull market intact.
+                  Long-term trend is firmly bullish. Trading 15% above 200 DMA
+                  which is sloping upward. No signs of trend reversal.
+                  Structural bull market intact.
                 </p>
               </div>
             </CardContent>
@@ -666,23 +787,36 @@ const Technical = () => {
             <div className="space-y-3">
               <h4 className="font-semibold text-lg flex items-center gap-2">
                 <span>Overall Trend Assessment:</span>
-                <Badge className="bg-green-500 text-white">🟢 BULLISH ACROSS ALL TIMEFRAMES</Badge>
+                <Badge className="bg-green-500 text-white">
+                  🟢 BULLISH ACROSS ALL TIMEFRAMES
+                </Badge>
               </h4>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                All three timeframes aligned positively - rare and powerful setup. Short, medium, and long-term trends all pointing up. This alignment suggests path of least resistance is higher. Dips are likely to be shallow and buyable.
+                All three timeframes aligned positively - rare and powerful
+                setup. Short, medium, and long-term trends all pointing up. This
+                alignment suggests path of least resistance is higher. Dips are
+                likely to be shallow and buyable.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Current Trading Phase</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Current Trading Phase
+                  </p>
                   <p className="text-sm font-semibold">Trending (not choppy)</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Probability of Continuation</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Probability of Continuation
+                  </p>
                   <p className="text-sm font-semibold text-green-600">70-75%</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Risk of Reversal</p>
-                  <p className="text-sm font-semibold">Low (watch ₹1,650 break)</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Risk of Reversal
+                  </p>
+                  <p className="text-sm font-semibold">
+                    Low (watch ₹1,650 break)
+                  </p>
                 </div>
               </div>
             </div>
@@ -712,7 +846,8 @@ const Technical = () => {
                     What is RSI?
                   </span>
                   <div className="absolute hidden group-hover:block w-64 p-2 bg-popover border rounded-md shadow-lg text-xs z-10 -left-20 top-6">
-                    Measures if stock is overbought (&gt;70) or oversold (&lt;30). Range: 0-100
+                    Measures if stock is overbought (&gt;70) or oversold
+                    (&lt;30). Range: 0-100
                   </div>
                 </div>
               </div>
@@ -720,7 +855,9 @@ const Technical = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">RSI (14-day):</span>
+                  <span className="text-sm text-muted-foreground">
+                    RSI (14-day):
+                  </span>
                   <span className="text-2xl font-bold">62</span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -730,17 +867,36 @@ const Technical = () => {
                   </Badge>
                 </div>
                 <div className="pt-2 border-t">
-                  <p className="text-sm font-medium">Bullish but not overbought</p>
+                  <p className="text-sm font-medium">
+                    Bullish but not overbought
+                  </p>
                 </div>
               </div>
 
               {/* RSI Chart */}
               <div className="h-[120px] border rounded-lg p-2 bg-muted/30">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={generateChartData("3M").map(d => ({ ...d, rsi: 45 + Math.random() * 25 }))}>
-                    <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" />
-                    <ReferenceLine y={30} stroke="#f97316" strokeDasharray="3 3" />
-                    <ReferenceLine y={50} stroke="#6b7280" strokeDasharray="2 2" />
+                  <LineChart
+                    data={generateChartData("3M").map((d) => ({
+                      ...d,
+                      rsi: 45 + Math.random() * 25,
+                    }))}
+                  >
+                    <ReferenceLine
+                      y={70}
+                      stroke="#ef4444"
+                      strokeDasharray="3 3"
+                    />
+                    <ReferenceLine
+                      y={30}
+                      stroke="#f97316"
+                      strokeDasharray="3 3"
+                    />
+                    <ReferenceLine
+                      y={50}
+                      stroke="#6b7280"
+                      strokeDasharray="2 2"
+                    />
                     <Line
                       type="monotone"
                       dataKey="rsi"
@@ -754,13 +910,18 @@ const Technical = () => {
 
               <div className="pt-3 border-t space-y-2">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  RSI at 62 shows momentum is positive but not extreme. There&apos;s room for price to continue higher before reaching overbought territory (70+). Last oversold reading (&lt;30) was in July - those who bought then are sitting on good gains.
+                  RSI at 62 shows momentum is positive but not extreme.
+                  There&apos;s room for price to continue higher before reaching
+                  overbought territory (70+). Last oversold reading (&lt;30) was
+                  in July - those who bought then are sitting on good gains.
                 </p>
                 <div className="text-xs font-medium">
                   <span className="text-muted-foreground">Signal:</span>{" "}
                   <span className="text-orange-600">Buy &lt;40</span> |{" "}
                   <span className="text-red-600">Sell &gt;75</span> |{" "}
-                  <span className="text-green-600">Current: Hold/Accumulate</span>
+                  <span className="text-green-600">
+                    Current: Hold/Accumulate
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -776,7 +937,8 @@ const Technical = () => {
                     What is MACD?
                   </span>
                   <div className="absolute hidden group-hover:block w-64 p-2 bg-popover border rounded-md shadow-lg text-xs z-10 -left-20 top-6">
-                    Momentum indicator showing relationship between two moving averages. Crossovers signal trend changes
+                    Momentum indicator showing relationship between two moving
+                    averages. Crossovers signal trend changes
                   </div>
                 </div>
               </div>
@@ -805,11 +967,13 @@ const Technical = () => {
               {/* MACD Chart */}
               <div className="h-[120px] border rounded-lg p-2 bg-muted/30">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={generateChartData("3M").map((d, i) => ({ 
-                    ...d, 
-                    macd: -5 + i * 0.5 + Math.random() * 3,
-                    signal: -5 + i * 0.45 + Math.random() * 2,
-                  }))}>
+                  <ComposedChart
+                    data={generateChartData("3M").map((d, i) => ({
+                      ...d,
+                      macd: -5 + i * 0.5 + Math.random() * 3,
+                      signal: -5 + i * 0.45 + Math.random() * 2,
+                    }))}
+                  >
                     <ReferenceLine y={0} stroke="#6b7280" />
                     <Line
                       type="monotone"
@@ -833,7 +997,10 @@ const Technical = () => {
 
               <div className="pt-3 border-t space-y-2">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  MACD crossed above signal line on Oct 3 - bullish signal. Histogram is positive and expanding, indicating strengthening momentum. No negative divergence (price and MACD both making higher highs). This setup typically leads to further upside.
+                  MACD crossed above signal line on Oct 3 - bullish signal.
+                  Histogram is positive and expanding, indicating strengthening
+                  momentum. No negative divergence (price and MACD both making
+                  higher highs). This setup typically leads to further upside.
                 </p>
                 <p className="text-xs font-medium text-green-600">
                   Bullish crossover 3 weeks ago - early in trend move
@@ -852,7 +1019,8 @@ const Technical = () => {
                     What is Stochastic?
                   </span>
                   <div className="absolute hidden group-hover:block w-64 p-2 bg-popover border rounded-md shadow-lg text-xs z-10 -left-40 top-6">
-                    Compares closing price to price range over period. Shows momentum and turning points
+                    Compares closing price to price range over period. Shows
+                    momentum and turning points
                   </div>
                 </div>
               </div>
@@ -860,11 +1028,15 @@ const Technical = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">%K Line:</span>
+                  <span className="text-sm text-muted-foreground">
+                    %K Line:
+                  </span>
                   <span className="text-xl font-bold">68</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">%D Line:</span>
+                  <span className="text-sm text-muted-foreground">
+                    %D Line:
+                  </span>
                   <span className="text-xl font-bold">62</span>
                 </div>
                 <div className="pt-2 border-t">
@@ -880,13 +1052,23 @@ const Technical = () => {
               {/* Stochastic Chart */}
               <div className="h-[120px] border rounded-lg p-2 bg-muted/30">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={generateChartData("3M").map(d => ({ 
-                    ...d, 
-                    k: 40 + Math.random() * 35,
-                    d: 38 + Math.random() * 33,
-                  }))}>
-                    <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="3 3" />
-                    <ReferenceLine y={20} stroke="#f97316" strokeDasharray="3 3" />
+                  <LineChart
+                    data={generateChartData("3M").map((d) => ({
+                      ...d,
+                      k: 40 + Math.random() * 35,
+                      d: 38 + Math.random() * 33,
+                    }))}
+                  >
+                    <ReferenceLine
+                      y={80}
+                      stroke="#ef4444"
+                      strokeDasharray="3 3"
+                    />
+                    <ReferenceLine
+                      y={20}
+                      stroke="#f97316"
+                      strokeDasharray="3 3"
+                    />
                     <Line
                       type="monotone"
                       dataKey="k"
@@ -909,7 +1091,10 @@ const Technical = () => {
 
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Stochastic at 68 confirms upward momentum. Lines in bullish zone but not overbought. Watch for bearish crossover above 80 as potential reversal warning. Currently, momentum remains supportive of higher prices.
+                  Stochastic at 68 confirms upward momentum. Lines in bullish
+                  zone but not overbought. Watch for bearish crossover above 80
+                  as potential reversal warning. Currently, momentum remains
+                  supportive of higher prices.
                 </p>
               </div>
             </CardContent>
@@ -922,10 +1107,16 @@ const Technical = () => {
             <div className="space-y-3">
               <h4 className="font-semibold text-lg flex items-center gap-2">
                 <span>Momentum Verdict:</span>
-                <Badge className="bg-green-500 text-white">🟢 POSITIVE ACROSS INDICATORS</Badge>
+                <Badge className="bg-green-500 text-white">
+                  🟢 POSITIVE ACROSS INDICATORS
+                </Badge>
               </h4>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                All three momentum indicators aligned bullish - RSI healthy, MACD positive crossover, Stochastic in bullish zone. This suggests the current uptrend has legs. Watch for divergences (price making new highs but indicators not confirming) as early warning sign.
+                All three momentum indicators aligned bullish - RSI healthy,
+                MACD positive crossover, Stochastic in bullish zone. This
+                suggests the current uptrend has legs. Watch for divergences
+                (price making new highs but indicators not confirming) as early
+                warning sign.
               </p>
             </div>
           </CardContent>
@@ -936,7 +1127,8 @@ const Technical = () => {
       <div id="support-resistance">
         <div className="mb-3">
           <p className="text-muted-foreground text-sm mb-4">
-            Where are the critical price levels that could act as floors or ceilings?
+            Where are the critical price levels that could act as floors or
+            ceilings?
           </p>
           <h3 className="text-lg font-semibold flex items-center gap-2">
             🎚️ Key Support & Resistance Zones
@@ -951,14 +1143,20 @@ const Technical = () => {
               <div className="flex items-center gap-2 py-2 opacity-60">
                 <span className="w-16 text-right font-semibold">₹2,000</span>
                 <div className="flex-1 border-t-2 border-dashed border-gray-400" />
-                <span className="text-xs text-muted-foreground">Strong Resistance (Psychological)</span>
+                <span className="text-xs text-muted-foreground">
+                  Strong Resistance (Psychological)
+                </span>
               </div>
 
               {/* Major Resistance - 52W High */}
               <div className="flex items-center gap-2 py-3 bg-red-50 dark:bg-red-950/20 rounded px-2">
-                <span className="w-16 text-right font-bold text-red-600">₹1,950</span>
+                <span className="w-16 text-right font-bold text-red-600">
+                  ₹1,950
+                </span>
                 <div className="flex-1 border-t-4 border-red-500" />
-                <span className="text-sm font-semibold text-red-600">🔴 Major Resistance (52W High)</span>
+                <span className="text-sm font-semibold text-red-600">
+                  🔴 Major Resistance (52W High)
+                </span>
               </div>
               <div className="ml-20 text-xs text-muted-foreground italic mb-2">
                 [Price needs to break this]
@@ -968,14 +1166,18 @@ const Technical = () => {
               <div className="flex items-center gap-2 py-2">
                 <span className="w-16 text-right font-semibold">₹1,900</span>
                 <div className="flex-1 border-t-2 border-dashed border-gray-300" />
-                <span className="text-xs text-muted-foreground">Minor Resistance</span>
+                <span className="text-xs text-muted-foreground">
+                  Minor Resistance
+                </span>
               </div>
 
               {/* Immediate Resistance */}
               <div className="flex items-center gap-2 py-2">
                 <span className="w-16 text-right font-semibold">₹1,850</span>
                 <div className="flex-1 border-t-2 border-gray-400" />
-                <span className="text-xs text-muted-foreground">Immediate Resistance</span>
+                <span className="text-xs text-muted-foreground">
+                  Immediate Resistance
+                </span>
               </div>
               <div className="ml-20 text-xs text-muted-foreground italic mb-2">
                 (Current consolidation top)
@@ -983,16 +1185,24 @@ const Technical = () => {
 
               {/* CURRENT PRICE */}
               <div className="flex items-center gap-2 py-3 bg-indigo-50 dark:bg-indigo-950/30 rounded px-2 my-3">
-                <span className="w-16 text-right font-bold text-lg text-indigo-600">₹1,820</span>
+                <span className="w-16 text-right font-bold text-lg text-indigo-600">
+                  ₹1,820
+                </span>
                 <div className="flex-1 border-t-4 border-indigo-500" />
-                <span className="text-base font-bold text-indigo-600">💰 CURRENT PRICE</span>
+                <span className="text-base font-bold text-indigo-600">
+                  💰 CURRENT PRICE
+                </span>
               </div>
 
               {/* Immediate Support */}
               <div className="flex items-center gap-2 py-3 bg-green-50 dark:bg-green-950/20 rounded px-2 mt-3">
-                <span className="w-16 text-right font-bold text-green-600">₹1,750</span>
+                <span className="w-16 text-right font-bold text-green-600">
+                  ₹1,750
+                </span>
                 <div className="flex-1 border-t-4 border-green-500" />
-                <span className="text-sm font-semibold text-green-600">🟢 Immediate Support (20 DMA)</span>
+                <span className="text-sm font-semibold text-green-600">
+                  🟢 Immediate Support (20 DMA)
+                </span>
               </div>
               <div className="ml-20 text-xs text-muted-foreground italic mb-2">
                 (Recent breakout level)
@@ -1002,14 +1212,20 @@ const Technical = () => {
               <div className="flex items-center gap-2 py-2">
                 <span className="w-16 text-right font-semibold">₹1,700</span>
                 <div className="flex-1 border-t-2 border-gray-400" />
-                <span className="text-xs text-muted-foreground">Minor Support (50 DMA)</span>
+                <span className="text-xs text-muted-foreground">
+                  Minor Support (50 DMA)
+                </span>
               </div>
 
               {/* Strong Support */}
               <div className="flex items-center gap-2 py-3 bg-green-50 dark:bg-green-950/20 rounded px-2">
-                <span className="w-16 text-right font-bold text-green-600">₹1,650</span>
+                <span className="w-16 text-right font-bold text-green-600">
+                  ₹1,650
+                </span>
                 <div className="flex-1 border-t-4 border-green-500" />
-                <span className="text-sm font-semibold text-green-600">🟢 Strong Support</span>
+                <span className="text-sm font-semibold text-green-600">
+                  🟢 Strong Support
+                </span>
               </div>
               <div className="ml-20 text-xs text-muted-foreground italic mb-2">
                 (Previous resistance, now support)
@@ -1019,31 +1235,41 @@ const Technical = () => {
               <div className="flex items-center gap-2 py-2">
                 <span className="w-16 text-right font-semibold">₹1,580</span>
                 <div className="flex-1 border-t-2 border-dashed border-green-400" />
-                <span className="text-xs text-muted-foreground">Major Support (200 DMA)</span>
+                <span className="text-xs text-muted-foreground">
+                  Major Support (200 DMA)
+                </span>
               </div>
 
               {/* Psychological Support */}
               <div className="flex items-center gap-2 py-2 opacity-60">
                 <span className="w-16 text-right font-semibold">₹1,500</span>
                 <div className="flex-1 border-t-2 border-dashed border-gray-400" />
-                <span className="text-xs text-muted-foreground">Psychological Support</span>
+                <span className="text-xs text-muted-foreground">
+                  Psychological Support
+                </span>
               </div>
             </div>
 
             {/* Price Distance Indicators */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
               <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Current to Resistance</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Current to Resistance
+                </p>
                 <p className="text-lg font-bold text-green-600">+7.1%</p>
                 <p className="text-xs text-muted-foreground">₹130 away</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Current to Support</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Current to Support
+                </p>
                 <p className="text-lg font-bold text-red-500">-3.8%</p>
                 <p className="text-xs text-muted-foreground">₹70 away</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Risk-Reward Ratio</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Risk-Reward Ratio
+                </p>
                 <p className="text-lg font-bold text-indigo-600">1:1.8</p>
                 <p className="text-xs text-green-600 font-medium">Favorable</p>
               </div>
@@ -1075,19 +1301,29 @@ const Technical = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Type:</span>
-                    <span className="font-medium">Recent breakout + 20 DMA</span>
+                    <span className="font-medium">
+                      Recent breakout + 20 DMA
+                    </span>
                   </div>
                   <div className="pt-2 border-t">
                     <p className="text-xs text-muted-foreground mb-1">Why:</p>
                     <p className="text-xs">Price held here 3 times in Sept</p>
                   </div>
                   <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">Action:</p>
-                    <p className="text-xs font-medium">First support to watch on pullback</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Action:
+                    </p>
+                    <p className="text-xs font-medium">
+                      First support to watch on pullback
+                    </p>
                   </div>
                   <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Hold Probability:</span>
-                    <span className="text-sm font-bold text-green-600">75%</span>
+                    <span className="text-xs text-muted-foreground">
+                      Hold Probability:
+                    </span>
+                    <span className="text-sm font-bold text-green-600">
+                      75%
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -1108,19 +1344,29 @@ const Technical = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Type:</span>
-                    <span className="font-medium">Previous resistance flipped</span>
+                    <span className="font-medium">
+                      Previous resistance flipped
+                    </span>
                   </div>
                   <div className="pt-2 border-t">
                     <p className="text-xs text-muted-foreground mb-1">Why:</p>
                     <p className="text-xs">Multiple tests, high volume zone</p>
                   </div>
                   <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">Action:</p>
-                    <p className="text-xs font-medium">Ideal buy zone if correction happens</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Action:
+                    </p>
+                    <p className="text-xs font-medium">
+                      Ideal buy zone if correction happens
+                    </p>
                   </div>
                   <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Hold Probability:</span>
-                    <span className="text-sm font-bold text-green-600">85%</span>
+                    <span className="text-xs text-muted-foreground">
+                      Hold Probability:
+                    </span>
+                    <span className="text-sm font-bold text-green-600">
+                      85%
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -1145,15 +1391,25 @@ const Technical = () => {
                   </div>
                   <div className="pt-2 border-t">
                     <p className="text-xs text-muted-foreground mb-1">Why:</p>
-                    <p className="text-xs">Structural support for bull market</p>
+                    <p className="text-xs">
+                      Structural support for bull market
+                    </p>
                   </div>
                   <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">Action:</p>
-                    <p className="text-xs font-medium text-red-600">Break of this = trend change</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Action:
+                    </p>
+                    <p className="text-xs font-medium text-red-600">
+                      Break of this = trend change
+                    </p>
                   </div>
                   <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Hold Probability:</span>
-                    <span className="text-sm font-bold text-green-600">90%</span>
+                    <span className="text-xs text-muted-foreground">
+                      Hold Probability:
+                    </span>
+                    <span className="text-sm font-bold text-green-600">
+                      90%
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -1189,12 +1445,18 @@ const Technical = () => {
                     <p className="text-xs">Upper range of recent trading</p>
                   </div>
                   <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">Action:</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Action:
+                    </p>
                     <p className="text-xs font-medium">First hurdle to cross</p>
                   </div>
                   <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Break Probability:</span>
-                    <span className="text-sm font-bold text-orange-600">60%</span>
+                    <span className="text-xs text-muted-foreground">
+                      Break Probability:
+                    </span>
+                    <span className="text-sm font-bold text-orange-600">
+                      60%
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -1222,12 +1484,20 @@ const Technical = () => {
                     <p className="text-xs">Psychological + technical barrier</p>
                   </div>
                   <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">Action:</p>
-                    <p className="text-xs font-medium">Break = new high territory</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Action:
+                    </p>
+                    <p className="text-xs font-medium">
+                      Break = new high territory
+                    </p>
                   </div>
                   <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Break Probability:</span>
-                    <span className="text-sm font-bold text-red-600">40-45%</span>
+                    <span className="text-xs text-muted-foreground">
+                      Break Probability:
+                    </span>
+                    <span className="text-sm font-bold text-red-600">
+                      40-45%
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -1255,11 +1525,17 @@ const Technical = () => {
                     <p className="text-xs">Major psychological milestone</p>
                   </div>
                   <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">Action:</p>
-                    <p className="text-xs font-medium">Extended target if momentum continues</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Action:
+                    </p>
+                    <p className="text-xs font-medium">
+                      Extended target if momentum continues
+                    </p>
                   </div>
                   <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Reach Probability:</span>
+                    <span className="text-xs text-muted-foreground">
+                      Reach Probability:
+                    </span>
                     <span className="text-sm font-bold text-red-600">30%</span>
                   </div>
                 </div>
@@ -1281,36 +1557,60 @@ const Technical = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 font-semibold">If Price Goes To...</th>
-                    <th className="text-left py-2 font-semibold">Action Suggested</th>
+                    <th className="text-left py-2 font-semibold">
+                      If Price Goes To...
+                    </th>
+                    <th className="text-left py-2 font-semibold">
+                      Action Suggested
+                    </th>
                     <th className="text-left py-2 font-semibold">Reasoning</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs">
                   <tr className="border-b">
                     <td className="py-3 font-medium">₹1,950-₹2,000</td>
-                    <td className="py-3 text-orange-600 font-medium">Consider booking partial profits</td>
-                    <td className="py-3 text-muted-foreground">Strong resistance zone</td>
+                    <td className="py-3 text-orange-600 font-medium">
+                      Consider booking partial profits
+                    </td>
+                    <td className="py-3 text-muted-foreground">
+                      Strong resistance zone
+                    </td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 font-medium">₹1,850-₹1,900</td>
-                    <td className="py-3 text-blue-600 font-medium">Hold existing positions</td>
-                    <td className="py-3 text-muted-foreground">Consolidation likely</td>
+                    <td className="py-3 text-blue-600 font-medium">
+                      Hold existing positions
+                    </td>
+                    <td className="py-3 text-muted-foreground">
+                      Consolidation likely
+                    </td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 font-medium">₹1,750-₹1,800</td>
-                    <td className="py-3 text-gray-600 font-medium">Current range - neutral</td>
-                    <td className="py-3 text-muted-foreground">Wait for breakout/breakdown</td>
+                    <td className="py-3 text-gray-600 font-medium">
+                      Current range - neutral
+                    </td>
+                    <td className="py-3 text-muted-foreground">
+                      Wait for breakout/breakdown
+                    </td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3 font-medium">₹1,650-₹1,750</td>
-                    <td className="py-3 text-green-600 font-medium">Accumulation opportunity</td>
-                    <td className="py-3 text-muted-foreground">Strong support, buyable dip</td>
+                    <td className="py-3 text-green-600 font-medium">
+                      Accumulation opportunity
+                    </td>
+                    <td className="py-3 text-muted-foreground">
+                      Strong support, buyable dip
+                    </td>
                   </tr>
                   <tr>
                     <td className="py-3 font-medium">Below ₹1,650</td>
-                    <td className="py-3 text-red-600 font-medium">Re-evaluate position</td>
-                    <td className="py-3 text-muted-foreground">Support broken, trend weakening</td>
+                    <td className="py-3 text-red-600 font-medium">
+                      Re-evaluate position
+                    </td>
+                    <td className="py-3 text-muted-foreground">
+                      Support broken, trend weakening
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -1323,7 +1623,8 @@ const Technical = () => {
       <div id="volume-analysis">
         <div className="mb-3">
           <p className="text-muted-foreground text-sm mb-4">
-            Volume confirms price moves. Let&apos;s see what the volume is telling us
+            Volume confirms price moves. Let&apos;s see what the volume is
+            telling us
           </p>
           <h3 className="text-lg font-semibold flex items-center gap-2">
             📊 Volume & Liquidity Analysis
@@ -1336,25 +1637,32 @@ const Technical = () => {
             {/* Volume Chart */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Volume Trends (Last 6 Months)</CardTitle>
+                <CardTitle className="text-base">
+                  Volume Trends (Last 6 Months)
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={generateChartData("6M").map(d => ({
-                      ...d,
-                      volumeColor: Math.random() > 0.5 ? d.volume : -d.volume,
-                    }))}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <ComposedChart
+                      data={generateChartData("6M").map((d) => ({
+                        ...d,
+                        volumeColor: Math.random() > 0.5 ? d.volume : -d.volume,
+                      }))}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-muted"
+                      />
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '6px',
-                          padding: '6px 10px',
-                          fontSize: '11px',
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          fontSize: "11px",
                         }}
                       />
                       <Line
@@ -1380,31 +1688,43 @@ const Technical = () => {
             {/* Current Metrics */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Current Volume Metrics</CardTitle>
+                <CardTitle className="text-base">
+                  Current Volume Metrics
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Today&apos;s Volume</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Today&apos;s Volume
+                    </p>
                     <p className="text-lg font-bold">28L</p>
                     <p className="text-xs text-muted-foreground">shares</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Avg Volume (20D)</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Avg Volume (20D)
+                    </p>
                     <p className="text-lg font-bold">25L</p>
                     <p className="text-xs text-muted-foreground">shares</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Today vs Avg</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Today vs Avg
+                    </p>
                     <p className="text-lg font-bold text-green-600">+12%</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Value Traded</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Value Traded
+                    </p>
                     <p className="text-lg font-bold">₹5,100</p>
                     <p className="text-xs text-muted-foreground">Crore</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Liquidity</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Liquidity
+                    </p>
                     <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 mt-1">
                       🟢 Excellent
                     </Badge>
@@ -1423,13 +1743,15 @@ const Technical = () => {
                   <div className="flex gap-2">
                     <span className="text-primary mt-0.5">→</span>
                     <p className="text-sm text-muted-foreground flex-1">
-                      Volume spiked to 42L shares on Oct 5 breakout (+68% above avg)
+                      Volume spiked to 42L shares on Oct 5 breakout (+68% above
+                      avg)
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <span className="text-primary mt-0.5">→</span>
                     <p className="text-sm text-muted-foreground flex-1">
-                      Recent uptrend accompanied by above-average volume (bullish)
+                      Recent uptrend accompanied by above-average volume
+                      (bullish)
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -1451,29 +1773,43 @@ const Technical = () => {
             {/* Volume-Price Relationship */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Volume-Price Relationship Analysis</CardTitle>
+                <CardTitle className="text-base">
+                  Volume-Price Relationship Analysis
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Rising price + Rising volume</p>
-                      <p className="text-xs text-muted-foreground">🟢 Healthy uptrend</p>
+                      <p className="text-sm font-medium">
+                        Rising price + Rising volume
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        🟢 Healthy uptrend
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2 opacity-50">
                     <CheckCircle2 className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Rising price + Falling volume</p>
-                      <p className="text-xs text-muted-foreground">⚠️ Weak rally (not current case)</p>
+                      <p className="text-sm font-medium">
+                        Rising price + Falling volume
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ Weak rally (not current case)
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2 opacity-50">
                     <XCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Falling price + Rising volume</p>
-                      <p className="text-xs text-muted-foreground">🔴 Distribution (not present)</p>
+                      <p className="text-sm font-medium">
+                        Falling price + Rising volume
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        🔴 Distribution (not present)
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1486,11 +1822,15 @@ const Technical = () => {
             {/* What Volume Tells Us */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">What Volume Tells Us</CardTitle>
+                <CardTitle className="text-base">
+                  What Volume Tells Us
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">Volume on Breakouts</p>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">
+                    Volume on Breakouts
+                  </p>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between items-center">
                       <span>Oct 5 breakout:</span>
@@ -1511,7 +1851,9 @@ const Technical = () => {
                 </div>
 
                 <div className="pt-3 border-t">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">Volume on Pullbacks</p>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">
+                    Volume on Pullbacks
+                  </p>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-xs">Oct 12 dip:</span>
@@ -1528,7 +1870,9 @@ const Technical = () => {
                 </div>
 
                 <div className="pt-3 border-t">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">Recent Pattern</p>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">
+                    Recent Pattern
+                  </p>
                   <div className="space-y-2">
                     <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded">
                       <p className="text-xs">Up days: Average 28L shares</p>
@@ -1537,7 +1881,8 @@ const Technical = () => {
                       <p className="text-xs">Down days: Average 19L shares</p>
                     </div>
                     <p className="text-xs font-medium text-green-600 pt-2">
-                      Buyers more aggressive than sellers - bullish accumulation pattern
+                      Buyers more aggressive than sellers - bullish accumulation
+                      pattern
                     </p>
                   </div>
                 </div>
@@ -1552,8 +1897,12 @@ const Technical = () => {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Avg Delivery:</span>
-                    <span className="text-2xl font-bold text-green-600">68%</span>
+                    <span className="text-sm text-muted-foreground">
+                      Avg Delivery:
+                    </span>
+                    <span className="text-2xl font-bold text-green-600">
+                      68%
+                    </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Market Avg:</span>
@@ -1588,7 +1937,9 @@ const Technical = () => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Impact Cost:</span>
-                    <span className="font-semibold text-green-600">Minimal</span>
+                    <span className="font-semibold text-green-600">
+                      Minimal
+                    </span>
                   </div>
                   <div className="pt-3 border-t">
                     <Badge className="bg-green-500 text-white w-full justify-center py-2">
@@ -1641,7 +1992,12 @@ const Technical = () => {
                       strokeWidth={2}
                       dot={false}
                     />
-                    <ReferenceLine y={1850} stroke="#ef4444" strokeDasharray="3 3" label="Resistance" />
+                    <ReferenceLine
+                      y={1850}
+                      stroke="#ef4444"
+                      strokeDasharray="3 3"
+                      label="Resistance"
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -1656,7 +2012,9 @@ const Technical = () => {
                   <span className="font-medium">Bullish continuation</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Breakout Target:</span>
+                  <span className="text-muted-foreground">
+                    Breakout Target:
+                  </span>
                   <span className="font-medium text-green-600">₹1,950</span>
                 </div>
                 <div className="flex justify-between">
@@ -1667,7 +2025,10 @@ const Technical = () => {
 
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Stock consolidating in ascending triangle - higher lows with flat resistance. Breakout above ₹1,850 on good volume could trigger move to ₹1,950. Watch for false breakout - needs volume confirmation.
+                  Stock consolidating in ascending triangle - higher lows with
+                  flat resistance. Breakout above ₹1,850 on good volume could
+                  trigger move to ₹1,950. Watch for false breakout - needs
+                  volume confirmation.
                 </p>
               </div>
             </CardContent>
@@ -1706,7 +2067,9 @@ const Technical = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className="font-medium text-green-600">Active & widening</span>
+                  <span className="font-medium text-green-600">
+                    Active & widening
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Strength:</span>
@@ -1720,7 +2083,10 @@ const Technical = () => {
 
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  50-day moving average crossed above 200-day average - classic bullish signal called &quot;Golden Cross&quot;. This suggests momentum shift to bullish. Price typically continues higher after this crossover for several months.
+                  50-day moving average crossed above 200-day average - classic
+                  bullish signal called &quot;Golden Cross&quot;. This suggests
+                  momentum shift to bullish. Price typically continues higher
+                  after this crossover for several months.
                 </p>
               </div>
             </CardContent>
@@ -1756,15 +2122,21 @@ const Technical = () => {
                 <p className="font-semibold mb-2">Recent Swing Points:</p>
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">High 1 (Sept 1):</span>
+                    <span className="text-muted-foreground">
+                      High 1 (Sept 1):
+                    </span>
                     <span className="font-medium">₹1,680</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">High 2 (Sept 22):</span>
+                    <span className="text-muted-foreground">
+                      High 2 (Sept 22):
+                    </span>
                     <span className="font-medium">₹1,770</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">High 3 (Oct 12):</span>
+                    <span className="text-muted-foreground">
+                      High 3 (Oct 12):
+                    </span>
                     <span className="font-medium">₹1,850</span>
                   </div>
                   <div className="flex justify-between text-green-600">
@@ -1776,7 +2148,8 @@ const Technical = () => {
 
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Clear uptrend - each peak and trough higher than the last. As long as price stays above ₹1,720, uptrend remains intact.
+                  Clear uptrend - each peak and trough higher than the last. As
+                  long as price stays above ₹1,720, uptrend remains intact.
                 </p>
               </div>
             </CardContent>
@@ -1832,19 +2205,30 @@ const Technical = () => {
             <CardContent>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-semibold mb-2">Active Sell Signals:</p>
-                  <p className="text-xs text-muted-foreground italic">(None currently)</p>
+                  <p className="text-sm font-semibold mb-2">
+                    Active Sell Signals:
+                  </p>
+                  <p className="text-xs text-muted-foreground italic">
+                    (None currently)
+                  </p>
                 </div>
                 <div className="pt-2 border-t">
-                  <p className="text-sm font-semibold mb-2">Neutral/Watch Signals:</p>
+                  <p className="text-sm font-semibold mb-2">
+                    Neutral/Watch Signals:
+                  </p>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs">Approaching previous 52W high (₹1,950) - may face resistance</span>
+                      <span className="text-xs">
+                        Approaching previous 52W high (₹1,950) - may face
+                        resistance
+                      </span>
                     </div>
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs">RSI near 62 - watch for overbought if crosses 75</span>
+                      <span className="text-xs">
+                        RSI near 62 - watch for overbought if crosses 75
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1858,7 +2242,8 @@ const Technical = () => {
       <div id="technical-verdict">
         <div className="mb-3">
           <p className="text-muted-foreground text-sm mb-4">
-            Putting it all together - what&apos;s the technical picture telling us?
+            Putting it all together - what&apos;s the technical picture telling
+            us?
           </p>
           <h3 className="text-lg font-semibold flex items-center gap-2">
             🎯 Technical Summary & Outlook
@@ -1870,8 +2255,12 @@ const Technical = () => {
           <CardContent className="pt-6">
             <div className="text-center space-y-3">
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Technical Score</p>
-                <div className="text-6xl font-bold text-green-600">78<span className="text-3xl">/100</span></div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Technical Score
+                </p>
+                <div className="text-6xl font-bold text-green-600">
+                  78<span className="text-3xl">/100</span>
+                </div>
                 <Badge className="mt-3 bg-green-500 text-white text-base px-4 py-1">
                   🟢 Bullish
                 </Badge>
@@ -1879,15 +2268,21 @@ const Technical = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 text-sm">
                 <div>
                   <p className="text-muted-foreground mb-1">Trend</p>
-                  <p className="font-semibold text-green-600">All timeframes aligned</p>
+                  <p className="font-semibold text-green-600">
+                    All timeframes aligned
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Momentum</p>
-                  <p className="font-semibold text-green-600">Strong & building</p>
+                  <p className="font-semibold text-green-600">
+                    Strong & building
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Pattern</p>
-                  <p className="font-semibold text-green-600">Bullish continuation</p>
+                  <p className="font-semibold text-green-600">
+                    Bullish continuation
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Setup</p>
@@ -1915,15 +2310,21 @@ const Technical = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Established uptrend across all timeframes</span>
+                  <span className="text-xs">
+                    Established uptrend across all timeframes
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Trading above all moving averages (20/50/200)</span>
+                  <span className="text-xs">
+                    Trading above all moving averages (20/50/200)
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Momentum indicators positive (RSI, MACD)</span>
+                  <span className="text-xs">
+                    Momentum indicators positive (RSI, MACD)
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
@@ -1931,11 +2332,15 @@ const Technical = () => {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Clean higher highs, higher lows structure</span>
+                  <span className="text-xs">
+                    Clean higher highs, higher lows structure
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Golden Cross active and widening</span>
+                  <span className="text-xs">
+                    Golden Cross active and widening
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
@@ -1943,7 +2348,9 @@ const Technical = () => {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">High delivery % showing conviction</span>
+                  <span className="text-xs">
+                    High delivery % showing conviction
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -1961,27 +2368,39 @@ const Technical = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Approaching major resistance at ₹1,950 (52W high)</span>
+                  <span className="text-xs">
+                    Approaching major resistance at ₹1,950 (52W high)
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Short-term consolidation could extend</span>
+                  <span className="text-xs">
+                    Short-term consolidation could extend
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Need volume on breakout above ₹1,850</span>
+                  <span className="text-xs">
+                    Need volume on breakout above ₹1,850
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">RSI approaching overbought on daily chart</span>
+                  <span className="text-xs">
+                    RSI approaching overbought on daily chart
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Market breadth could affect individual stock</span>
+                  <span className="text-xs">
+                    Market breadth could affect individual stock
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3 w-3 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">Gap between price and 200 DMA widening (15%)</span>
+                  <span className="text-xs">
+                    Gap between price and 200 DMA widening (15%)
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -1999,23 +2418,33 @@ const Technical = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">→</span>
-                  <span className="text-xs">Breakout above ₹1,850 targets ₹1,950-₹2,000</span>
+                  <span className="text-xs">
+                    Breakout above ₹1,850 targets ₹1,950-₹2,000
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">→</span>
-                  <span className="text-xs">Dips to ₹1,750-₹1,780 are buyable (support zone)</span>
+                  <span className="text-xs">
+                    Dips to ₹1,750-₹1,780 are buyable (support zone)
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">→</span>
-                  <span className="text-xs">Ascending triangle breakout setup forming</span>
+                  <span className="text-xs">
+                    Ascending triangle breakout setup forming
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">→</span>
-                  <span className="text-xs">Risk-reward favorable (support close, target far)</span>
+                  <span className="text-xs">
+                    Risk-reward favorable (support close, target far)
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">→</span>
-                  <span className="text-xs">Momentum just building, not exhausted yet</span>
+                  <span className="text-xs">
+                    Momentum just building, not exhausted yet
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -2043,7 +2472,9 @@ const Technical = () => {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Target:</span>
-                    <span className="font-medium text-green-600">₹1,900-₹1,950</span>
+                    <span className="font-medium text-green-600">
+                      ₹1,900-₹1,950
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Support:</span>
@@ -2061,12 +2492,16 @@ const Technical = () => {
                   <Badge className="bg-green-500/10 text-green-700 dark:text-green-400">
                     🟢 Bullish
                   </Badge>
-                  <span className="font-semibold">Medium-Term (1-3 months)</span>
+                  <span className="font-semibold">
+                    Medium-Term (1-3 months)
+                  </span>
                 </div>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Target:</span>
-                    <span className="font-medium text-green-600">₹1,950-₹2,100</span>
+                    <span className="font-medium text-green-600">
+                      ₹1,950-₹2,100
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Support:</span>
@@ -2089,7 +2524,9 @@ const Technical = () => {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Target:</span>
-                    <span className="font-medium text-green-600">₹2,000-₹2,200</span>
+                    <span className="font-medium text-green-600">
+                      ₹2,000-₹2,200
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Support:</span>
@@ -2108,23 +2545,37 @@ const Technical = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Risk-Reward Assessment</CardTitle>
+              <CardTitle className="text-base">
+                Risk-Reward Assessment
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-semibold mb-2">Entry at Current Price (₹1,820)</p>
+                  <p className="text-sm font-semibold mb-2">
+                    Entry at Current Price (₹1,820)
+                  </p>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Upside Target:</span>
-                      <span className="font-medium text-green-600">₹1,950 (+7.1%)</span>
+                      <span className="text-muted-foreground">
+                        Upside Target:
+                      </span>
+                      <span className="font-medium text-green-600">
+                        ₹1,950 (+7.1%)
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Downside Risk:</span>
-                      <span className="font-medium text-red-600">₹1,750 (-3.8%)</span>
+                      <span className="text-muted-foreground">
+                        Downside Risk:
+                      </span>
+                      <span className="font-medium text-red-600">
+                        ₹1,750 (-3.8%)
+                      </span>
                     </div>
                     <div className="flex justify-between pt-2 border-t">
-                      <span className="text-muted-foreground">Risk-Reward Ratio:</span>
+                      <span className="text-muted-foreground">
+                        Risk-Reward Ratio:
+                      </span>
                       <span className="font-bold text-lg">1 : 1.85</span>
                     </div>
                   </div>
@@ -2138,21 +2589,27 @@ const Technical = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Stop Loss Recommendation</CardTitle>
+              <CardTitle className="text-base">
+                Stop Loss Recommendation
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="font-medium">Conservative</p>
-                    <p className="text-xs text-muted-foreground">20 DMA breach</p>
+                    <p className="text-xs text-muted-foreground">
+                      20 DMA breach
+                    </p>
                   </div>
                   <span className="font-bold">Below ₹1,750</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <div>
                     <p className="font-medium">Moderate</p>
-                    <p className="text-xs text-muted-foreground">50 DMA breach</p>
+                    <p className="text-xs text-muted-foreground">
+                      50 DMA breach
+                    </p>
                   </div>
                   <span className="font-bold">Below ₹1,700</span>
                 </div>
@@ -2171,19 +2628,26 @@ const Technical = () => {
         {/* For Different Trading Styles */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recommendations by Trading Style</CardTitle>
+            <CardTitle className="text-base">
+              Recommendations by Trading Style
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="p-3 border rounded-lg">
-                  <p className="font-semibold text-sm mb-2">If You&apos;re a Swing Trader (Days to Weeks)</p>
+                  <p className="font-semibold text-sm mb-2">
+                    If You&apos;re a Swing Trader (Days to Weeks)
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Bullish. Can go long with stop at ₹1,750. Target ₹1,900-₹1,950.
+                    Bullish. Can go long with stop at ₹1,750. Target
+                    ₹1,900-₹1,950.
                   </p>
                 </div>
                 <div className="p-3 border rounded-lg">
-                  <p className="font-semibold text-sm mb-2">If You&apos;re a Position Trader (Weeks to Months)</p>
+                  <p className="font-semibold text-sm mb-2">
+                    If You&apos;re a Position Trader (Weeks to Months)
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Favorable setup. Buy on dips to ₹1,750-₹1,780 support zone.
                   </p>
@@ -2191,15 +2655,21 @@ const Technical = () => {
               </div>
               <div className="space-y-3">
                 <div className="p-3 border rounded-lg">
-                  <p className="font-semibold text-sm mb-2">If You&apos;re an Investor (Don&apos;t care about timing)</p>
+                  <p className="font-semibold text-sm mb-2">
+                    If You&apos;re an Investor (Don&apos;t care about timing)
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Technical picture supportive. Current levels fine for long-term entry.
+                    Technical picture supportive. Current levels fine for
+                    long-term entry.
                   </p>
                 </div>
                 <div className="p-3 border rounded-lg">
-                  <p className="font-semibold text-sm mb-2">If You&apos;re Sitting on Profits</p>
+                  <p className="font-semibold text-sm mb-2">
+                    If You&apos;re Sitting on Profits
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Trail stop to ₹1,750. Book partial at ₹1,950 resistance, hold rest.
+                    Trail stop to ₹1,750. Book partial at ₹1,950 resistance,
+                    hold rest.
                   </p>
                 </div>
               </div>
@@ -2218,50 +2688,63 @@ const Technical = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-blue-200 dark:border-blue-900">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Users className="h-8 w-8 text-blue-600 flex-shrink-0" />
-                <div>
-                  <h4 className="font-semibold mb-1">See Who&apos;s Accumulating</h4>
-                  <p className="text-sm text-blue-600 font-medium mb-2">→ 🏢 Go to Activity Tab</p>
-                  <p className="text-xs text-muted-foreground">
-                    Check institutional buying, promoter activity, insider trades
+          <Link href={`/research/stock-screener/${symbol}?tab=activity`}>
+            <Card className="border-2 border-primary/20 hover:border-primary/40 transition-colors cursor-pointer group">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-3">
+                  <div className="text-4xl">💎</div>
+                  <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                    See Who&apos;s Accumulating
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Check institutional buying, promoter activity, insider
+                    trades
                   </p>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">
+                    → Go to Activity Tab
+                  </Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-orange-200 dark:border-orange-900">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Newspaper className="h-8 w-8 text-orange-600 flex-shrink-0" />
-                <div>
-                  <h4 className="font-semibold mb-1">Stay Updated on Developments</h4>
-                  <p className="text-sm text-orange-600 font-medium mb-2">→ 📰 Go to News Tab</p>
-                  <p className="text-xs text-muted-foreground">
+          <Link href={`/research/stock-screener/${symbol}?tab=news`}>
+            <Card className="border-2 border-primary/20 hover:border-primary/40 transition-colors cursor-pointer group">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-3">
+                  <div className="text-4xl">📈</div>
+                  <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                    Stay Updated on Developments
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
                     Latest announcements, results, news affecting the stock
                   </p>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">
+                    → Go to News Tab
+                  </Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-green-200 dark:border-green-900">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Briefcase className="h-8 w-8 text-green-600 flex-shrink-0" />
-                <div>
-                  <h4 className="font-semibold mb-1">Back to Fundamentals</h4>
-                  <p className="text-sm text-green-600 font-medium mb-2">→ 💰 Go to Financials Tab</p>
-                  <p className="text-xs text-muted-foreground">
+          <Link href={`/research/stock-screener/${symbol}?tab=financials`}>
+            <Card className="border-2 border-primary/20 hover:border-primary/40 transition-colors cursor-pointer group">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-3">
+                  <div className="text-4xl">🏢</div>
+                  <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                    Back to Fundamentals
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
                     Double-check business performance supports technical setup
                   </p>
+                  <Badge className="bg-primary/10 text-primary border-primary/20">
+                    → Go to Financials Tab
+                  </Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </div>

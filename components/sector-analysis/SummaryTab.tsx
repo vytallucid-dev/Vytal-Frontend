@@ -286,124 +286,18 @@ export function SummaryTab({
             Now, let's look at the numbers and how the sector is performing
           </p>
         </div>
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-end">
-              <div className="flex items-center gap-1 justify-end">
-                {(["3M", "6M", "1Y", "5Y", "ALL"] as const).map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setPerformanceTimeRange(range)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      performanceTimeRange === range
-                        ? "bg-amber-500 text-black"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div>
-              <ChartContainer
-                config={{
-                  value: {
-                    label: "Sector Price",
-                    color: "hsl(45, 90%, 60%)",
-                  },
-                }}
-              >
-                <LineChart
-                  data={sectorPerformanceData[performanceTimeRange]}
-                  margin={{
-                    left: 20,
-                    right: 20,
-                    top: 20,
-                    bottom: 20,
-                  }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={true}
-                    horizontal={true}
-                    opacity={0.4}
-                    stroke="var(--border)"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={true}
-                    axisLine={true}
-                    tickMargin={10}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    className="text-xs"
-                    stroke="hsl(var(--muted-foreground))"
-                    label={{
-                      value: "Time Period",
-                      position: "insideBottom",
-                      offset: -15,
-                      style: {
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: "12px",
-                      },
-                    }}
-                  />
-                  <YAxis
-                    tickLine={true}
-                    axisLine={true}
-                    tickMargin={10}
-                    width={80}
-                    className="text-xs"
-                    stroke="hsl(var(--muted-foreground))"
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
-                    label={{
-                      value: "Sector Index Value",
-                      angle: -90,
-                      position: "insideLeft",
-                      style: {
-                        fill: "hsl(var(--muted-foreground))",
-                        fontSize: "12px",
-                      },
-                    }}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value) => [
-                          `$${Number(value).toLocaleString()}`,
-                          "Index Value",
-                        ]}
-                        className="bg-gray-900/95 border border-amber-500/20 text-amber-100 backdrop-blur-sm"
-                      />
-                    }
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="hsl(45, 90%, 60%)"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{
-                      r: 6,
-                      stroke: "hsl(45, 90%, 60%)",
-                      strokeWidth: 2,
-                      fill: "hsl(var(--background))",
-                    }}
-                  />
-                </LineChart>
-              </ChartContainer>
-            </div>
-            {/* Performance Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1">
-                  Period Return
-                </div>
-                <div className="text-lg font-bold text-emerald-500">
+        <Card className="overflow-hidden border-muted/40 bg-gradient-to-br from-amber-500/[0.02] via-transparent to-transparent">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-baseline gap-3">
+                <span className="text-2xl font-bold">
+                  $
+                  {sectorPerformanceData[performanceTimeRange][
+                    sectorPerformanceData[performanceTimeRange].length - 1
+                  ].value.toLocaleString()}
+                </span>
+                <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
+                  <ArrowUp className="w-3 h-3" />
                   +
                   {(
                     ((sectorPerformanceData[performanceTimeRange][
@@ -414,39 +308,182 @@ export function SummaryTab({
                     100
                   ).toFixed(1)}
                   %
+                </span>
+              </div>
+              <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-0.5 border border-border/50">
+                {(["3M", "6M", "1Y", "5Y", "ALL"] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setPerformanceTimeRange(range)}
+                    className={`px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all duration-200 ${
+                      performanceTimeRange === range
+                        ? "bg-amber-500 text-black shadow-sm shadow-amber-500/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-2">
+            {/* Chart Container - Compact */}
+            <div className="relative rounded-lg border border-border/50 bg-gradient-to-br from-background via-background to-muted/10 p-2">
+              <ChartContainer
+                config={{
+                  value: {
+                    label: "Sector Index",
+                    color: "hsl(45, 90%, 60%)",
+                  },
+                }}
+                className="h-[220px] w-full"
+              >
+                <LineChart
+                  data={sectorPerformanceData[performanceTimeRange]}
+                  margin={{
+                    left: 10,
+                    right: 10,
+                    top: 15,
+                    bottom: 15,
+                  }}
+                >
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(45, 90%, 60%)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="hsl(45, 90%, 60%)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    horizontal={true}
+                    opacity={0.2}
+                    stroke="var(--border)"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    className="text-[9px]"
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    width={60}
+                    className="text-[9px]"
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => [
+                          `$${Number(value).toLocaleString()}`,
+                          "Index Value",
+                        ]}
+                        className="bg-background/95 border border-amber-500/20 text-foreground backdrop-blur-sm shadow-lg"
+                      />
+                    }
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="hsl(45, 90%, 60%)"
+                    strokeWidth={2.5}
+                    dot={false}
+                    fill="url(#colorValue)"
+                    activeDot={{
+                      r: 5,
+                      stroke: "hsl(45, 90%, 60%)",
+                      strokeWidth: 2,
+                      fill: "hsl(var(--background))",
+                    }}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </div>
+
+            {/* Compact Performance Stats */}
+            <div className="grid grid-cols-4 gap-2 mt-3">
+              <div className="group relative overflow-hidden rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 hover:border-emerald-500/40 transition-all">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative">
+                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-600 font-semibold mb-1">
+                    <TrendingUp className="w-2.5 h-2.5" />
+                    Return
+                  </div>
+                  <div className="text-lg font-bold text-emerald-500">
+                    +
+                    {(
+                      ((sectorPerformanceData[performanceTimeRange][
+                        sectorPerformanceData[performanceTimeRange].length - 1
+                      ].value -
+                        sectorPerformanceData[performanceTimeRange][0].value) /
+                        sectorPerformanceData[performanceTimeRange][0].value) *
+                      100
+                    ).toFixed(1)}
+                    %
+                  </div>
                 </div>
               </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1">High</div>
-                <div className="text-lg font-bold">
-                  $
-                  {Math.max(
-                    ...sectorPerformanceData[performanceTimeRange].map(
-                      (d: any) => d.value
-                    )
-                  ).toLocaleString()}
+
+              <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-muted/20 p-2 hover:border-primary/40 transition-all">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative">
+                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                    <ArrowUp className="w-2.5 h-2.5" />
+                    High
+                  </div>
+                  <div className="text-lg font-bold">
+                    $
+                    {Math.max(
+                      ...sectorPerformanceData[performanceTimeRange].map(
+                        (d: any) => d.value
+                      )
+                    ).toLocaleString()}
+                  </div>
                 </div>
               </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1">Low</div>
-                <div className="text-lg font-bold">
-                  $
-                  {Math.min(
-                    ...sectorPerformanceData[performanceTimeRange].map(
-                      (d: any) => d.value
-                    )
-                  ).toLocaleString()}
+
+              <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-muted/20 p-2 hover:border-primary/40 transition-all">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative">
+                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                    <ArrowDown className="w-2.5 h-2.5" />
+                    Low
+                  </div>
+                  <div className="text-lg font-bold">
+                    $
+                    {Math.min(
+                      ...sectorPerformanceData[performanceTimeRange].map(
+                        (d: any) => d.value
+                      )
+                    ).toLocaleString()}
+                  </div>
                 </div>
               </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1">
-                  Current Value
-                </div>
-                <div className="text-lg font-bold text-amber-500">
-                  $
-                  {sectorPerformanceData[performanceTimeRange][
-                    sectorPerformanceData[performanceTimeRange].length - 1
-                  ].value.toLocaleString()}
+
+              <div className="group relative overflow-hidden rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 hover:border-amber-500/50 transition-all">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative">
+                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-amber-600 font-semibold mb-1">
+                    <Activity className="w-2.5 h-2.5" />
+                    Vol
+                  </div>
+                  <div className="text-lg font-bold text-amber-500">
+                    {(
+                      ((Math.max(...sectorPerformanceData[performanceTimeRange].map((d: any) => d.value)) -
+                        Math.min(...sectorPerformanceData[performanceTimeRange].map((d: any) => d.value))) /
+                        Math.min(...sectorPerformanceData[performanceTimeRange].map((d: any) => d.value))) *
+                      100
+                    ).toFixed(1)}%
+                  </div>
                 </div>
               </div>
             </div>

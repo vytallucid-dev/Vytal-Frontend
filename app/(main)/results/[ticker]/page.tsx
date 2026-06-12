@@ -1,133 +1,183 @@
 "use client";
 
-import AISummaryTab from "@/components/results/AISummaryTab";
-import FinancialsTab from "@/components/results/FinancialsTab";
-import OverviewTab from "@/components/results/OverviewTab";
-import VisualizationTab from "@/components/results/VisualizationTab";
-import { Badge } from "@/components/ui/badge";
+import { hdfcBankQ2FY26Data } from "@/lib/results-data";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { hdfcBankQ2FY25 } from "@/lib/quarterly-results-data";
 import {
   Bell,
-  Calendar,
   ChevronDown,
-  Download,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  GitCompare,
   Plus,
-  TrendingUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useEffect, useRef, useState, Suspense } from "react";
+import SnapshotTab from "@/components/results/SnapshotTab";
+import PnlTrendsTab from "@/components/results/PnlTrendsTab";
+import ContextTab from "@/components/results/ContextTab";
 
-interface ResultsViewerPageProps {
-  params: {
-    ticker: string;
+const TABS = [
+  { id: "snapshot", label: "Snapshot" },
+  { id: "pnl", label: "P&L & Trends" },
+  { id: "context", label: "Context" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
+// ─── Inner Page (reads searchParams) ────────────────────────────────────────
+
+function ResultsViewerInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const activeTab: TabId = (searchParams.get("tab") as TabId) ?? "snapshot";
+
+  const setTab = (tab: TabId) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
-}
 
-export default function ResultsViewerPage({ params }: ResultsViewerPageProps) {
-  // For now, we're using the hardcoded HDFC Bank data
-  // In a real app, you would fetch the data based on params.ticker
-  const [result] = useState(hdfcBankQ2FY25);
-  const [activeTab, setActiveTab] = useState("overview");
+  const onTabChange = (tab: string) => setTab(tab as TabId);
 
-  const handleExportPDF = () => {
-    // Implement PDF export functionality
-    console.log("Exporting PDF...");
-  };
+  const data = hdfcBankQ2FY26Data;
+  const { stock, current, prevQuarterNav, nextQuarterNav } = data;
 
-  const getHealthColor = (score: number) => {
-    if (score >= 80)
-      return "bg-green-500/10 text-green-500 border-green-500/20";
-    if (score >= 60)
-      return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
-    return "bg-red-500/10 text-red-500 border-red-500/20";
-  };
+  const filingDateFormatted = new Date(current.filingDate).toLocaleDateString(
+    "en-IN",
+    { day: "numeric", month: "short", year: "numeric" },
+  );
 
   return (
-    <div className="min-h-screen pb-12">
-      {/* FIXED HEADER */}
-      <div className="bg-background/95 backdrop-blur-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-            {/* Left: Company Info */}
-            <div className="flex flex-col gap-3">
-              {/* Row 1: Company Name */}
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-3xl font-bold">{result.companyName}</h1>
-                <span className="text-lg text-muted-foreground">
-                  {result.quarter} {result.fiscalYear}
-                </span>
+    <div className="min-h-screen pb-16">
+      {/* ── STICKY HEADER ──────────────────────────────────────────── */}
+      <div className="bg-background/95 backdrop-blur-sm border-b border-border/60">
+        <div className={`transition-all duration-300 py-4`}>
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              {/* LEFT — Identity */}
+              <div className="flex flex-col gap-1.5">
+                {/* Company name + Quarter */}
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <h1
+                    className={`font-bold leading-tight transition-all text-3xl`}
+                  >
+                    {stock.companyName}
+                  </h1>
+                  <span
+                    className={`font-semibold text-muted-foreground transition-all text-xl`}
+                  >
+                    {current.quarter} {current.fiscalYear}
+                  </span>
+                </div>
+
+                {/* Ticker · Sector */}
+
+                <p className="text-sm text-muted-foreground">
+                  {stock.ticker} · {stock.sector}
+                </p>
+
+                {/* Meta pills */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    Filed {filingDateFormatted}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs capitalize ${
+                      current.resultType === "consolidated"
+                        ? "border-blue-500/40 text-blue-500 bg-blue-500/5"
+                        : "border-amber-500/40 text-amber-500 bg-amber-500/5"
+                    }`}
+                  >
+                    {current.resultType}
+                  </Badge>
+                  <a
+                    href={current.xbrlUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border/50 rounded-full px-2.5 py-0.5 transition-colors hover:border-border"
+                  >
+                    View XBRL
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
 
-              {/* Row 2: All badges/pills */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  {result.announcementDate}
-                </Badge>
-                <Badge variant="outline">{result.sector}</Badge>
-                <Badge className={getHealthColor(result.healthScore)}>
-                  Health: {result.healthScore}/100
-                </Badge>
-              </div>
-            </div>
+              {/* RIGHT — Navigator + Actions */}
+              <div className="flex flex-col items-start lg:items-end gap-3">
+                {/* Quarter navigator */}
+                <div className="flex items-center rounded-lg border border-border/60 overflow-hidden text-sm">
+                  <button
+                    disabled={!prevQuarterNav}
+                    className="flex items-center gap-1 px-3 py-1.5 hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    {prevQuarterNav
+                      ? `${prevQuarterNav?.quarter} ${prevQuarterNav?.fiscalYear}`
+                      : "—"}
+                  </button>
+                  <div className="w-px h-6 bg-border/60" />
+                  <button
+                    disabled={!nextQuarterNav}
+                    className="flex items-center gap-1 px-3 py-1.5 hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {nextQuarterNav
+                      ? `${nextQuarterNav?.quarter} ${nextQuarterNav?.fiscalYear}`
+                      : "—"}
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-            {/* Right: Action Buttons */}
-            <div className="flex gap-2">
-              <Button
-                onClick={handleExportPDF}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export PDF
-              </Button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Quick Actions
-                    <ChevronDown className="w-4 h-4 ml-2" />
+                {/* Action buttons */}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-1.5 h-8">
+                    <GitCompare className="w-3.5 h-3.5" />
+                    Compare
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add to Portfolio
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Bell className="w-4 h-4 mr-2" />
-                    Set Alert
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    Compare with Peer
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <Button variant="outline" size="sm" className="gap-1.5 h-8">
+                    <Bell className="w-3.5 h-3.5" />
+                    Alert
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" className="gap-1.5 h-8">
+                        <Plus className="w-3.5 h-3.5" />
+                        Add to Portfolio
+                        <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add to Portfolio
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>Add to Watchlist</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* TAB NAVIGATION */}
+        {/* ── TAB BAR ───────────────────────────────────────────────── */}
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex border-b overflow-x-auto">
-            {[
-              { id: "overview", label: "Overview" },
-              { id: "visualization", label: "Visualization" },
-              { id: "financials", label: "Financials" },
-              { id: "ai-summary", label: "AI Summary" },
-            ].map((tab) => (
+          <div className="flex overflow-x-auto">
+            {TABS.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 text-sm font-medium transition-colors relative whitespace-nowrap ${
+                onClick={() => setTab(tab.id)}
+                className={`px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors relative ${
                   activeTab === tab.id
                     ? "text-primary border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -140,13 +190,32 @@ export default function ResultsViewerPage({ params }: ResultsViewerPageProps) {
         </div>
       </div>
 
-      {/* TAB CONTENT */}
+      {/* ── TAB CONTENT ──────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {activeTab === "overview" && <OverviewTab result={result} />}
-        {activeTab === "visualization" && <VisualizationTab result={result} />}
-        {activeTab === "financials" && <FinancialsTab result={result} />}
-        {activeTab === "ai-summary" && <AISummaryTab result={result} />}
+        {activeTab === "snapshot" && (
+          <SnapshotTab data={data} onTabChange={onTabChange} />
+        )}
+        {activeTab === "pnl" && <PnlTrendsTab data={data} />}
+        {activeTab === "context" && (
+          <ContextTab data={data} onTabChange={onTabChange} />
+        )}
       </div>
     </div>
+  );
+}
+
+// ─── Page Export (Suspense wrapper for useSearchParams) ──────────────────────
+
+export default function ResultsViewerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-screen flex items-center justify-center text-muted-foreground text-sm">
+          Loading…
+        </div>
+      }
+    >
+      <ResultsViewerInner />
+    </Suspense>
   );
 }

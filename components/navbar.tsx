@@ -18,6 +18,10 @@ import {
   TrendingUp,
   Notebook,
   CalendarIcon,
+  GitCompare,
+  FileText,
+  Search,
+  BarChart3,
 } from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { usePathname } from "next/navigation";
@@ -94,6 +98,51 @@ const Navbar = () => {
           breadcrumb: [
             { label: "Home", href: "/" },
             { label: "Watchlist", href: "/watchlist", isActive: true },
+          ],
+        };
+      case "/comparison":
+        return {
+          title: "Comparison",
+          icon: GitCompare,
+          breadcrumb: [
+            { label: "Home", href: "/" },
+            { label: "Comparison", href: "/comparison", isActive: true },
+          ],
+        };
+      case "/results":
+        return {
+          title: "Quarterly Results",
+          icon: FileText,
+          breadcrumb: [
+            { label: "Home", href: "/" },
+            { label: "Results", href: "/results", isActive: true },
+          ],
+        };
+
+      case "/research/stock-screener":
+        return {
+          title: "Stock Screener",
+          icon: Search,
+          breadcrumb: [
+            { label: "Home", href: "/" },
+            {
+              label: "Stock Screener",
+              href: "/research/stock-screener",
+              isActive: true,
+            },
+          ],
+        };
+      case "/research/sector-analysis":
+        return {
+          title: "Sector Analysis",
+          icon: BarChart3,
+          breadcrumb: [
+            { label: "Home", href: "/" },
+            {
+              label: "Sector Analysis",
+              href: "/research/sector-analysis",
+              isActive: true,
+            },
           ],
         };
       default:

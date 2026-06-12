@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
 import React, { useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Activity,
@@ -33,6 +34,9 @@ interface OverviewProps {
 }
 
 const Overview = ({ stock }: OverviewProps) => {
+  const router = useRouter();
+  const params = useParams();
+  const symbol = params.symbol as string;
   const [chartPeriod, setChartPeriod] = useState("1Y");
 
   // Performance data
@@ -440,42 +444,103 @@ const Overview = ({ stock }: OverviewProps) => {
           </Card>
 
           {/* Right: What They Do (60%) */}
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>What does this company do?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-muted-foreground">
-              <p>
-                {stock.symbol === "HDFCBANK" || stock.sector === "Banking"
-                  ? `${
-                      stock.name.split(" ")[0]
-                    } Bank is one of India's largest private sector banks. They provide banking services to retail customers (you and me), small businesses, and large corporations. They make money primarily through the interest spread - borrowing at lower rates and lending at higher rates.`
-                  : `${stock.name.split(" ")[0]} is a leading company in the ${
-                      stock.sector
-                    } sector. The company operates across multiple business segments, serving both retail and institutional customers across India.`}
-              </p>
-              <p>
-                {stock.sector === "Banking"
-                  ? "They also earn fees from services like credit cards, wealth management, transaction processing, and insurance distribution. Their business model focuses on building long-term customer relationships and cross-selling multiple financial products."
-                  : `The company generates revenue through its core ${stock.sector.toLowerCase()} operations, with a strong focus on market leadership, operational efficiency, and sustainable growth. They have established a significant presence in key markets.`}
-              </p>
-              <p>
-                {stock.sector === "Banking"
-                  ? "With a strong brand reputation and extensive distribution network including branches, ATMs, and digital channels, they have built a loyal customer base. Their competitive advantage lies in superior asset quality, technology adoption, and customer service excellence."
-                  : `The company's competitive strengths include brand recognition, distribution network, operational excellence, and continuous innovation. They maintain a strong market position through strategic investments and customer-centric approach.`}
-              </p>
+          <Card className="lg:col-span-3 overflow-hidden relative border-2 border-primary/10 pt-0">
+            {/* Decorative gradient background */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
 
-              <details className="mt-4">
-                <summary className="cursor-pointer text-primary hover:underline font-semibold">
-                  Learn More about Business Model
+            <CardHeader className="border-b py-4 bg-gradient-to-r from-primary/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="px-2 bg-primary/10 rounded-lg">
+                  <Building2 className="w-5 h-5 text-primary" />
+                </div>
+                <CardTitle className="text-2xl">
+                  What does this company do?
+                </CardTitle>
+              </div>
+            </CardHeader>
+
+            <CardContent className="pt-0 space-y-6">
+              {/* Main Business Description */}
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg border border-muted hover:border-primary/30 transition-colors">
+                  <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                    <Activity className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-2 text-foreground">
+                      Core Business
+                    </h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {stock.symbol === "HDFCBANK" || stock.sector === "Banking"
+                        ? `${
+                            stock.name.split(" ")[0]
+                          } Bank is one of India's largest private sector banks. They provide banking services to retail customers (you and me), small businesses, and large corporations. They make money primarily through the interest spread - borrowing at lower rates and lending at higher rates.`
+                        : `${stock.name.split(" ")[0]} is a leading company in the ${
+                            stock.sector
+                          } sector. The company operates across multiple business segments, serving both retail and institutional customers across India.`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg border border-muted hover:border-primary/30 transition-colors">
+                  <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                    <DollarSign className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-2 text-foreground">
+                      Revenue Model
+                    </h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {stock.sector === "Banking"
+                        ? "They also earn fees from services like credit cards, wealth management, transaction processing, and insurance distribution. Their business model focuses on building long-term customer relationships and cross-selling multiple financial products."
+                        : `The company generates revenue through its core ${stock.sector.toLowerCase()} operations, with a strong focus on market leadership, operational efficiency, and sustainable growth. They have established a significant presence in key markets.`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg border border-muted hover:border-primary/30 transition-colors">
+                  <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-2 text-foreground">
+                      Competitive Advantage
+                    </h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {stock.sector === "Banking"
+                        ? "With a strong brand reputation and extensive distribution network including branches, ATMs, and digital channels, they have built a loyal customer base. Their competitive advantage lies in superior asset quality, technology adoption, and customer service excellence."
+                        : `The company's competitive strengths include brand recognition, distribution network, operational excellence, and continuous innovation. They maintain a strong market position through strategic investments and customer-centric approach.`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Expandable Section */}
+              <details className="group">
+                <summary className="cursor-pointer flex items-center gap-2 p-4 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-all">
+                  <ChevronRight className="w-4 h-4 text-primary transition-transform group-open:rotate-90" />
+                  <span className="font-semibold text-primary">
+                    Learn More about Business Model
+                  </span>
                 </summary>
-                <div className="mt-3 pl-4 border-l-2 border-primary/20 space-y-2">
-                  <p className="text-sm">
+                <div className="mt-4 p-4 bg-muted/30 rounded-lg border-l-4 border-primary/50 space-y-3">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     The company's revenue model is diversified across multiple
                     streams, reducing dependence on any single source. They
                     focus on sustainable growth while maintaining healthy profit
                     margins.
                   </p>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Badge variant="outline" className="bg-primary/5">
+                      Diversified Revenue
+                    </Badge>
+                    <Badge variant="outline" className="bg-primary/5">
+                      Sustainable Growth
+                    </Badge>
+                    <Badge variant="outline" className="bg-primary/5">
+                      Strong Margins
+                    </Badge>
+                  </div>
                 </div>
               </details>
             </CardContent>
@@ -529,7 +594,7 @@ const Overview = ({ stock }: OverviewProps) => {
 
               <div className="flex-1 space-y-3">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-lg px-4 py-1">
+                  <Badge className="bg-green-500/10 text-green-500 border-green-500/20 ">
                     Strong 🟢
                   </Badge>
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -567,17 +632,20 @@ const Overview = ({ stock }: OverviewProps) => {
                     <div className={`text-2xl font-bold ${category.color}`}>
                       {category.score}/100
                     </div>
-                    <div className="text-xs text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Click for details
-                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
             <div className="mt-6 text-center">
-              <Button variant="link" className="text-primary">
-                Want detailed breakdown? → Go to Fundamentals Tab
+              <Button
+                variant="link"
+                className="text-primary"
+                onClick={() =>
+                  router.push(`/research/stock-screener/${symbol}?tab=health`)
+                }
+              >
+                Want detailed breakdown? → Go to Health Score Tab
               </Button>
             </div>
           </CardContent>
@@ -913,12 +981,6 @@ const Overview = ({ stock }: OverviewProps) => {
                 <p>Balanced growth profile - not fastest but most consistent</p>
               </div>
             </div>
-
-            <div className="mt-4 text-center">
-              <Button variant="outline">
-                Detailed Peer Comparison <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </section>
@@ -1101,7 +1163,7 @@ const Overview = ({ stock }: OverviewProps) => {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+          <Card className="hover:shadow-lg transition-shadow group">
             <CardContent className="pt-6">
               <BarChart3 className="w-12 h-12 text-primary mb-4" />
               <h3 className="font-semibold text-lg mb-2">
@@ -1113,7 +1175,12 @@ const Overview = ({ stock }: OverviewProps) => {
               </p>
               <Button
                 variant="outline"
-                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                className="w-full group-hover:bg-primary  transition-colors"
+                onClick={() =>
+                  router.push(
+                    `/research/stock-screener/${symbol}?tab=fundamentals`,
+                  )
+                }
               >
                 Go to Fundamentals Tab
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -1121,7 +1188,7 @@ const Overview = ({ stock }: OverviewProps) => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+          <Card className="hover:shadow-lg transition-shadow group">
             <CardContent className="pt-6">
               <DollarSign className="w-12 h-12 text-primary mb-4" />
               <h3 className="font-semibold text-lg mb-2">
@@ -1133,7 +1200,12 @@ const Overview = ({ stock }: OverviewProps) => {
               </p>
               <Button
                 variant="outline"
-                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                className="w-full group-hover:bg-primary  transition-colors"
+                onClick={() =>
+                  router.push(
+                    `/research/stock-screener/${symbol}?tab=valuation`,
+                  )
+                }
               >
                 Go to Valuation Tab
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -1141,7 +1213,7 @@ const Overview = ({ stock }: OverviewProps) => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+          <Card className="hover:shadow-lg transition-shadow group">
             <CardContent className="pt-6">
               <Eye className="w-12 h-12 text-primary mb-4" />
               <h3 className="font-semibold text-lg mb-2">See Who's Buying</h3>
@@ -1151,7 +1223,10 @@ const Overview = ({ stock }: OverviewProps) => {
               </p>
               <Button
                 variant="outline"
-                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                className="w-full group-hover:bg-primary  transition-colors"
+                onClick={() =>
+                  router.push(`/research/stock-screener/${symbol}?tab=activity`)
+                }
               >
                 Go to Activity Tab
                 <ArrowRight className="w-4 h-4 ml-2" />

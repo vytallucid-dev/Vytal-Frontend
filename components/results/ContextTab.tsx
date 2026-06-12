@@ -1,0 +1,390 @@
+"use client";
+
+import {
+  ResultsPageData,
+  AiSummary,
+  StockNews,
+  CorporateEvent,
+} from "@/lib/results-data";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle,
+  ChevronDown,
+  ExternalLink,
+  Sparkles,
+  Target,
+  TrendingUp,
+  XCircle,
+} from "lucide-react";
+import { useState } from "react";
+
+interface ContextTabProps {
+  data: ResultsPageData;
+  onTabChange: (tab: string) => void;
+}
+
+// ─── Section 3.1: Full AI Earnings Analysis ───────────────────────────────────
+
+function FullAiAnalysis({ aiSummary }: { aiSummary: AiSummary | null }) {
+  if (!aiSummary) {
+    return (
+      <Card className="border-border/50">
+        <CardContent className="p-8 text-center">
+          <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-50" />
+          <p className="text-sm text-muted-foreground">
+            AI analysis is being generated — check back in a few minutes.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-border/50 bg-gradient-to-br from-background to-muted/10">
+      <CardContent className="p-6 lg:p-8 space-y-8">
+        {/* Performance Summary */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
+            <h3 className="text-lg font-bold">Performance Summary</h3>
+          </div>
+          <p className="text-sm leading-relaxed text-foreground/90">
+            {aiSummary.content}
+          </p>
+        </div>
+
+        {/* Key Positives */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 rounded-lg bg-emerald-500/10">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </div>
+            <h3 className="text-lg font-bold">Key Positives</h3>
+            <Badge
+              variant="outline"
+              className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs"
+            >
+              {aiSummary.keyPoints.positives.length} highlights
+            </Badge>
+          </div>
+          <ul className="space-y-2.5">
+            {aiSummary.keyPoints.positives.map((point, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <span className="text-sm leading-relaxed text-foreground/90">{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Areas of Concern */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </div>
+            <h3 className="text-lg font-bold">Areas of Concern</h3>
+            <Badge
+              variant="outline"
+              className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs"
+            >
+              {aiSummary.keyPoints.concerns.length} items
+            </Badge>
+          </div>
+          <ul className="space-y-2.5">
+            {aiSummary.keyPoints.concerns.map((point, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <XCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                <span className="text-sm leading-relaxed text-foreground/90">{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* QoQ Analysis */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <ArrowRight className="h-4 w-4 text-blue-500" />
+            </div>
+            <h3 className="text-lg font-bold">Quarter-on-Quarter</h3>
+          </div>
+          <p className="text-sm leading-relaxed text-foreground/90">
+            {aiSummary.qoqAnalysis}
+          </p>
+        </div>
+
+        {/* Bottom Line */}
+        <div className="border-t border-border/50 pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 rounded-lg bg-purple-500/10">
+              <Target className="h-4 w-4 text-purple-500" />
+            </div>
+            <h3 className="text-lg font-bold">Bottom Line</h3>
+          </div>
+          <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
+            <p className="text-sm leading-relaxed font-medium text-foreground">
+              {aiSummary.bottomLine}
+            </p>
+          </div>
+        </div>
+
+        {/* Attribution + disclaimer */}
+        <div className="border-t border-border/40 pt-4 space-y-2">
+          <p className="text-[10px] text-muted-foreground">
+            Generated by Gemini · Model:{" "}
+            <span className="font-medium">{aiSummary.modelVersion}</span> ·
+            Last updated:{" "}
+            {new Date(aiSummary.generatedAt).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            <strong>Disclaimer:</strong> AI summaries are generated from reported
+            financial data and may contain errors. They are not investment advice.
+            Always verify against the original filing.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Section 3.2: Result-Adjacent News ───────────────────────────────────────
+
+const SENTIMENT_STYLES: Record<string, string> = {
+  positive: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+  negative: "text-red-500 bg-red-500/10 border-red-500/20",
+  neutral: "text-muted-foreground bg-muted/30 border-border/50",
+};
+
+function NewsSection({
+  news,
+  filingDate,
+}: {
+  news: StockNews[];
+  filingDate: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const SHOW = 3;
+  const visible = expanded ? news : news.slice(0, SHOW);
+
+  const windowStart = new Date(filingDate);
+  windowStart.setDate(windowStart.getDate() - 3);
+  const windowEnd = new Date(filingDate);
+  windowEnd.setDate(windowEnd.getDate() + 3);
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+  if (news.length === 0) {
+    return (
+      <Card className="border-border/50">
+        <CardContent className="p-6 text-center text-sm text-muted-foreground">
+          No news items found around this filing date.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-border/50">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">News Around the Result</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Filtered: published {fmtDate(windowStart.toISOString())} –{" "}
+          {fmtDate(windowEnd.toISOString())}
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y divide-border/40">
+          {visible.map((item) => (
+            <div key={item.id} className="px-6 py-4 hover:bg-muted/20 transition-colors">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-2 py-0"
+                >
+                  {item.category}
+                </Badge>
+                {item.sentiment && (
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] px-2 py-0 capitalize ${SENTIMENT_STYLES[item.sentiment] ?? ""}`}
+                  >
+                    {item.sentiment}
+                  </Badge>
+                )}
+                <span className="text-[10px] text-muted-foreground">
+                  {fmtDate(item.publishedAt)}
+                </span>
+              </div>
+              <a
+                href={item.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium hover:text-primary hover:underline transition-colors flex items-start gap-1.5"
+              >
+                <span className="flex-1">{item.headline}</span>
+                <ExternalLink className="w-3 h-3 mt-0.5 flex-shrink-0 text-muted-foreground" />
+              </a>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                {item.summary}
+              </p>
+              {item.pdfUrl && (
+                <a
+                  href={item.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1"
+                >
+                  View PDF <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {news.length > SHOW && (
+          <div className="px-6 py-3 border-t border-border/40">
+            <button
+              onClick={() => setExpanded((p) => !p)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
+              {expanded
+                ? "Show fewer"
+                : `Show ${news.length - SHOW} more items`}
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Section 3.3: Corporate Actions ──────────────────────────────────────────
+
+const EVENT_ICONS: Record<string, string> = {
+  dividend: "💰",
+  bonus: "🎁",
+  split: "✂️",
+  agm: "📅",
+  egm: "📅",
+  rights: "📋",
+  buyback: "🔄",
+};
+
+function CorporateActions({ events }: { events: CorporateEvent[] }) {
+  if (events.length === 0) return null;
+
+  const fmtDate = (iso: string | undefined) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  return (
+    <Card className="border-border/50">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Corporate Actions</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y divide-border/40">
+          {events.map((event) => (
+            <div key={event.id} className="px-6 py-4">
+              <div className="flex items-start gap-3">
+                <span className="text-xl flex-shrink-0">
+                  {EVENT_ICONS[event.eventType] ?? "📌"}
+                </span>
+                <div>
+                  <p className="text-sm font-medium capitalize">
+                    {event.eventType.replace("agm", "Annual General Meeting")
+                      .replace("egm", "Extraordinary General Meeting")}
+                    {event.value != null && (
+                      <span className="ml-2 text-emerald-500 font-bold">
+                        ₹{event.value.toFixed(2)} per share
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {event.description}
+                  </p>
+                  {(event.exDate || event.recordDate) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {event.exDate && `Ex-date: ${fmtDate(event.exDate)}`}
+                      {event.exDate && event.recordDate && " · "}
+                      {event.recordDate && `Record date: ${fmtDate(event.recordDate)}`}
+                    </p>
+                  )}
+                  {!event.exDate && !event.recordDate && event.eventDate && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {fmtDate(event.eventDate)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function ContextTab({ data, onTabChange }: ContextTabProps) {
+  const {
+    current,
+    aiSummary,
+    news,
+    corporateEvents,
+  } = data;
+
+  return (
+    <div className="space-y-8">
+      {/* 3.1 — Full AI Earnings Analysis */}
+      <section>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
+          AI Earnings Analysis
+        </h2>
+        <FullAiAnalysis aiSummary={aiSummary} />
+      </section>
+
+      {/* 3.2 — News Around the Result */}
+      <section>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
+          News Around the Result
+        </h2>
+        <NewsSection news={news} filingDate={current.filingDate} />
+      </section>
+
+      {/* 3.3 — Corporate Actions */}
+      {corporateEvents.length > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
+            Corporate Actions
+          </h2>
+          <CorporateActions events={corporateEvents} />
+        </section>
+      )}
+    </div>
+  );
+}

@@ -228,7 +228,10 @@ const StockDetailPage = () => {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  router.push(`/research/stock-screener/${symbol}?tab=${tab.id}`);
+                }}
                 className={`px-6 py-3 text-sm font-medium transition-colors relative whitespace-nowrap ${
                   activeTab === tab.id
                     ? "text-primary border-b-2 border-primary"
