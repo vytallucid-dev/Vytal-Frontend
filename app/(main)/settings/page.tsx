@@ -31,23 +31,13 @@ import {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const API_BASE = "http://localhost:4000/api/v1";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 const POLL_INTERVAL_MS = 3000;
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 
 const uploadFlows = [
-  {
-    id: "screener",
-    title: "Screener Upload",
-    description:
-      "Upload Screener.in CSV exports to sync stock fundamentals, filters, and screening data into the platform.",
-    icon: FileSpreadsheet,
-    href: "/settings/screener-upload",
-    accent: "from-emerald-500/20 to-teal-500/10",
-    iconColor: "text-emerald-400",
-    borderHover: "hover:border-emerald-500/40",
-  },
   {
     id: "block-deals",
     title: "Block Deals",
