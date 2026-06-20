@@ -1,0 +1,147 @@
+"use client";
+
+/**
+ * Ownership tool — the orchestrator. Fills the SAME five <ToolFrame> slots
+ * (zero frame edits). Reads the ownership SERIES (the new differentiating endpoint)
+ * for the holding split / pledging / flows, and the HEALTH snapshot for the
+ * Foundation floor (the floor-check input) + sector. The flow signal is derived from
+ * holding-split deltas; pledge from share counts.
+ */
+
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Icons } from "@/lib/icons";
+import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
+import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
+import { useStockOwnership } from "@/lib/api/hooks/use-stock-ownership";
+import type { OwnershipScanItem } from "@/types/research-tools";
+import { ToolFrame } from "../tool-frame";
+import type { SingleViewSlots, ToolMeta, ToolWindow } from "../tool-frame.types";
+import { OwnershipChart } from "./ownership-chart";
+import { OwnershipReadout } from "./ownership-readout";
+import { OwnershipSummary } from "./ownership-summary";
+import { OwnershipScanCard } from "./ownership-card";
+import {
+  buildHoldingPoints,
+  windowDeltas,
+  pledgeStateOf,
+  floorCheck,
+  buildOwnershipRead,
+  buildOwnershipChips,
+} from "./ownership-data";
+
+const OWNERSHIP_META: ToolMeta = {
+  id: "ownership",
+  name: "Ownership",
+  Icon: Icons.building,
+  accentVar: "var(--p-own)",
+  landingTitle: "Who's buying, who's selling",
+  landingSubtitle:
+    "Promoter, FII, DII and retail flows read against the soundness of the business. Pick a flow tell to study, or search any name.",
+  landingEyebrow: "Ownership tells in your scope",
+  scopeTag: "ranked by tell",
+  searchPlaceholder: "Search a stock — e.g. ASHOKLEY, Cummins India…",
+};
+
+export function OwnershipTool() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const symbol = params.get("symbol")?.toUpperCase() || null;
+
+  const [window, setWindow] = useState<ToolWindow>(12);
+  const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
+  if (lastSymbol !== symbol) {
+    setLastSymbol(symbol);
+    setWindow(12);
+  }
+
+  const stocksQ = useScoredStocks();
+  const scanQ = useStockScan<OwnershipScanItem>("ownership", !symbol);
+  const healthQ = useStockHealth(symbol ?? "", window);
+  const ownQ = useStockOwnership(symbol ?? "", window);
+
+  const health = healthQ.data;
+  const ownView = ownQ.data ?? null;
+
+  // the Foundation floor (current period) — the only thing the floor-check needs.
+  const foundation = useMemo(() => {
+    const f = health?.pillars?.find((p) => p.pillar === "foundation");
+    return f && f.state === "scored" ? f.subtotal : null;
+  }, [health]);
+
+  const holdingPoints = useMemo(
+    () => (ownView ? buildHoldingPoints(ownView.series) : []),
+    [ownView],
+  );
+  const deltas = useMemo(() => windowDeltas(holdingPoints), [holdingPoints]);
+  const pledge = useMemo(() => pledgeStateOf(ownView?.current ?? null), [ownView]);
+  const fc = useMemo(() => floorCheck(foundation, deltas.inst), [foundation, deltas.inst]);
+
+  const isLoading = healthQ.isLoading || ownQ.isLoading;
+  const isError = healthQ.isError || ownQ.isError;
+  const loaded = !isLoading && !isError;
+  // not scored when neither source has a usable ownership read
+  const notScored =
+    loaded && symbol && (!ownView?.scored || (health && !health.scored))
+      ? {
+          reason:
+            health?.identity?.coverageReason ??
+            `Coverage state: ${health?.identity?.coverageState ?? "not yet scored"}`,
+        }
+      : null;
+
+  const single: SingleViewSlots | null = symbol
+    ? {
+        isLoading,
+        isError,
+        onRetry: () => {
+          void healthQ.refetch();
+          void ownQ.refetch();
+        },
+        notScored,
+        buildingHistory: loaded && !notScored && holdingPoints.length <= 1,
+        identity: {
+          name: ownView?.name ?? health?.identity?.name ?? symbol,
+          ticker: symbol,
+          sub: health?.identity
+            ? `${symbol} · ${health.identity.sector?.displayName ?? health.identity.industryPath}`
+            : symbol,
+        },
+        chips: ownView ? buildOwnershipChips(ownView.current, deltas, pledge) : [],
+        promotedRead: ownView ? buildOwnershipRead(ownView.current, deltas, pledge, fc) : null,
+        funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
+        renderChart: (active, setActive) =>
+          holdingPoints.length >= 2 ? (
+            <OwnershipChart points={holdingPoints} active={active} onActiveChange={setActive} />
+          ) : null,
+        renderReadout: (active) =>
+          holdingPoints.length ? <OwnershipReadout points={holdingPoints} active={active} /> : null,
+        renderSummary: () =>
+          ownView ? <OwnershipSummary view={ownView} floor={fc} symbol={symbol} /> : null,
+      }
+    : null;
+
+  return (
+    <ToolFrame
+      meta={OWNERSHIP_META}
+      symbol={symbol}
+      window={window}
+      onWindowChange={setWindow}
+      onSelectSymbol={(s) => router.push(`/research/ownership?symbol=${s}`)}
+      onHome={() => router.push("/research/ownership")}
+      stocks={stocksQ.data}
+      stocksLoading={stocksQ.isLoading}
+      landing={{
+        items: scanQ.data,
+        isLoading: scanQ.isLoading,
+        isError: scanQ.isError,
+        onRetry: () => void scanQ.refetch(),
+        renderCard: (it, onSelect) => (
+          <OwnershipScanCard item={it as OwnershipScanItem} onSelect={onSelect} />
+        ),
+        keyOf: (it) => (it as OwnershipScanItem).symbol,
+      }}
+      single={single}
+    />
+  );
+}

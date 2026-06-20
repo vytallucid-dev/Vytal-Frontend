@@ -365,7 +365,7 @@ const Overview = ({ stock }: OverviewProps) => {
   const chartConfig = {
     price: {
       label: "Price",
-      color: "#c8a224",
+      color: "var(--p-mkt)",
     },
   } satisfies ChartConfig;
 

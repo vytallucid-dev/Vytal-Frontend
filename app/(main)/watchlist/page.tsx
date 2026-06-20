@@ -1,515 +1,278 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import { HealthRing } from "@/components/ui/health-ring";
+import { Sparkline } from "@/components/ui/sparkline";
+import { Reveal } from "@/components/ui/reveal";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import AddStockModal, {
-  AddStockData,
-} from "@/components/watchlist/AddStockModal";
-import StockDetailPanel from "@/components/watchlist/StockDetailPanel";
-import { WatchlistStock, watchlistStocks } from "@/lib/mock-data";
+import { Icons } from "@/lib/icons";
+import { watchlist, type WatchItem } from "@/lib/demo-data";
+import { changeColor, healthColorVar } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import {
-  Heart,
-  Plus,
-  Search,
-  Star,
-  StarIcon
-} from "lucide-react";
-import { useState } from "react";
-
-type SortBy =
-  | "rank"
-  | "name"
-  | "price"
-  | "1h"
-  | "24h"
-  | "7d"
-  | "marketcap"
-  | "volume";
-
-// Helper function to generate sparkline path
-function generateSparklinePath(
-  isPositive: boolean,
-  withArea: boolean = false,
-): string {
-  const width = 120;
-  const height = 32;
-  const points = 24; // 24 data points for 24 hours
-
-  // Generate random but smooth data points
-  const data: number[] = [];
-  let value = height / 2;
-
-  for (let i = 0; i < points; i++) {
-    // Add some randomness but keep it smooth
-    const change = (Math.random() - 0.5) * 6;
-    value = Math.max(2, Math.min(height - 2, value + change));
-
-    // Trend towards end based on whether positive or negative
-    if (i > points * 0.7) {
-      value += isPositive ? -0.5 : 0.5;
-    }
-
-    data.push(value);
-  }
-
-  // Create SVG path
-  const stepX = width / (points - 1);
-  let path = `M 0 ${data[0]}`;
-
-  for (let i = 1; i < points; i++) {
-    const x = i * stepX;
-    const y = data[i];
-
-    // Use quadratic curves for smoothness
-    const prevX = (i - 1) * stepX;
-    const prevY = data[i - 1];
-    const cpX = prevX + stepX / 2;
-    const cpY = (prevY + y) / 2;
-
-    path += ` Q ${cpX} ${cpY}, ${x} ${y}`;
-  }
-
-  // If area fill, close the path at the bottom
-  if (withArea) {
-    path += ` L ${width} ${height} L 0 ${height} Z`;
-  }
-
-  return path;
-}
 
 export default function WatchlistPage() {
-  const [selectedStock, setSelectedStock] = useState<WatchlistStock | null>(
-    null,
+  const [items, setItems] = useState<WatchItem[]>(watchlist);
+  const [query, setQuery] = useState("");
+  const [favOnly, setFavOnly] = useState(false);
+  const [selected, setSelected] = useState<WatchItem | null>(null);
+
+  const toggleFav = (symbol: string) =>
+    setItems((prev) => prev.map((w) => (w.symbol === symbol ? { ...w, favorite: !w.favorite } : w)));
+
+  const filtered = useMemo(
+    () =>
+      items
+        .filter((w) => (favOnly ? w.favorite : true))
+        .filter(
+          (w) =>
+            w.symbol.toLowerCase().includes(query.toLowerCase()) ||
+            w.name.toLowerCase().includes(query.toLowerCase())
+        ),
+    [items, query, favOnly]
   );
-  const [sortBy, setSortBy] = useState<SortBy>("rank");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [watchedStocks, setWatchedStocks] = useState<Set<string>>(
-    new Set(watchlistStocks.map((s) => s.ticker)),
-  );
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [watchlists, setWatchlists] = useState<string[]>([
-    "Main Watchlist",
-    "Banking Stocks",
-    "IT Sector",
-    "High Growth",
-  ]);
-  const [currentWatchlist, setCurrentWatchlist] = useState("Main Watchlist");
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  // Filter stocks by search query and favorites
-  const filteredStocks = watchlistStocks.filter((stock) => {
-    const searchMatch =
-      searchQuery === "" ||
-      stock.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      stock.ticker.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const favoriteMatch = !showFavoritesOnly || watchedStocks.has(stock.ticker);
-
-    return searchMatch && favoriteMatch;
-  });
-
-  // Sort stocks
-  const sortedStocks = [...filteredStocks].sort((a, b) => {
-    switch (sortBy) {
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "price":
-        return b.currentPrice - a.currentPrice;
-      case "24h":
-        return b.dayChange - a.dayChange;
-      case "7d":
-        return b.weekChange - a.weekChange;
-      default:
-        return 0;
-    }
-  });
-
-  const handleStockClick = (stock: WatchlistStock) => {
-    setSelectedStock(stock);
-  };
-
-  const handleCloseDetail = () => {
-    setSelectedStock(null);
-  };
-
-  const toggleWatchlist = (ticker: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setWatchedStocks((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(ticker)) {
-        newSet.delete(ticker);
-      } else {
-        newSet.add(ticker);
-      }
-      return newSet;
-    });
-  };
-
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000000) {
-      return `₹${(num / 1000000000).toFixed(2)}B`;
-    } else if (num >= 1000000) {
-      return `₹${(num / 1000000).toFixed(2)}M`;
-    } else if (num >= 1000) {
-      return `₹${(num / 1000).toFixed(2)}K`;
-    }
-    return `₹${num.toFixed(2)}`;
-  };
-
-  const handleAddStock = (data: AddStockData) => {
-    // Handle adding stock to watchlist
-    console.log("Adding stock:", data);
-    // TODO: Implement actual add stock logic
-  };
-
-  const handleCreateWatchlist = (name: string) => {
-    if (!watchlists.includes(name)) {
-      setWatchlists([...watchlists, name]);
-    }
-  };
-
-  const isDetailOpen = selectedStock !== null;
+  const topMover = [...items].sort((a, b) => b.d1 - a.d1)[0];
+  const avgHealth = Math.round(items.reduce((a, w) => a + w.health, 0) / items.length);
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-background">
-      {/* Add Stock Modal */}
-      <AddStockModal
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        watchlists={watchlists}
-        onAddStock={handleAddStock}
-        onCreateWatchlist={handleCreateWatchlist}
-      />
+    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6">
+      {/* Hero */}
+      <motion.section
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="glass-strong relative overflow-hidden rounded-3xl border border-border/70 p-5 sm:p-6"
+      >
+        <div className="bg-aurora pointer-events-none absolute inset-0 -z-10 opacity-20" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-bold sm:text-3xl">Watchlist</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {items.length} stocks on your radar · avg health{" "}
+              <span className="font-semibold" style={{ color: healthColorVar(avgHealth) }}>{avgHealth}</span>
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-border/70 bg-surface-1/40 p-3 text-center">
+              <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Tracking</p>
+              <p className="font-display text-xl font-extrabold">{items.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-surface-1/40 p-3 text-center">
+              <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Top mover</p>
+              <p className="font-display text-sm font-bold">{topMover.symbol}</p>
+              <p className="font-mono text-xs text-success">+{topMover.d1}%</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-surface-1/40 p-3 text-center">
+              <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Favorites</p>
+              <p className="font-display text-xl font-extrabold">{items.filter((w) => w.favorite).length}</p>
+            </div>
+          </div>
+        </div>
+      </motion.section>
 
-      {/* Stock Detail Sheet */}
-      <Sheet open={isDetailOpen} onOpenChange={(open) => !open && handleCloseDetail()}>
-        <SheetContent side="right" className="w-[70%] max-w-[70%]! overflow-hidden flex flex-col p-0">
-          {selectedStock && (
-            <StockDetailPanel stock={selectedStock} onClose={handleCloseDetail} />
-          )}
-        </SheetContent>
-      </Sheet>
+      {/* Controls */}
+      <Reveal className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 sm:max-w-xs">
+          <Icons.search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search watchlist…"
+            className="h-10 w-full rounded-xl border border-border/70 bg-surface-1/40 pl-9 pr-3 text-sm outline-none focus:border-primary/40"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFavOnly((v) => !v)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+              favOnly ? "border-warning/40 bg-warning/10 text-warning" : "border-border/70 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icons.star weight={favOnly ? "fill" : "regular"} className="size-4" />
+            Favorites
+          </button>
+          <Button className="h-10">
+            <Icons.plus weight="bold" className="size-4" /> Add stock
+          </Button>
+        </div>
+      </Reveal>
 
-      {/* Table Section */}
-      <div className="transition-all duration-300 ease-out flex flex-col w-full">
-        {/* Minimalistic Header */}
-        <div className="border-b sticky top-0 z-10 px-6 py-3 shrink-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="w-max flex items-center gap-4">
-              {/* Search Bar */}
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search stocks..."
-                  className="pl-9 h-9"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+      {/* Table (desktop) */}
+      <Reveal className="glass hidden rounded-3xl border border-border/70 p-2 md:block">
+        <div className="custom-scrollbar overflow-x-auto">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border/70 text-xs text-muted-foreground">
+                <th className="px-3 py-2.5 text-left font-medium"></th>
+                <th className="px-3 py-2.5 text-left font-medium">Stock</th>
+                <th className="px-3 py-2.5 text-center font-medium">Health</th>
+                <th className="px-3 py-2.5 text-right font-medium">Price</th>
+                <th className="px-3 py-2.5 text-right font-medium">1D</th>
+                <th className="px-3 py-2.5 text-right font-medium">7D</th>
+                <th className="px-3 py-2.5 text-right font-medium">Target</th>
+                <th className="px-3 py-2.5 text-center font-medium">7d trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((w) => (
+                <tr
+                  key={w.symbol}
+                  onClick={() => setSelected(w)}
+                  className="cursor-pointer border-b border-border/40 transition-colors hover:bg-surface-2/40"
+                >
+                  <td className="px-3 py-2.5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFav(w.symbol);
+                      }}
+                      aria-label="Toggle favorite"
+                    >
+                      <Icons.star
+                        weight={w.favorite ? "fill" : "regular"}
+                        className={cn("size-4", w.favorite ? "text-warning" : "text-muted-foreground/50 hover:text-muted-foreground")}
+                      />
+                    </button>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <p className="font-semibold">{w.symbol}</p>
+                    <p className="text-xs text-muted-foreground">{w.name}</p>
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span
+                      className="inline-grid size-7 place-items-center rounded-lg text-xs font-bold"
+                      style={{ color: healthColorVar(w.health), background: `color-mix(in oklch, ${healthColorVar(w.health)} 14%, transparent)` }}
+                    >
+                      {w.health}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono">₹{w.price.toLocaleString("en-IN")}</td>
+                  <td className={cn("px-3 py-2.5 text-right font-mono", changeColor(w.d1))}>{w.d1 >= 0 ? "+" : ""}{w.d1}%</td>
+                  <td className={cn("px-3 py-2.5 text-right font-mono", changeColor(w.d7))}>{w.d7 >= 0 ? "+" : ""}{w.d7}%</td>
+                  <td className="px-3 py-2.5 text-right font-mono text-muted-foreground">₹{w.target.toLocaleString("en-IN")}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex justify-center">
+                      <Sparkline data={w.spark} width={72} height={26} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Reveal>
+
+      {/* Cards (mobile) */}
+      <div className="space-y-2.5 md:hidden">
+        {filtered.map((w) => (
+          <Reveal key={w.symbol}>
+            <button
+              onClick={() => setSelected(w)}
+              className="glass flex w-full items-center gap-3 rounded-2xl border border-border/70 p-3 text-left"
+            >
+              <span
+                className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-bold"
+                style={{ color: healthColorVar(w.health), background: `color-mix(in oklch, ${healthColorVar(w.health)} 14%, transparent)` }}
+              >
+                {w.health}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{w.symbol}</p>
+                <p className="truncate text-xs text-muted-foreground">{w.name}</p>
+              </div>
+              <Sparkline data={w.spark} width={50} height={22} />
+              <div className="text-right">
+                <p className="font-mono text-sm">₹{w.price.toLocaleString("en-IN")}</p>
+                <p className={cn("font-mono text-xs", changeColor(w.d1))}>{w.d1 >= 0 ? "+" : ""}{w.d1}%</p>
+              </div>
+            </button>
+          </Reveal>
+        ))}
+      </div>
+
+      {/* Detail drawer */}
+      <AnimatePresence>
+        {selected && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelected(null)}
+              className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
+            />
+            <motion.aside
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 320, damping: 36 }}
+              className="glass-strong fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/70 p-6"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-display text-2xl font-bold">{selected.symbol}</h2>
+                  <p className="text-sm text-muted-foreground">{selected.name} · {selected.sector}</p>
+                </div>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="grid size-9 place-items-center rounded-lg border border-border/70 text-muted-foreground hover:text-foreground"
+                >
+                  <Icons.close className="size-4" />
+                </button>
               </div>
 
-              {/* Watchlist Dropdown */}
-              <Select
-                value={currentWatchlist}
-                onValueChange={setCurrentWatchlist}
-              >
-                <SelectTrigger className="w-[180px] h-9">
-                  <SelectValue placeholder="Select watchlist" />
-                </SelectTrigger>
-                <SelectContent>
-                  {watchlists.map((list) => (
-                    <SelectItem key={list} value={list}>
-                      {list}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Favorites Button */}
-              <Button
-                variant={showFavoritesOnly ? "default" : "outline"}
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                title={
-                  showFavoritesOnly ? "Show all stocks" : "Show favorites only"
-                }
-              >
-                <StarIcon
-                  className={cn("h-4 w-4", showFavoritesOnly && "fill-current")}
-                />
-              </Button>
-            </div>
-
-            {/* Add Stock Button */}
-            <Button
-              size="sm"
-              className="h-9"
-              onClick={() => setShowAddModal(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Stock
-            </Button>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="flex-1 overflow-auto px-2 mt-2 custom-scrollbar">
-          <div className="watchlist-table-container bg-card">
-            <table className="w-full watchlist-table">
-              {/* Sticky Header */}
-              <thead className=" bg-card border-b">
-                <tr className="text-[11px] font-medium text-muted-foreground/70 tracking-wide">
-                  <th className="text-left pl-4 pr-2 py-3 w-10"></th>
-                  <th className="text-left px-3 py-3 w-10">#</th>
-                  <th className="text-left px-3 py-3 min-w-[200px]">Name</th>
-                  <th className="text-right px-3 py-3 w-[120px]">Price</th>
-                  <th className="text-right px-3 py-3 w-[90px]">1h %</th>
-                  <th className="text-right px-3 py-3 w-[90px]">24h %</th>
-                  <th className="text-right px-3 py-3 w-[90px]">7d %</th>
-                  <th className="text-right px-3 py-3 w-[120px]">Market Cap</th>
-                  <th className="text-right px-3 py-3 w-[120px]">
-                    Volume (24h)
-                  </th>
-                  <th className="text-right px-3 py-3 w-[100px]">ATH</th>
-                  <th className="text-right px-3 py-3 w-[100px]">ATL</th>
-                  <th className="text-center px-3 py-3 w-[140px]">Last 24h</th>
-                </tr>
-              </thead>
-
-              {/* Table Body */}
-              <tbody>
-                {sortedStocks.map((stock, index) => {
-                  const isWatched = watchedStocks.has(stock.ticker);
-                  const priceChange =
-                    stock.currentPrice * (stock.dayChange / 100);
-
-                  // Mock data for missing fields
-                  const hourChange = (Math.random() * 4 - 2).toFixed(2);
-                  const volume =
-                    stock.currentPrice * 1000000 * (50 + Math.random() * 100);
-                  const ath = stock.week52High * 1.1;
-                  const atl = stock.week52Low * 0.9;
-
-                  return (
-                    <tr
-                      key={stock.ticker}
-                      onClick={() => handleStockClick(stock)}
-                      className={cn(
-                        "border-b border-border/50 cursor-pointer transition-colors",
-                        "hover:bg-muted/50",
-                        selectedStock?.ticker === stock.ticker &&
-                          "bg-primary/5",
-                      )}
-                      style={{ height: "54px" }}
-                    >
-                      {/* Star Icon */}
-                      <td className="pl-4 pr-2">
-                        <button
-                          onClick={(e) => toggleWatchlist(stock.ticker, e)}
-                          className="hover:scale-110 transition-transform"
-                        >
-                          <Star
-                            className={cn(
-                              "h-3 w-3",
-                              isWatched
-                                ? "fill-yellow-500 text-yellow-500"
-                                : "text-muted-foreground/50",
-                            )}
-                          />
-                        </button>
-                      </td>
-
-                      {/* Rank */}
-                      <td className="px-3 text-[13px] font-normal text-muted-foreground/50">
-                        {index + 1}
-                      </td>
-
-                      {/* Name with Icon */}
-                      <td className="px-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-semibold text-primary">
-                              {stock.ticker.substring(0, 2)}
-                            </span>
-                          </div>
-                          <div className="min-w-0">
-                            <span className="text-[14px] font-medium">
-                              {stock.name}
-                            </span>
-                            <span className="text-[13px] font-normal text-muted-foreground/60 ml-2">
-                              ({stock.ticker})
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Price */}
-                      <td className="px-3 text-right text-[14px] font-medium tabular-nums">
-                        ₹
-                        {stock.currentPrice.toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </td>
-
-                      {/* 1h % */}
-                      <td
-                        className={cn(
-                          "px-3 text-right text-[13px] font-medium tabular-nums",
-                          parseFloat(hourChange) >= 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400",
-                        )}
-                      >
-                        {parseFloat(hourChange) >= 0 ? "+" : ""}
-                        {hourChange}%
-                      </td>
-
-                      {/* 24h % */}
-                      <td
-                        className={cn(
-                          "px-3 text-right text-[13px] font-medium tabular-nums",
-                          stock.dayChange >= 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400",
-                        )}
-                      >
-                        {stock.dayChange >= 0 ? "+" : ""}
-                        {stock.dayChange.toFixed(2)}%
-                      </td>
-
-                      {/* 7d % */}
-                      <td
-                        className={cn(
-                          "px-3 text-right text-[13px] font-medium tabular-nums",
-                          stock.weekChange >= 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400",
-                        )}
-                      >
-                        {stock.weekChange >= 0 ? "+" : ""}
-                        {stock.weekChange.toFixed(2)}%
-                      </td>
-
-                      {/* Market Cap */}
-                      <td className="px-3 text-right text-[13px] font-normal text-muted-foreground/80 tabular-nums">
-                        {stock.marketCap}
-                      </td>
-
-                      {/* Volume */}
-                      <td className="px-3 text-right text-[13px] font-normal text-muted-foreground/80 tabular-nums">
-                        {formatNumber(volume)}
-                      </td>
-
-                      {/* ATH */}
-                      <td className="px-3 text-right text-[13px] font-normal text-muted-foreground/80 tabular-nums">
-                        ₹
-                        {ath.toLocaleString("en-IN", {
-                          maximumFractionDigits: 0,
-                        })}
-                      </td>
-
-                      {/* ATL */}
-                      <td className="px-3 text-right text-[13px] font-normal text-muted-foreground/80 tabular-nums">
-                        ₹
-                        {atl.toLocaleString("en-IN", {
-                          maximumFractionDigits: 0,
-                        })}
-                      </td>
-
-                      {/* Sparkline */}
-                      <td className="px-3">
-                        <div className="flex items-center justify-center">
-                          <svg
-                            width="120"
-                            height="32"
-                            className="overflow-visible"
-                          >
-                            {/* Generate simple sparkline path */}
-                            <path
-                              d={generateSparklinePath(stock.dayChange >= 0)}
-                              fill="none"
-                              stroke={
-                                stock.dayChange >= 0
-                                  ? "rgb(34, 197, 94)"
-                                  : "rgb(239, 68, 68)"
-                              }
-                              strokeWidth="1.5"
-                              vectorEffect="non-scaling-stroke"
-                            />
-                            {/* Area fill */}
-                            <path
-                              d={generateSparklinePath(
-                                stock.dayChange >= 0,
-                                true,
-                              )}
-                              fill={
-                                stock.dayChange >= 0
-                                  ? "rgba(34, 197, 94, 0.1)"
-                                  : "rgba(239, 68, 68, 0.1)"
-                              }
-                            />
-                          </svg>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {sortedStocks.length === 0 && (
-            <div className="text-center py-12">
-              {showFavoritesOnly ? (
-                <>
-                  <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p className="text-muted-foreground mb-2">
-                    No favorite stocks yet
+              <div className="mt-6 flex items-center gap-5">
+                <HealthRing score={selected.health} size={104} strokeWidth={9} showLabel />
+                <div>
+                  <p className="font-mono text-3xl font-bold">₹{selected.price.toLocaleString("en-IN")}</p>
+                  <p className={cn("flex items-center gap-1 font-mono text-sm", changeColor(selected.d1))}>
+                    {selected.d1 >= 0 ? <Icons.arrowUpRight weight="bold" className="size-4" /> : <Icons.arrowDownRight weight="bold" className="size-4" />}
+                    {selected.d1}% today
                   </p>
-                  <p className="text-sm text-muted-foreground/70 mb-4">
-                    Click the star icon next to stocks to add them to favorites
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowFavoritesOnly(false)}
-                  >
-                    Show All Stocks
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <Sparkline data={selected.spark} width={400} height={70} className="w-full" />
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {[
+                  { l: "Market cap", v: selected.mcap },
+                  { l: "7D change", v: `${selected.d7 >= 0 ? "+" : ""}${selected.d7}%` },
+                  { l: "Target", v: `₹${selected.target.toLocaleString("en-IN")}` },
+                  { l: "Upside", v: `${(((selected.target - selected.price) / selected.price) * 100).toFixed(1)}%` },
+                ].map((s) => (
+                  <div key={s.l} className="rounded-xl border border-border/60 bg-surface-1/40 p-3">
+                    <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">{s.l}</p>
+                    <p className="font-mono text-sm font-semibold">{s.v}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-auto flex flex-col gap-2 pt-6">
+                <Button asChild>
+                  <Link href={`/research/stock-screener/${selected.symbol}`}>
+                    Full analysis <Icons.arrowRight weight="bold" className="size-4" />
+                  </Link>
+                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline">
+                    <Icons.plus weight="bold" className="size-4" /> Portfolio
                   </Button>
-                </>
-              ) : searchQuery ? (
-                <>
-                  <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p className="text-muted-foreground mb-2">No stocks found</p>
-                  <p className="text-sm text-muted-foreground/70">
-                    Try searching with a different term
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-muted-foreground mb-4">
-                    No stocks in this watchlist
-                  </p>
-                  <Button size="sm" onClick={() => setShowAddModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Stock
+                  <Button variant="outline">
+                    <Icons.bell weight="duotone" className="size-4" /> Alert
                   </Button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                </div>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

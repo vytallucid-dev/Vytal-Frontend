@@ -459,10 +459,10 @@ function PnlWaterfall({ current }: { current: QuarterlyResultRow }) {
   }));
 
   const BAR_COLORS: Record<string, string> = {
-    positive: "#22c55e",
-    negative: "#ef4444",
-    subtotal: "#3b82f6",
-    total: "#8b5cf6",
+    positive: "var(--success)",
+    negative: "var(--danger)",
+    subtotal: "var(--p-found)",
+    total: "var(--p-mom)",
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -523,7 +523,7 @@ function PnlWaterfall({ current }: { current: QuarterlyResultRow }) {
             {/* Colored value bar */}
             <Bar dataKey="value" stackId="wf" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, index) => (
-                <Cell key={index} fill={BAR_COLORS[entry.type] ?? "#6b7280"} />
+                <Cell key={index} fill={BAR_COLORS[entry.type] ?? "var(--ink3)"} />
               ))}
             </Bar>
           </BarChart>
@@ -539,10 +539,10 @@ function PnlWaterfall({ current }: { current: QuarterlyResultRow }) {
         {/* Legend */}
         <div className="flex flex-wrap gap-3 mt-3">
           {[
-            { label: "Positive / Addition", color: "#22c55e" },
-            { label: "Deduction", color: "#ef4444" },
-            { label: "Sub-total", color: "#3b82f6" },
-            { label: "Net Profit", color: "#8b5cf6" },
+            { label: "Positive / Addition", color: "var(--success)" },
+            { label: "Deduction", color: "var(--danger)" },
+            { label: "Sub-total", color: "var(--p-found)" },
+            { label: "Net Profit", color: "var(--p-mom)" },
           ].map((l) => (
             <div
               key={l.label}
@@ -603,7 +603,7 @@ function EightQuarterTrend({
         y={y}
         width={width}
         height={height}
-        fill={isCurrent ? "#3b82f6" : "#3b82f680"}
+        fill={isCurrent ? "var(--p-found)" : "color-mix(in oklab, var(--p-found) 50%, transparent)"}
         rx={4}
         ry={4}
       />
@@ -661,7 +661,7 @@ function EightQuarterTrend({
               {chartData.map((entry, index) => (
                 <Cell
                   key={index}
-                  fill={entry.isCurrent ? "#3b82f6" : "#3b82f650"}
+                  fill={entry.isCurrent ? "var(--p-found)" : "color-mix(in oklab, var(--p-found) 31%, transparent)"}
                 />
               ))}
             </Bar>
@@ -670,9 +670,9 @@ function EightQuarterTrend({
               type="monotone"
               dataKey="netProfit"
               name="Net Profit (₹ Cr)"
-              stroke="#22c55e"
+              stroke="var(--success)"
               strokeWidth={2}
-              dot={{ fill: "#22c55e", r: 4 }}
+              dot={{ fill: "var(--success)", r: 4 }}
               activeDot={{ r: 6 }}
             />
           </ComposedChart>
@@ -762,18 +762,18 @@ function MarginEvolution({ trend }: { trend: QuarterlyResultRow[] }) {
               type="monotone"
               dataKey="opMargin"
               name="Operating Margin"
-              stroke="#f97316"
+              stroke="var(--warning)"
               strokeWidth={2}
-              dot={{ fill: "#f97316", r: 4 }}
+              dot={{ fill: "var(--warning)", r: 4 }}
               activeDot={{ r: 6 }}
             />
             <Line
               type="monotone"
               dataKey="netMargin"
               name="Net Margin"
-              stroke="#8b5cf6"
+              stroke="var(--p-mom)"
               strokeWidth={2}
-              dot={{ fill: "#8b5cf6", r: 4 }}
+              dot={{ fill: "var(--p-mom)", r: 4 }}
               activeDot={{ r: 6 }}
             />
           </LineChart>

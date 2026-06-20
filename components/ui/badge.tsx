@@ -5,21 +5,28 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  "inline-flex items-center justify-center rounded-md border px-3 py-1 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1.5 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 aria-invalid:border-destructive transition-colors overflow-hidden",
   {
     variants: {
       variant: {
+        /* neutral chip — surface2 + line2 + ink2 (the default) */
         default:
-          "border-transparent bg-primary text-white [a&]:hover:bg-primary/90",
+          "border-line2 bg-surface-2 text-ink2 [a&]:hover:text-foreground [a&]:hover:border-line3",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "border-line2 bg-surface-2 text-foreground [a&]:hover:bg-surface-3",
         outline:
-          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          "border-line2 text-ink2 [a&]:hover:text-foreground [a&]:hover:border-line3",
+        /* semantic severity — soft -bg fill + -bd border + colored ink */
+        destructive:
+          "border-danger/40 bg-danger/12 font-medium text-danger [a&]:hover:bg-danger/20",
         success:
-          "border-transparent bg-green-300/20 font-medium text-green-400 [a&]:hover:bg-success/90",
-        
+          "border-success/40 bg-success/12 font-medium text-success [a&]:hover:bg-success/20",
+        warning:
+          "border-warning/38 bg-warning/12 font-medium text-warning [a&]:hover:bg-warning/20",
+        info:
+          "border-info/40 bg-info/12 font-medium text-info [a&]:hover:bg-info/20",
+        brand:
+          "border-primary/40 bg-primary/12 font-medium text-primary [a&]:hover:bg-primary/20",
       },
     },
     defaultVariants: {

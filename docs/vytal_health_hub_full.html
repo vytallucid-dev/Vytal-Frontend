@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vytal — Health · Briefing</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg:#090a0d; --surface:#111319; --surface2:#171a20; --surface3:#20242c;
+  --line:rgba(255,255,255,.06); --line2:rgba(255,255,255,.10); --line3:rgba(255,255,255,.17);
+  --ink:#f1efe9; --ink2:#9b9c9c; --ink3:#62646c;
+  --c-fragile:#e2584d; --c-below:#e0913f; --c-steady:#cda74f; --c-healthy:#48ba7c; --c-pristine:#4ea1e6;
+  --p-found:#5d92d8; --p-mom:#a085d8; --p-mkt:#d6a652; --p-own:#4fb6a4;
+  --crit:#e2584d; --crit-bg:rgba(226,88,77,.13); --crit-bd:rgba(226,88,77,.42);
+  --high:#e0a13e; --high-bg:rgba(224,161,62,.13); --high-bd:rgba(224,161,62,.40);
+  --rec:#48ba7c; --rec-bg:rgba(72,186,124,.13); --rec-bd:rgba(72,186,124,.42);
+  --ctx:#7f93b2; --ctx-bg:rgba(127,147,178,.12); --ctx-bd:rgba(127,147,178,.34);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 60px}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.shell{padding:0 26px}
+
+/* slim control strip (no masthead) */
+.strip{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 0 12px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.tabs{display:flex;gap:3px}
+.tab{appearance:none;background:none;border:none;color:var(--ink3);font:inherit;font-size:13px;font-weight:500;padding:8px 13px;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:7px;transition:.18s}
+.tab:hover{color:var(--ink2);background:var(--surface)}
+.tab.on{color:var(--ink);background:var(--surface3)}
+.tab svg{width:15px;height:15px}
+.tab .soon{font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line2);border-radius:4px;padding:1px 5px}
+.sep{width:1px;height:22px;background:var(--line2)}
+.scopes{display:flex;gap:6px;flex-wrap:wrap}
+.scope{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer;transition:.18s;display:inline-flex;align-items:center;gap:6px}
+.scope:hover{border-color:var(--line3);color:var(--ink)}
+.scope.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.scope .d{width:6px;height:6px;border-radius:50%;background:var(--p-own)}
+.aslook{margin-left:auto;font-size:11.5px;color:var(--ink3)}.aslook b{color:var(--ink2);font-weight:500}
+
+.panel{display:none}.panel.on{display:block;animation:fade .45s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.panel.on{animation:none}}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 17px;min-width:0}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.kick{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3)}
+.link{font-size:11.5px;color:var(--ink2);text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:.18s}
+.link:hover{color:var(--ink)}.link svg{width:11px;height:11px}
+
+/* glow variants */
+.glow-r{box-shadow:0 0 0 1px var(--crit-bd),0 10px 34px rgba(226,88,77,.09);border-color:var(--crit-bd)}
+.glow-g{box-shadow:0 0 0 1px var(--rec-bd),0 10px 34px rgba(72,186,124,.10);border-color:var(--rec-bd);background:linear-gradient(180deg,rgba(72,186,124,.05),transparent 60%),var(--surface)}
+
+/* ===== HERO ===== */
+.hero{background:linear-gradient(180deg,rgba(78,161,230,.045),transparent 60%),var(--surface)}
+.hero-row{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+.hero-l{flex:1;min-width:240px}
+.hero-l h2{font-family:'Fraunces',serif;font-weight:500;font-size:24px;line-height:1.15}
+.hero-l h2 .num{font-weight:500}
+.hero-l .charact{font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--ink2);margin-top:7px;line-height:1.45}
+.hero-l .drift{margin-top:14px;font-size:11.5px;color:var(--ink2);display:flex;gap:8px;align-items:flex-start;line-height:1.45}
+.hero-l .drift svg{width:13px;height:13px;color:var(--ink3);flex:none;margin-top:2px}
+.dist{flex:1.15;min-width:300px}
+.dist-cols{display:flex;gap:7px;align-items:flex-end;height:128px}
+.col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;height:100%}
+.cells{display:flex;flex-direction:column-reverse;gap:3px;align-items:center}
+.cell{width:17px;height:11px;border-radius:2.5px;opacity:.88}
+.col.b0 .cell{background:var(--c-fragile)}.col.b1 .cell{background:var(--c-below)}.col.b2 .cell{background:var(--c-steady)}.col.b3 .cell{background:var(--c-healthy)}.col.b4 .cell{background:var(--c-pristine)}
+.col .delta{font-family:'IBM Plex Mono',monospace;font-size:9.5px;height:12px}
+.delta.dn{color:var(--high)}.delta.up{color:var(--rec)}
+.scalebar{height:4px;border-radius:3px;margin:8px 0 5px;background:linear-gradient(90deg,var(--c-fragile),var(--c-below),var(--c-steady),var(--c-healthy),var(--c-pristine))}
+.dist-lbls{display:flex;gap:7px}
+.dlbl{flex:1;text-align:center;font-size:10px;color:var(--ink3)}
+.dlbl .c{display:block;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink);font-weight:500}
+
+/* ===== KPI tiles ===== */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:100%}
+.kpi{border:1px solid var(--line);border-radius:11px;padding:12px 13px;background:var(--surface2);display:flex;flex-direction:column;justify-content:center}
+.kpi.gr{border-color:var(--crit-bd);background:var(--crit-bg)}
+.kpi.gg{border-color:var(--rec-bd);background:var(--rec-bg)}
+.kpi.ga{border-color:var(--high-bd);background:var(--high-bg)}
+.kpi .v{font-family:'IBM Plex Mono',monospace;font-size:23px;font-weight:500;line-height:1}
+.kpi.gr .v{color:var(--crit)}.kpi.gg .v{color:var(--rec)}.kpi.ga .v{color:var(--high)}
+.kpi .v .sm{font-size:12px;color:var(--ink2);margin-left:5px}
+.kpi .l{font-size:10.5px;color:var(--ink3);margin-top:5px}
+.kpi .l .ar{font-family:'IBM Plex Mono',monospace}
+
+/* ===== pillar mix ===== */
+.pmix{display:flex;flex-direction:column;gap:11px}
+.pmr{}
+.pmr .t{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.pmr .t .nm{display:flex;align-items:center;gap:7px}.pmr .t .nm .d{width:7px;height:7px;border-radius:2px}
+.pmr .t .vv{font-family:'IBM Plex Mono',monospace;color:var(--ink2)}
+.pmr.found .d{background:var(--p-found)}.pmr.mom .d{background:var(--p-mom)}.pmr.mkt .d{background:var(--p-mkt)}.pmr.own .d{background:var(--p-own)}
+.bar{height:6px;border-radius:4px;background:var(--surface3);overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.pmr.found i{background:var(--p-found)}.pmr.mom i{background:var(--p-mom)}.pmr.mkt i{background:var(--p-mkt)}.pmr.own i{background:var(--p-own)}
+.pmr .wkmark{display:inline-block;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--high);background:var(--high-bg);border-radius:4px;padding:1px 6px;margin-left:7px}
+.pnote{font-size:11.5px;color:var(--ink2);margin-top:13px;padding-top:12px;border-top:1px solid var(--line);line-height:1.45}.pnote b{color:var(--ink);font-weight:500}
+
+/* ===== movers ===== */
+.mv{display:flex;flex-direction:column;gap:2px}
+.mvr{display:flex;align-items:center;gap:12px;padding:7px 4px;border-radius:8px;transition:.15s}
+.mvr:hover{background:var(--surface2)}
+.mvr .tk{font-family:'IBM Plex Mono',monospace;font-size:12.5px;width:96px;flex:none}
+.mvr .sp{flex:1;height:20px}
+.mvr .dl{font-family:'IBM Plex Mono',monospace;font-size:12.5px;width:54px;text-align:right;flex:none}
+.mvr .bd{font-size:10px;width:62px;text-align:right;flex:none;color:var(--ink3)}
+.up .dl{color:var(--rec)}.dn .dl{color:var(--high)}
+.mv-split{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:8px 0 2px;padding-left:4px}
+
+/* ===== exposure ===== */
+.exp{display:flex;flex-direction:column;gap:9px}
+.exr{display:flex;align-items:center;gap:9px;font-size:12px}
+.exr .nm{width:74px;flex:none;display:flex;align-items:center;gap:6px}
+.exr .nm .h{width:7px;height:7px;border-radius:50%}
+.h.hot{background:var(--c-fragile)}.h.warm{background:var(--c-below)}.h.calm{background:var(--p-own)}
+.exr .b{flex:1;height:6px;border-radius:4px;background:var(--surface3);overflow:hidden}
+.exr .b i{display:block;height:100%;background:var(--line3);border-radius:4px}
+.exr .pc{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink2);width:32px;text-align:right;flex:none}
+.enote{font-size:11.5px;color:var(--ink2);margin-top:12px;padding-top:11px;border-top:1px solid var(--line);line-height:1.45}.enote b{color:var(--ink);font-weight:500}
+
+/* ===== attention cards ===== */
+.acard{border:1px solid var(--line);border-radius:12px;background:var(--surface2);padding:13px 15px;position:relative;overflow:hidden;display:flex;gap:13px;align-items:flex-start;margin-bottom:10px;transition:.15s}
+.acard:last-child{margin-bottom:0}
+.acard:hover{border-color:var(--line2)}
+.acard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac)}
+.acard.crit{--ac:var(--crit);--acbg:var(--crit-bg)}.acard.high{--ac:var(--high);--acbg:var(--high-bg)}.acard.rec{--ac:var(--rec);--acbg:var(--rec-bg)}.acard.ctx{--ac:var(--ctx);--acbg:var(--ctx-bg)}
+.a-ic{width:32px;height:32px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--acbg);color:var(--ac)}.a-ic svg{width:17px;height:17px}
+.a-main{flex:1;min-width:0}
+.a-top{display:flex;align-items:baseline;gap:9px}
+.a-ttl{font-size:13.5px;font-weight:600}.a-ttl .n{font-family:'IBM Plex Mono',monospace;color:var(--ac)}
+.a-tag{margin-left:auto;font-size:9px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--acbg);color:var(--ac)}
+.a-names{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.tk2{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink);background:var(--surface3);border:1px solid var(--line2);border-radius:6px;padding:3px 8px;display:inline-flex;align-items:center;gap:6px}
+.tk2 .pace{font-size:9.5px;color:var(--ink3)}.tk2 .mini{width:30px;height:11px}
+
+/* ===== recovery spotlight ===== */
+.spot h4{font-family:'Fraunces',serif;font-weight:500;font-size:16px;color:var(--rec)}
+.spot .tkbig{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:500;margin-top:3px}
+.spot .sub{font-size:12px;color:var(--ink2);margin-top:6px;line-height:1.45}
+.spot .chart{margin:13px 0 10px;background:var(--surface2);border-radius:10px;padding:10px}
+.spot .chart svg{width:100%;height:auto;display:block}
+
+/* flags mini */
+.fmini .row{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:6px 0}
+.fmini .row+.row{border-top:1px solid var(--line)}
+.fmini .cc{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;width:26px}
+.fmini .cc.r{color:var(--crit)}.fmini .cc.a{color:var(--high)}
+.fchips{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.fchip{font-size:10px;color:var(--ink2);background:var(--surface3);border:1px solid var(--line2);border-radius:5px;padding:2px 7px}
+
+/* threshold */
+.edge{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ecard{border:1px solid var(--line);border-radius:12px;background:var(--surface2);padding:14px 15px}
+.e-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.e-tk{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500}
+.e-near{font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em}
+.e-line{position:relative;height:6px;border-radius:3px;background:var(--surface3);margin:14px 0 6px}
+.e-bound{position:absolute;top:-3px;width:1px;height:12px;background:var(--line3)}
+.e-bound small{position:absolute;top:13px;left:50%;transform:translateX(-50%);font-size:8.5px;color:var(--ink3);white-space:nowrap}
+.e-dot{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid var(--surface2)}
+.e-desc{font-size:11.5px;color:var(--ink2);margin-top:16px;line-height:1.4}.e-desc b{color:var(--ink);font-weight:500}
+
+.eyebrow{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px;margin:22px 2px 12px}
+.eyebrow .ln{flex:1;height:1px;background:var(--line)}
+.eyebrow .stag{letter-spacing:0;text-transform:none;font-size:11px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:2px 10px}
+
+/* ===== SCREEN ===== */
+.census{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.census .cl{flex:1;min-width:220px}
+.census .cl h2{font-family:'Fraunces',serif;font-weight:500;font-size:21px}
+.census .cl .sub{font-size:12.5px;color:var(--ink2);margin-top:5px;line-height:1.45}
+.census .cr{flex:1.3;min-width:300px}
+.cbars{display:flex;gap:7px;align-items:flex-end;height:96px}
+.cbar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%;cursor:pointer;transition:.15s}
+.cbar:hover{opacity:.85}.cbar .bar2{width:100%;border-radius:5px 5px 0 0;transition:.2s}
+.cbar.b0 .bar2{background:var(--c-fragile)}.cbar.b1 .bar2{background:var(--c-below)}.cbar.b2 .bar2{background:var(--c-steady)}.cbar.b3 .bar2{background:var(--c-healthy)}.cbar.b4 .bar2{background:var(--c-pristine)}
+.cbar .cn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.cbar.on .bar2{box-shadow:0 0 0 2px var(--bg),0 0 0 3px currentColor}
+.cbar.b0.on{color:var(--c-fragile)}.cbar.b1.on{color:var(--c-below)}.cbar.b2.on{color:var(--c-steady)}.cbar.b3.on{color:var(--c-healthy)}.cbar.b4.on{color:var(--c-pristine)}
+.cblbl{display:flex;gap:7px;margin-top:7px}.cblbl div{flex:1;text-align:center;font-size:10px;color:var(--ink3)}
+
+.modes{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 14px}
+.mode{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:7px 13px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.mode:hover{border-color:var(--line3);color:var(--ink)}
+.mode.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.mode svg{width:14px;height:14px}
+.mode .mc{font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)}
+
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl thead th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:0 12px 10px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.tbl thead th.r,.tbl tbody td.r{text-align:right}
+.tbl tbody td{padding:11px 12px;border-bottom:1px solid var(--line)}
+.tbl tbody tr{transition:.12s;cursor:pointer}.tbl tbody tr:hover{background:var(--surface2)}
+.t-tk{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:13px}
+.t-tk .cls{display:block;font-family:'Inter';font-weight:400;font-size:10px;color:var(--ink3);letter-spacing:0;text-transform:none;margin-top:1px}
+.bandpill{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 9px;border-radius:7px;background:var(--surface3);white-space:nowrap}
+.bandpill .bd{width:7px;height:7px;border-radius:50%}
+.bp0 .bd{background:var(--c-fragile)}.bp1 .bd{background:var(--c-below)}.bp2 .bd{background:var(--c-steady)}.bp3 .bd{background:var(--c-healthy)}.bp4 .bd{background:var(--c-pristine)}
+.chip-s{font-size:10px;padding:2px 7px;border-radius:5px;background:var(--surface3);color:var(--ink2);white-space:nowrap}
+.chip-s.warn{background:var(--high-bg);color:var(--high)}.chip-s.rec{background:var(--rec-bg);color:var(--rec)}.chip-s.crit{background:var(--crit-bg);color:var(--crit)}
+.tnum{font-family:'IBM Plex Mono',monospace}
+.pillmini{display:inline-flex;gap:2px;vertical-align:middle}
+.pillmini span{width:5px;border-radius:1px;display:inline-block}
+.gapbar{display:inline-block;width:62px;height:6px;border-radius:3px;background:var(--surface3);position:relative;vertical-align:middle;overflow:hidden}
+.gapbar i{position:absolute;left:0;top:0;bottom:0;background:var(--high);border-radius:3px}
+.ridebar{display:inline-block;width:70px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--c-healthy),var(--c-steady),var(--c-fragile));position:relative;vertical-align:middle}
+.ridebar i{position:absolute;top:-2px;width:2px;height:10px;background:var(--ink);border-radius:1px}
+.modehead{font-size:11.5px;color:var(--ink2);margin-bottom:12px}.modehead b{color:var(--ink);font-weight:500}
+
+/* ===== FLAGS ===== */
+.flagwrap{display:grid;grid-template-columns:repeat(12,1fr);gap:13px}
+.fl-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.fl-f{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer;transition:.15s}
+.fl-f:hover{border-color:var(--line3);color:var(--ink)}.fl-f.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.redcard{border:1px solid var(--crit-bd);border-left:3px solid var(--crit);border-radius:12px;background:linear-gradient(180deg,var(--crit-bg),transparent 70%),var(--surface);padding:15px 17px;box-shadow:0 8px 28px rgba(226,88,77,.08)}
+.redcard .rh{display:flex;align-items:center;gap:10px}
+.redcard .ic{width:32px;height:32px;border-radius:9px;background:var(--crit-bg);color:var(--crit);display:flex;align-items:center;justify-content:center;flex:none}.redcard .ic svg{width:18px;height:18px}
+.redcard .rt{font-size:14px;font-weight:600}.redcard .rt .tk{font-family:'IBM Plex Mono',monospace;margin-left:7px;color:var(--crit)}
+.redcard .wtag{margin-left:auto;font-size:9px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;color:var(--crit);background:var(--crit-bg);border:1px solid var(--crit-bd);border-radius:6px;padding:3px 9px}
+.redcard .rb{font-size:12.5px;color:var(--ink2);margin-top:9px;line-height:1.5}.redcard .rb .num{color:var(--ink)}
+.redcard .rcta{margin-top:11px}
+.ptier{margin-bottom:8px}
+.ptier h4{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin:6px 0 10px;display:flex;align-items:center;gap:9px}
+.ptier h4 .ln{flex:1;height:1px;background:var(--line)}
+.ptier h4 .pct{letter-spacing:0;text-transform:none;color:var(--ink2);font-family:'IBM Plex Mono',monospace;font-size:11px}
+.pcard{border:1px solid var(--line);border-left:3px solid var(--pcc);border-radius:11px;background:var(--surface);padding:13px 15px;margin-bottom:9px}
+.pcard.red{--pcc:var(--crit)}.pcard.amber{--pcc:var(--high)}.pcard.green{--pcc:var(--rec)}
+.pcard .pt{display:flex;align-items:center;gap:9px}
+.pcard .pn{font-size:13px;font-weight:600}
+.pcard .score{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.pcard.red .score{color:var(--crit)}.pcard.amber .score{color:var(--high)}.pcard.green .score{color:var(--rec)}
+.pcard .pdesc{font-size:12px;color:var(--ink2);margin-top:7px;line-height:1.45}
+.pcard .pnames{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.dorm{border:1px dashed var(--line2);border-radius:11px;padding:13px 15px;background:transparent;margin-bottom:9px}
+.dorm .pt{display:flex;align-items:center;gap:9px;color:var(--ink3)}
+.dorm .pn{font-size:13px;font-weight:500;color:var(--ink2)}
+.dorm .dtag{margin-left:auto;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line2);border-radius:5px;padding:2px 7px}
+.dorm .ddesc{font-size:11.5px;color:var(--ink3);margin-top:6px}
+.fl-side .card{margin-bottom:13px}
+.distro{display:flex;flex-direction:column;gap:9px}
+.distro .dr{display:flex;align-items:center;gap:9px;font-size:12px}
+.distro .dr .nm{width:120px;flex:none;color:var(--ink2)}
+.distro .dr .b{flex:1;height:7px;border-radius:4px;background:var(--surface3);overflow:hidden}
+.distro .dr .b i{display:block;height:100%;border-radius:4px}
+.distro .dr.red i{background:var(--crit)}.distro .dr.amber i{background:var(--high)}.distro .dr.green i{background:var(--rec)}
+.distro .dr .n{font-family:'IBM Plex Mono',monospace;font-size:11.5px;width:24px;text-align:right;flex:none;color:var(--ink2)}
+
+.ph{border:1px dashed var(--line2);border-radius:16px;padding:60px 30px;text-align:center;color:var(--ink3)}
+.ph svg{width:30px;height:30px;margin-bottom:14px;opacity:.6}.ph h3{font-family:'Fraunces',serif;font-weight:500;font-size:19px;color:var(--ink2);margin-bottom:6px}.ph p{font-size:13px;max-width:32em;margin:0 auto}
+
+.foot{padding:26px 26px 0;font-size:11px;color:var(--ink3);line-height:1.6;border-top:1px solid var(--line);margin-top:22px}
+a:focus-visible,.tab:focus-visible,.scope:focus-visible{outline:2px solid var(--c-pristine);outline-offset:2px;border-radius:4px}
+
+@media(max-width:1180px){.c8{grid-column:span 12}.c4.kpi-rail{grid-column:span 12}.c4{grid-column:span 6}.c5{grid-column:span 6}.c3{grid-column:span 6}.edge{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.c4,.c5,.c3,.c6,.c7{grid-column:span 12}.edge{grid-template-columns:1fr}.aslook{margin-left:0}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- slim control strip -->
+  <div class="strip">
+    <div class="tabs">
+      <button class="tab on" data-tab="brief"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h7"/></svg>Briefing</button>
+      <button class="tab" data-tab="flags"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V4h13l-2 4 2 4H4"/></svg>Flags &amp; Patterns <span class="soon">soon</span></button>
+      <button class="tab" data-tab="screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Screen <span class="soon">soon</span></button>
+    </div>
+    <div class="sep"></div>
+    <div class="scopes">
+      <button class="scope on" data-scope="portfolio"><span class="d"></span>My Portfolio</button>
+      <button class="scope" data-scope="watchlist">Watchlist</button>
+      <button class="scope" data-scope="universe">Scored Universe</button>
+      <button class="scope" style="color:var(--ink3)">+ Peer group</button>
+    </div>
+    <span class="aslook">since your last look · <b id="lastlook">12 days ago</b></span>
+  </div>
+
+  <!-- ===================== BRIEFING ===================== -->
+  <div class="panel on" id="brief">
+    <div class="grid">
+
+      <!-- HERO -->
+      <div class="card hero c8">
+        <div class="head"><span class="kick">The shape of your ward</span><span class="kick" id="h-sub" style="color:var(--ink2)">18 holdings</span></div>
+        <div class="hero-row">
+          <div class="hero-l">
+            <h2><span class="num" id="h-total">18</span> holdings, this morning</h2>
+            <div class="charact" id="h-char">Mostly sound — two slipping from a high base, one turning up.</div>
+            <div class="drift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l6 6 4-4 8 8"/></svg><span id="h-drift">Since your last look: 2 drifted down from Healthy, 1 recovered into Steady.</span></div>
+          </div>
+          <div class="dist">
+            <div class="dist-cols" id="distCols"></div>
+            <div class="scalebar"></div>
+            <div class="dist-lbls" id="distLbls"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI rail -->
+      <div class="c4 kpi-rail">
+        <div class="kpis">
+          <div class="kpi"><div class="v" id="k-avg">66<span class="sm" id="k-avgb">Steady</span></div><div class="l">avg composite, your book</div></div>
+          <div class="kpi ga"><div class="v" id="k-look">5</div><div class="l">worth a look today</div></div>
+          <div class="kpi gr"><div class="v" id="k-flag">1</div><div class="l">red flag · watch with care</div></div>
+          <div class="kpi gg"><div class="v" id="k-rec">1</div><div class="l">recovering from weakness</div></div>
+          <div class="kpi ga"><div class="v" id="k-div">3</div><div class="l">in wide divergence</div></div>
+          <div class="kpi"><div class="v" id="k-trend" style="font-size:18px">↘ Softening</div><div class="l">book trajectory, this quarter</div></div>
+        </div>
+      </div>
+
+      <!-- PILLAR MIX -->
+      <div class="card c4">
+        <div class="head"><span class="kick">Your book's dimensions</span></div>
+        <div class="pmix">
+          <div class="pmr found"><div class="t"><span class="nm"><span class="d"></span>Foundation</span><span class="vv">71</span></div><div class="bar"><i style="width:71%"></i></div></div>
+          <div class="pmr mom"><div class="t"><span class="nm"><span class="d"></span>Momentum<span class="wkmark">soft spot</span></span><span class="vv">58</span></div><div class="bar"><i style="width:58%"></i></div></div>
+          <div class="pmr mkt"><div class="t"><span class="nm"><span class="d"></span>Market</span><span class="vv">69</span></div><div class="bar"><i style="width:69%"></i></div></div>
+          <div class="pmr own"><div class="t"><span class="nm"><span class="d"></span>Ownership</span><span class="vv">64</span></div><div class="bar"><i style="width:64%"></i></div></div>
+        </div>
+        <div class="pnote"><b>Momentum is your book's soft spot</b> — fundamentals are cooling across several holdings, even where the floors hold.</div>
+      </div>
+
+      <!-- MOVERS -->
+      <div class="card c5">
+        <div class="head"><span class="kick">Biggest health movers</span><a class="link" href="#">all changes <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+        <div class="mv">
+          <div class="mv-split">Firming</div>
+          <div class="mvr up"><span class="tk">SUNPHARMA</span><svg class="sp" viewBox="0 0 120 20" preserveAspectRatio="none"><polyline points="2,16 30,15 60,11 90,6 118,3" fill="none" stroke="var(--rec)" stroke-width="1.8"/></svg><span class="dl">+4.2</span><span class="bd">→ Healthy</span></div>
+          <div class="mvr up"><span class="tk">TITAN</span><svg class="sp" viewBox="0 0 120 20" preserveAspectRatio="none"><polyline points="2,14 30,13 60,12 90,9 118,6" fill="none" stroke="var(--rec)" stroke-width="1.8"/></svg><span class="dl">+2.1</span><span class="bd">↑ Healthy</span></div>
+          <div class="mv-split">Slipping</div>
+          <div class="mvr dn"><span class="tk">TATASTEEL</span><svg class="sp" viewBox="0 0 120 20" preserveAspectRatio="none"><polyline points="2,5 30,7 60,11 90,15 118,17" fill="none" stroke="var(--high)" stroke-width="1.8"/></svg><span class="dl">−5.3</span><span class="bd">↓ Steady</span></div>
+          <div class="mvr dn"><span class="tk">DIXON</span><svg class="sp" viewBox="0 0 120 20" preserveAspectRatio="none"><polyline points="2,4 30,6 60,9 90,13 118,16" fill="none" stroke="var(--high)" stroke-width="1.8"/></svg><span class="dl">−3.8</span><span class="bd">Healthy</span></div>
+          <div class="mvr dn"><span class="tk">ASIANPAINT</span><svg class="sp" viewBox="0 0 120 20" preserveAspectRatio="none"><polyline points="2,8 30,9 60,11 90,12 118,14" fill="none" stroke="var(--high)" stroke-width="1.8"/></svg><span class="dl">−2.4</span><span class="bd">↓ Steady</span></div>
+        </div>
+      </div>
+
+      <!-- EXPOSURE -->
+      <div class="card c3">
+        <div class="head"><span class="kick">Where you're exposed</span></div>
+        <div class="exp">
+          <div class="exr"><span class="nm"><span class="h calm"></span>IT</span><span class="b"><i style="width:100%"></i></span><span class="pc">24%</span></div>
+          <div class="exr"><span class="nm"><span class="h hot"></span>Metals</span><span class="b"><i style="width:75%"></i></span><span class="pc">18%</span></div>
+          <div class="exr"><span class="nm"><span class="h calm"></span>Consumer</span><span class="b"><i style="width:67%"></i></span><span class="pc">16%</span></div>
+          <div class="exr"><span class="nm"><span class="h calm"></span>Pharma</span><span class="b"><i style="width:63%"></i></span><span class="pc">15%</span></div>
+          <div class="exr"><span class="nm"><span class="h warm"></span>Auto</span><span class="b"><i style="width:50%"></i></span><span class="pc">12%</span></div>
+          <div class="exr"><span class="nm"><span class="h calm"></span>Cement</span><span class="b"><i style="width:38%"></i></span><span class="pc">9%</span></div>
+        </div>
+        <div class="enote"><b>18% in Metals — and the pond's hot.</b> Read price-linked signals there with care.</div>
+      </div>
+
+      <!-- ATTENTION (left, c8) -->
+      <div class="c8" style="grid-column:span 8">
+        <div class="eyebrow">What's changed since you last looked<span class="ln"></span><span class="stag" id="atScope">across your portfolio</span></div>
+
+        <div class="acard crit">
+          <span class="a-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+          <div class="a-main"><div class="a-top"><span class="a-ttl"><span class="n">1</span> holding tripped a red flag</span><span class="a-tag">Watch with care</span></div>
+            <div class="a-names"><span class="tk2">VEDL <span class="pace">earnings quality breakdown — net profit &gt; OCF, 5 periods</span></span></div></div>
+        </div>
+        <div class="acard high">
+          <span class="a-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l6 6 4-4 8 8"/><path d="M21 16v-6h-6"/></svg></span>
+          <div class="a-main"><div class="a-top"><span class="a-ttl"><span class="n">2</span> sliding from a high base</span><span class="a-tag">High</span></div>
+            <div class="a-names"><span class="tk2">TATASTEEL <svg class="mini" viewBox="0 0 30 11"><polyline points="1,3 8,4 15,6 22,8 29,9" fill="none" stroke="var(--high)" stroke-width="1.4"/></svg></span><span class="tk2">DIXON <svg class="mini" viewBox="0 0 30 11"><polyline points="1,2 8,4 15,5 22,8 29,10" fill="none" stroke="var(--high)" stroke-width="1.4"/></svg></span></div></div>
+        </div>
+        <div class="acard high">
+          <span class="a-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7L3 12l5 5M16 7l5 5-5 5"/></svg></span>
+          <div class="a-main"><div class="a-top"><span class="a-ttl"><span class="n">3</span> pulled into wide divergence</span><span class="a-tag">High</span></div>
+            <div class="a-names"><span class="tk2">TATASTEEL <span class="pace">price ahead</span></span><span class="tk2">SIEMENS <span class="pace">price ahead</span></span><span class="tk2">GLENMARK <span class="pace">price ahead</span></span></div></div>
+        </div>
+        <div class="acard rec">
+          <span class="a-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 11V5h-6"/></svg></span>
+          <div class="a-main"><div class="a-top"><span class="a-ttl"><span class="n">1</span> turning up out of weakness</span><span class="a-tag">Recovery</span></div>
+            <div class="a-names"><span class="tk2">SUNPHARMA <span class="pace">Momentum leading the turn</span></span></div></div>
+        </div>
+        <div class="acard ctx">
+          <span class="a-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          <div class="a-main"><div class="a-top"><span class="a-ttl"><span class="n">2</span> left the average band</span><span class="a-tag">Context</span></div>
+            <div class="a-names"><span class="tk2">TITAN <span class="pace">↑ Healthy</span></span><span class="tk2">ASIANPAINT <span class="pace">↓ Steady</span></span></div></div>
+        </div>
+      </div>
+
+      <!-- RIGHT RAIL: recovery spotlight + flags mini (c4) -->
+      <div class="c4" style="grid-column:span 4">
+        <div class="eyebrow">Spotlight<span class="ln"></span></div>
+        <div class="card spot glow-g" style="margin-bottom:13px">
+          <div class="head"><span class="kick" style="color:var(--rec)">Recovery — the durable signal</span></div>
+          <h4>Turning up out of weakness</h4>
+          <div class="tkbig">SUNPHARMA</div>
+          <div class="chart"><svg viewBox="0 0 280 70" preserveAspectRatio="none"><rect x="0" y="44" width="280" height="26" fill="var(--c-below)" opacity=".07"/><rect x="0" y="30" width="280" height="14" fill="var(--c-steady)" opacity=".08"/><polyline points="8,52 50,53 95,50 140,44 185,36 230,30 272,25" fill="none" stroke="var(--rec)" stroke-width="2.4" stroke-linecap="round"/><circle cx="95" cy="50" r="3.4" fill="var(--rec)"/></svg></div>
+          <div class="sub">Momentum is leading the turn out of the weak zone — the strongest, most durable pattern in the model. A coincident inflection worth investigating, not a buy.</div>
+          <a class="link" href="#" style="margin-top:11px">Open in Trajectory <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+        </div>
+        <div class="card fmini">
+          <div class="head"><span class="kick">Flags &amp; patterns firing</span><a class="link" href="#">board <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+          <div class="row"><span class="cc r">1</span><span>Critical red flag <span style="color:var(--ink3)">· VEDL</span></span></div>
+          <div class="row"><span class="cc a">4</span><span>Patterns across your book</span></div>
+          <div class="fchips"><span class="fchip">P11 Margin compression ×2</span><span class="fchip">P2 Distribution ×1</span><span class="fchip">P12 Margin recovery ×1</span></div>
+        </div>
+      </div>
+
+      <!-- THRESHOLD WATCH (full) -->
+      <div class="c12" style="grid-column:span 12">
+        <div class="eyebrow">At the edge — about to become a story<span class="ln"></span></div>
+        <div class="edge">
+          <div class="ecard"><div class="e-top"><span class="e-tk">RELIANCE</span><span class="e-near">on a band line</span></div><div class="e-line"><span class="e-bound" style="left:50%"><small>Healthy 68</small></span><span class="e-dot" style="left:47%;background:var(--c-steady)"></span></div><div class="e-desc">Composite <b>67.6</b> — a whisker below Healthy. One soft quarter tips it.</div></div>
+          <div class="ecard"><div class="e-top"><span class="e-tk">ULTRACEMCO</span><span class="e-near">pillar at its mark</span></div><div class="e-line"><span class="e-bound" style="left:50%"><small>Mom weak 54</small></span><span class="e-dot" style="left:53%;background:var(--p-mom)"></span></div><div class="e-desc">Momentum <b>54.6</b>, hovering at its weak mark — a step down opens a deterioration story.</div></div>
+          <div class="ecard"><div class="e-top"><span class="e-tk">INFY</span><span class="e-near">nearing strong</span></div><div class="e-line"><span class="e-bound" style="left:50%"><small>Fnd strong 72</small></span><span class="e-dot" style="left:48%;background:var(--p-found)"></span></div><div class="e-desc">Foundation <b>71.3</b>, just under strong — quietly firming, not yet a turn.</div></div>
+          <div class="ecard"><div class="e-top"><span class="e-tk">MARUTI</span><span class="e-near">divergence opening</span></div><div class="e-line"><span class="e-bound" style="left:50%"><small>gap 15</small></span><span class="e-dot" style="left:46%;background:var(--p-mkt)"></span></div><div class="e-desc">Market–fundamentals gap at <b>13</b> — nearing the notable line; watch for a divergence card next.</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- placeholders -->
+  <div class="panel" id="flags">
+    <div class="eyebrow">Warnings console<span class="ln"></span><span class="stag">across your portfolio · 18 holdings</span></div>
+    <div class="fl-filters">
+      <button class="fl-f on">All</button>
+      <button class="fl-f">Red flags</button>
+      <button class="fl-f">Ownership</button>
+      <button class="fl-f">Fundamentals</button>
+      <button class="fl-f">Momentum</button>
+      <button class="fl-f">Recovery only</button>
+    </div>
+    <div class="flagwrap">
+      <div class="c8" style="grid-column:span 8">
+
+        <!-- RED FLAGS -->
+        <div class="ptier"><h4>Critical · Watch with care<span class="ln"></span><span class="pct">1 firing</span></h4>
+          <div class="redcard">
+            <div class="rh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span><span class="rt">R3 · Earnings Quality Breakdown<span class="tk">VEDL</span></span><span class="wtag">Watch with care</span></div>
+            <div class="rb">Net profit has exceeded operating cash flow for <span class="num">5</span> straight periods — earnings are not converting to cash. A hard quality failure that overrides the composite.</div>
+            <div class="rcta"><a class="link" href="#">Open VEDL decomposition <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          </div>
+        </div>
+
+        <!-- MOMENTUM PATTERNS -->
+        <div class="ptier"><h4>Momentum patterns<span class="ln"></span><span class="pct">3 firing</span></h4>
+          <div class="pcard red"><div class="pt"><span class="pn">P11 · Quarterly Margin Compression</span><span class="score">−8</span></div><div class="pdesc">Operating margin compressing for 4 quarters: <span class="tnum">28.1% → 26.4% → 24.8% → 23.0%</span>.</div><div class="pnames"><span class="tk2">TATASTEEL</span><span class="tk2">DIXON</span></div></div>
+          <div class="pcard green"><div class="pt"><span class="pn">P12 · Quarterly Margin Recovery</span><span class="score">+5</span></div><div class="pdesc">Operating margin recovering from trough: <span class="tnum">14.2% → 15.8% → 17.6%</span>.</div><div class="pnames"><span class="tk2">SUNPHARMA</span></div></div>
+        </div>
+
+        <!-- OWNERSHIP PATTERNS -->
+        <div class="ptier"><h4>Ownership patterns<span class="ln"></span><span class="pct">2 firing</span></h4>
+          <div class="pcard red"><div class="pt"><span class="pn">P2 · Distribution to Retail</span><span class="score">−8</span></div><div class="pdesc">Promoter ↓, FII ↓ and retail ↑ in the same quarter — supply moving into weaker hands.</div><div class="pnames"><span class="tk2">VEDL</span></div></div>
+          <div class="pcard green"><div class="pt"><span class="pn">P1 · Clean Institutional Rotation</span><span class="score">+5</span></div><div class="pdesc">DIIs added as FIIs trimmed, promoter steady — an orderly rotation, not distribution.</div><div class="pnames"><span class="tk2">TCS</span></div></div>
+        </div>
+
+        <!-- FUNDAMENTALS PATTERNS -->
+        <div class="ptier"><h4>Fundamentals patterns<span class="ln"></span><span class="pct">2 firing</span></h4>
+          <div class="pcard red"><div class="pt"><span class="pn">P7 · Accruals Divergence</span><span class="score">−8</span></div><div class="pdesc">Net profit running ahead of cash generation — the same stress underlying VEDL's red flag.</div><div class="pnames"><span class="tk2">VEDL</span></div></div>
+          <div class="pcard amber"><div class="pt"><span class="pn">P8 · Capital Tied in Receivables</span><span class="score">−3</span></div><div class="pdesc">Receivable days climbing faster than revenue — working capital quality softening.</div><div class="pnames"><span class="tk2">DIXON</span></div></div>
+        </div>
+
+        <!-- DORMANT -->
+        <div class="ptier"><h4>Pending data integration<span class="ln"></span></h4>
+          <div class="dorm"><div class="pt"><span class="pn">P5 · Insider-Confirmed Distress · P6 · Insider Conviction</span><span class="dtag">insider feed</span></div><div class="ddesc">Live once the NSE PIT insider feed is confirmed and scoring. Capability present; no coverage implied.</div></div>
+          <div class="dorm"><div class="pt"><span class="pn">P10 · Promoter Defense Buying</span><span class="dtag">block-deal feed</span></div><div class="ddesc">Live once the block-deal feed is confirmed and scoring.</div></div>
+          <div class="dorm"><div class="pt"><span class="pn">P9 · Capex Cycle</span><span class="dtag">capex unavailable</span></div><div class="ddesc">Requires capex intensity, not in the current data stack. Renders when ingested.</div></div>
+        </div>
+      </div>
+
+      <!-- side summary -->
+      <div class="c4 fl-side" style="grid-column:span 4">
+        <div class="card">
+          <div class="head"><span class="kick">By severity</span></div>
+          <div class="distro">
+            <div class="dr red"><span class="nm">Critical / Red</span><span class="b"><i style="width:70%"></i></span><span class="n">4</span></div>
+            <div class="dr amber"><span class="nm">Amber</span><span class="b"><i style="width:20%"></i></span><span class="n">1</span></div>
+            <div class="dr green"><span class="nm">Constructive</span><span class="b"><i style="width:40%"></i></span><span class="n">2</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="head"><span class="kick">By concern</span></div>
+          <div class="distro">
+            <div class="dr red"><span class="nm">Momentum</span><span class="b"><i style="width:60%;background:var(--p-mom)"></i></span><span class="n">3</span></div>
+            <div class="dr red"><span class="nm">Ownership</span><span class="b"><i style="width:40%;background:var(--p-own)"></i></span><span class="n">2</span></div>
+            <div class="dr red"><span class="nm">Fundamentals</span><span class="b"><i style="width:40%;background:var(--p-found)"></i></span><span class="n">2</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="head"><span class="kick">Sector-wide check</span></div>
+          <div style="font-size:12px;color:var(--ink2);line-height:1.5">No pattern is firing across &gt;80% of any peer group this snapshot — nothing dampened. When that happens, the magnitude is halved and the card is marked <i>sector-wide</i>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel" id="screen">
+    <!-- visual census -->
+    <div class="card">
+      <div class="head"><span class="kick">The scored universe — census</span><span class="kick" style="color:var(--ink2)">95 names</span></div>
+      <div class="census">
+        <div class="cl">
+          <h2>Where the market sits</h2>
+          <div class="sub">The crowded middle is where the score says least — the edges are where to look. Click a band to filter the table below.</div>
+        </div>
+        <div class="cr">
+          <div class="cbars">
+            <div class="cbar b0" data-band="0"><span class="cn">6</span><div class="bar2" style="height:16%"></div></div>
+            <div class="cbar b1" data-band="1"><span class="cn">14</span><div class="bar2" style="height:38%"></div></div>
+            <div class="cbar b2" data-band="2"><span class="cn">38</span><div class="bar2" style="height:100%"></div></div>
+            <div class="cbar b3" data-band="3"><span class="cn">28</span><div class="bar2" style="height:74%"></div></div>
+            <div class="cbar b4" data-band="4"><span class="cn">9</span><div class="bar2" style="height:24%"></div></div>
+          </div>
+          <div class="cblbl"><div>Fragile</div><div>Below par</div><div>Steady</div><div>Healthy</div><div>Pristine</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- mode switcher -->
+    <div class="modes">
+      <button class="mode on" data-mode="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>Overview</button>
+      <button class="mode" data-mode="divergence"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7L3 12l5 5M16 7l5 5-5 5"/></svg>Divergence</button>
+      <button class="mode" data-mode="recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 11V5h-6"/></svg>Recovery</button>
+      <button class="mode" data-mode="ride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-6 4 14 2-8h6"/></svg>Risk / ride</button>
+      <button class="mode" data-mode="composition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg>Composition</button>
+    </div>
+
+    <div class="card">
+      <div class="modehead" id="modeHead"></div>
+      <div style="overflow-x:auto"><table class="tbl"><thead id="tblHead"></thead><tbody id="tblBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="foot">Illustrative data for layout review. Names, scores and counts are placeholders — structure, story and rules are real. The Briefing shows the <em>delta since you last looked</em>; at fundamental cadence that moves over quarters, not days. Vytal is a data platform, not an investment advisor — nothing here is a buy/sell signal or price prediction.</div>
+</div>
+
+<script>
+const BANDS=['Fragile','Below par','Steady','Healthy','Pristine'];
+const SCOPES={
+  portfolio:{total:18,sub:'18 holdings',dist:[1,2,7,6,2],deltas:{3:'\u25BC2',2:'\u25B21'},char:'Mostly sound \u2014 two slipping from a high base, one turning up.',drift:'Since your last look: 2 drifted down from Healthy, 1 recovered into Steady.',scopetag:'across your portfolio',look:'12 days ago',k:{avg:'66',avgb:'Steady',look:'5',flag:'1',rec:'1',div:'3',trend:'\u2198 Softening'}},
+  watchlist:{total:12,sub:'12 watched',dist:[0,1,4,5,2],deltas:{4:'\u25B21'},char:'Healthy-leaning \u2014 you\u2019re watching quality names.',drift:'Since your last look: 1 crossed up into Pristine; the rest held.',scopetag:'across your watchlist',look:'5 days ago',k:{avg:'71',avgb:'Healthy',look:'2',flag:'0',rec:'2',div:'1',trend:'\u2192 Steady'}},
+  universe:{total:95,sub:'95 scored',dist:[6,14,38,28,9],deltas:{},char:'The market\u2019s middle is crowded, as always \u2014 the edges are where to look.',drift:'Since last quarter: 7 names changed band; the bulk sat still.',scopetag:'across the scored universe',look:'this quarter',k:{avg:'63',avgb:'Steady',look:'23',flag:'4',rec:'9',div:'18',trend:'\u2192 Mixed'}}
+};
+function render(key){
+  const s=SCOPES[key],cols=document.getElementById('distCols'),lbls=document.getElementById('distLbls'),max=Math.max(...s.dist);
+  cols.innerHTML='';lbls.innerHTML='';
+  s.dist.forEach((n,i)=>{
+    const shown=max>14?Math.max(1,Math.round(n/max*14)):n;let cells='';for(let k=0;k<shown;k++)cells+='<span class="cell"></span>';
+    const d=s.deltas[i]?`<span class="delta ${s.deltas[i].includes('\u25BC')?'dn':'up'}">${s.deltas[i]}</span>`:'<span class="delta">&nbsp;</span>';
+    cols.innerHTML+=`<div class="col b${i}">${d}<div class="cells">${cells}</div></div>`;
+    lbls.innerHTML+=`<div class="dlbl"><span class="c">${n}</span>${BANDS[i]}</div>`;
+  });
+  document.getElementById('h-total').textContent=s.total;
+  document.getElementById('h-sub').textContent=s.sub;
+  document.getElementById('h-char').textContent=s.char;
+  document.getElementById('h-drift').textContent=s.drift;
+  document.getElementById('atScope').textContent=s.scopetag;
+  document.getElementById('lastlook').textContent=s.look;
+  document.getElementById('k-avg').innerHTML=s.k.avg+'<span class="sm">'+s.k.avgb+'</span>';
+  document.getElementById('k-look').textContent=s.k.look;
+  document.getElementById('k-flag').textContent=s.k.flag;
+  document.getElementById('k-rec').textContent=s.k.rec;
+  document.getElementById('k-div').textContent=s.k.div;
+  document.getElementById('k-trend').textContent=s.k.trend;
+}
+document.querySelectorAll('.scope[data-scope]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.scope').forEach(x=>x.classList.remove('on'));b.classList.add('on');render(b.dataset.scope);}));
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));t.classList.add('on');document.getElementById(t.dataset.tab).classList.add('on');}));
+render('portfolio');
+
+/* ===== SCREEN ===== */
+const PN=['found','mom','mkt','own'], BNAMES=['Fragile','Below par','Steady','Healthy','Pristine'];
+const STOCKS=[
+ {tk:'TCS',cls:'IT services',comp:72,band:3,traj:'flat',p:[80,68,66,74],flags:[{t:'P1',sev:'rec'}],gap:6,gtype:'aligned',ride:.35,worst:-16,recov:false,mix:'Strong floor · balanced'},
+ {tk:'INFY',cls:'IT services',comp:70,band:3,traj:'up',p:[79,67,64,72],flags:[],gap:5,gtype:'aligned',ride:.30,worst:-15,recov:false,mix:'Balanced'},
+ {tk:'RELIANCE',cls:'Energy',comp:67,band:2,traj:'flat',p:[70,63,68,66],flags:[],gap:9,gtype:'aligned',ride:.45,worst:-22,recov:false,mix:'Balanced'},
+ {tk:'SUNPHARMA',cls:'Pharma · Defensive',comp:66,band:2,traj:'up',p:[72,58,69,64],flags:[{t:'P12',sev:'rec'}],gap:7,gtype:'aligned',ride:.40,worst:-19,recov:true,lead:'Momentum',mix:'Recovering trajectory'},
+ {tk:'TITAN',cls:'Consumer',comp:70,band:3,traj:'up',p:[73,66,68,70],flags:[],gap:6,gtype:'aligned',ride:.40,worst:-20,recov:true,lead:'Composite',mix:'Firming, balanced'},
+ {tk:'NESTLEIND',cls:'Foods · Defensive',comp:66,band:2,traj:'flat',p:[74,63,64,72],flags:[],gap:5,gtype:'aligned',ride:.25,worst:-12,recov:false,mix:'Balanced defensive'},
+ {tk:'SIEMENS',cls:'Capital goods',comp:69,band:3,traj:'dn',p:[76,60,46,72],flags:[],gap:18,gtype:'fund-ahead',ride:.50,worst:-24,recov:false,mix:'Strong fund · weak price'},
+ {tk:'MARUTI',cls:'Auto · Cyclical',comp:68,band:3,traj:'flat',p:[71,64,77,66],flags:[],gap:13,gtype:'price-ahead',ride:.55,worst:-26,recov:false,mix:'Price ahead, mild'},
+ {tk:'TATASTEEL',cls:'Metals · Cyclical',comp:64,band:2,traj:'dn',p:[70,52,78,58],flags:[{t:'P11',sev:'warn'}],gap:17,gtype:'price-ahead',ride:.72,worst:-34,recov:false,mix:'Hot price · weak trajectory'},
+ {tk:'DIXON',cls:'Cons. durables · Growth',comp:61,band:1,traj:'dn',p:[64,55,74,57],flags:[{t:'P11',sev:'warn'},{t:'P8',sev:'warn'}],gap:19,gtype:'price-ahead',ride:.80,worst:-38,recov:false,mix:'Hot price · soft floor'},
+ {tk:'VEDL',cls:'Metals',comp:51,band:0,traj:'dn',p:[48,50,60,44],flags:[{t:'R3',sev:'crit'},{t:'P2',sev:'crit'}],gap:10,gtype:'aligned',ride:.85,worst:-41,recov:false,mix:'Weak across'}
+];
+let curMode='overview', curBand=null;
+const col=(c)=>`var(--p-${c})`;
+function pillmini(p){return '<span class="pillmini">'+p.map((v,i)=>`<span style="height:${Math.max(2,Math.round(v/100*16))}px;background:${col(PN[i])}"></span>`).join('')+'</span>';}
+function trend(t){const m={up:['\u2197','var(--rec)'],dn:['\u2198','var(--high)'],flat:['\u2192','var(--ink3)']};return `<span class="tnum" style="color:${m[t][1]}">${m[t][0]}</span>`;}
+function bandPill(comp,band){return `<span class="bandpill bp${band}"><span class="bd"></span>${BNAMES[band]} <span class="tnum">${comp}</span></span>`;}
+function flagsCell(f){if(!f.length)return '<span style="color:var(--ink3)">\u2014</span>';return f.map(x=>`<span class="chip-s ${x.sev}">${x.t}</span>`).join(' ');}
+function gtypeChip(g){const m={'price-ahead':['warn','price ahead'],'fund-ahead':['rec','fund ahead'],'aligned':['','aligned']};return `<span class="chip-s ${m[g][0]}">${m[g][1]}</span>`;}
+
+function renderTable(){
+  let rows=STOCKS.slice();
+  if(curBand!==null) rows=rows.filter(s=>s.band===curBand);
+  const head=document.getElementById('tblHead'), body=document.getElementById('tblBody'), mh=document.getElementById('modeHead');
+  let cols, line;
+  if(curMode==='overview'){
+    cols=['Stock','Health','Trend','Pillars · F M Mkt Own','Flags'];
+    line='Every name in scope with its health labels. Click a row to open its page.';
+    rows.sort((a,b)=>b.comp-a.comp);
+    body.innerHTML=rows.map(s=>`<tr><td><span class="t-tk">${s.tk}<span class="cls">${s.cls}</span></span></td><td>${bandPill(s.comp,s.band)}</td><td>${trend(s.traj)}</td><td>${pillmini(s.p)}</td><td>${flagsCell(s.flags)}</td></tr>`).join('');
+  } else if(curMode==='divergence'){
+    cols=['Stock','Type','Gap','<span class="r">Market</span>','<span class="r">Fund. (F·M)</span>'];
+    line='Re-sorted by pillar gap, widest first. <b>Wide</b> gaps (\u226515) carry the real signal — read the state, never the timing.';
+    rows.sort((a,b)=>b.gap-a.gap);
+    body.innerHTML=rows.map(s=>{const fund=Math.round((s.p[0]+s.p[1])/2);const w=Math.min(100,s.gap/25*100);return `<tr><td><span class="t-tk">${s.tk}</span></td><td>${gtypeChip(s.gtype)}</td><td><span class="gapbar"><i style="width:${w}%"></i></span> <span class="tnum" style="color:${s.gap>=15?'var(--high)':'var(--ink2)'}">${s.gap}</span></td><td class="r tnum">${s.p[2]}</td><td class="r tnum">${fund}</td></tr>`;}).join('');
+  } else if(curMode==='recovery'){
+    cols=['Stock','Status','Leading','Trend','<span class="r">Health</span>'];
+    line='Names turning up out of weakness \u2014 the strongest, most durable signal. A place to look, not a buy.';
+    rows.sort((a,b)=>(b.recov?1:0)-(a.recov?1:0)||b.comp-a.comp);
+    body.innerHTML=rows.map(s=>`<tr style="${s.recov?'':'opacity:.5'}"><td><span class="t-tk">${s.tk}</span></td><td>${s.recov?'<span class="chip-s rec">recovering</span>':'<span style="color:var(--ink3)">\u2014</span>'}</td><td style="color:var(--ink2)">${s.recov?s.lead:'\u2014'}</td><td>${s.recov?'<svg width="50" height="14" viewBox="0 0 50 14"><polyline points="2,11 16,10 30,6 48,2" fill="none" stroke="var(--rec)" stroke-width="1.6"/></svg>':trend(s.traj)}</td><td class="r">${bandPill(s.comp,s.band)}</td></tr>`).join('');
+  } else if(curMode==='ride'){
+    cols=['Stock','Ride · contained \u2192 wild','<span class="r">Foundation</span>','<span class="r">Worst DD</span>','Class'];
+    line='Sorted by realised volatility relative to its own history \u2014 the proven floor read. Foundation contains the ride only in quality classes.';
+    rows.sort((a,b)=>b.ride-a.ride);
+    body.innerHTML=rows.map(s=>`<tr><td><span class="t-tk">${s.tk}</span></td><td><span class="ridebar"><i style="left:${Math.round(s.ride*100)}%"></i></span></td><td class="r tnum" style="color:${col('found')}">${s.p[0]}</td><td class="r tnum" style="color:var(--high)">${s.worst}%</td><td style="color:var(--ink3);font-size:11px">${s.cls}</td></tr>`).join('');
+  } else {
+    cols=['Stock','Mix','Pillars · F M Mkt Own','<span class="r">Health</span>'];
+    line='The shape beneath the number \u2014 two identical scores can be different animals.';
+    rows.sort((a,b)=>b.comp-a.comp);
+    body.innerHTML=rows.map(s=>`<tr><td><span class="t-tk">${s.tk}</span></td><td style="color:var(--ink2)">${s.mix}</td><td>${pillmini(s.p)}</td><td class="r">${bandPill(s.comp,s.band)}</td></tr>`).join('');
+  }
+  head.innerHTML='<tr>'+cols.map((c,i)=>`<th class="${c.includes('class="r"')?'r':''}">${c.replace(/<span class="r">|<\/span>/g,'')}</th>`).join('')+'</tr>';
+  mh.innerHTML=line+(curBand!==null?` <span class="chip-s" style="margin-left:6px">filtered: ${BNAMES[curBand]} \u00d7</span>`:'');
+}
+document.querySelectorAll('.mode').forEach(m=>m.addEventListener('click',()=>{document.querySelectorAll('.mode').forEach(x=>x.classList.remove('on'));m.classList.add('on');curMode=m.dataset.mode;renderTable();}));
+document.querySelectorAll('.cbar').forEach(c=>c.addEventListener('click',()=>{const b=+c.dataset.band;if(curBand===b){curBand=null;c.classList.remove('on');}else{document.querySelectorAll('.cbar').forEach(x=>x.classList.remove('on'));c.classList.add('on');curBand=b;}renderTable();}));
+document.querySelectorAll('.fl-f').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.fl-f').forEach(x=>x.classList.remove('on'));f.classList.add('on');}));
+renderTable();
+</script>
+</body>
+</html>

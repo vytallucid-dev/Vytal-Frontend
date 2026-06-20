@@ -309,11 +309,11 @@ const activityData = {
   ],
 
   shareholdingPattern: [
-    { name: "Promoters", value: 52.8, color: "#3b82f6" },
-    { name: "FIIs", value: 22.4, color: "#10b981" },
-    { name: "DIIs", value: 8.8, color: "#f59e0b" },
-    { name: "Retail", value: 11.2, color: "#8b5cf6" },
-    { name: "Others", value: 4.8, color: "#6b7280" },
+    { name: "Promoters", value: 52.8, color: "var(--p-found)" },
+    { name: "FIIs", value: 22.4, color: "var(--success)" },
+    { name: "DIIs", value: 8.8, color: "var(--warning)" },
+    { name: "Retail", value: 11.2, color: "var(--p-mom)" },
+    { name: "Others", value: 4.8, color: "var(--ink3)" },
   ],
 
   shareholdingChanges: {
@@ -345,7 +345,7 @@ const getImpactBadge = (impact: string) => {
   return "bg-blue-500/10 text-blue-500 border-blue-500/20";
 };
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#6b7280"];
+const COLORS = ["var(--p-found)", "var(--success)", "var(--warning)", "var(--p-mom)", "var(--ink3)"];
 
 export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
   return (
@@ -573,11 +573,11 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                 config={{
                   fii: {
                     label: "FII Flow (₹Cr)",
-                    color: "#3b82f6",
+                    color: "var(--p-found)",
                   },
                   dii: {
                     label: "DII Flow (₹Cr)",
-                    color: "#10b981",
+                    color: "var(--success)",
                   },
                 }}
                 className="h-80 w-full"
@@ -600,25 +600,25 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <defs>
                     <linearGradient id="colorFii" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="var(--p-found)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--p-found)" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorDii" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <Area
                     type="monotone"
                     dataKey="fii"
-                    stroke="#3b82f6"
+                    stroke="var(--p-found)"
                     fill="url(#colorFii)"
                     strokeWidth={2}
                   />
                   <Area
                     type="monotone"
                     dataKey="dii"
-                    stroke="#10b981"
+                    stroke="var(--success)"
                     fill="url(#colorDii)"
                     strokeWidth={2}
                   />
@@ -925,11 +925,11 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                     config={{
                       delivery: {
                         label: "Sector Delivery %",
-                        color: "#3b82f6",
+                        color: "var(--p-found)",
                       },
                       market: {
                         label: "Market Avg %",
-                        color: "#6b7280",
+                        color: "var(--ink3)",
                       },
                     }}
                     className="h-48 w-full"
@@ -945,17 +945,17 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                       <Line
                         type="monotone"
                         dataKey="delivery"
-                        stroke="#3b82f6"
+                        stroke="var(--p-found)"
                         strokeWidth={2}
-                        dot={{ fill: "#3b82f6", r: 4 }}
+                        dot={{ fill: "var(--p-found)", r: 4 }}
                       />
                       <Line
                         type="monotone"
                         dataKey="market"
-                        stroke="#6b7280"
+                        stroke="var(--ink3)"
                         strokeWidth={2}
                         strokeDasharray="5 5"
-                        dot={{ fill: "#6b7280", r: 3 }}
+                        dot={{ fill: "var(--ink3)", r: 3 }}
                       />
                     </LineChart>
                   </ChartContainer>
@@ -1136,7 +1136,7 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                   config={{
                     holding: {
                       label: "Promoter %",
-                      color: "#3b82f6",
+                      color: "var(--p-found)",
                     },
                   }}
                   className="h-32 w-full"
@@ -1160,9 +1160,9 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                     <Line
                       type="monotone"
                       dataKey="holding"
-                      stroke="#3b82f6"
+                      stroke="var(--p-found)"
                       strokeWidth={2}
-                      dot={{ fill: "#3b82f6", r: 3 }}
+                      dot={{ fill: "var(--p-found)", r: 3 }}
                     />
                   </LineChart>
                 </ChartContainer>
@@ -1435,7 +1435,7 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                   config={{
                     value: {
                       label: "Holding %",
-                      color: "#3b82f6",
+                      color: "var(--p-found)",
                     },
                   }}
                   className="h-full w-full"
@@ -1448,7 +1448,7 @@ export function ActivityTab({ sectorData, getChangeColor }: ActivityTabProps) {
                       labelLine={false}
                       label={({ name, value }) => `${name}: ${value}%`}
                       outerRadius={80}
-                      fill="#8884d8"
+                      fill="var(--p-mom)"
                       dataKey="value"
                     >
                       {activityData.shareholdingPattern.map((entry, index) => (

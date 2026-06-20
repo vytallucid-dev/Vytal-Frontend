@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vytal — Ownership</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#090a0d;--surface:#111319;--surface2:#171a20;--surface3:#20242c;
+  --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.10);--line3:rgba(255,255,255,.17);
+  --ink:#f1efe9;--ink2:#9b9c9c;--ink3:#62646c;
+  --c-steady:#cda74f;--c-healthy:#48ba7c;--c-below:#e0913f;
+  --promoter:#c9a04f;--fii:#5d92d8;--dii:#a085d8;--retail:#6a6e78;
+  --high:#e0a13e;--high-bg:rgba(224,161,62,.13);--high-bd:rgba(224,161,62,.4);
+  --rec:#48ba7c;--rec-bg:rgba(72,186,124,.13);--rec-bd:rgba(72,186,124,.42);
+  --crit:#e2584d;--crit-bg:rgba(226,88,77,.13);--crit-bd:rgba(226,88,77,.42);
+  --ctx:#7f93b2;--ctx-bg:rgba(127,147,178,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 50px}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.shell{padding:0 26px}
+
+.strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 0 12px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.tool{font-family:'Fraunces',serif;font-weight:500;font-size:16px;display:flex;align-items:center;gap:9px;cursor:pointer}
+.tool svg{width:18px;height:18px;color:var(--fii)}
+.spbtns{display:flex;gap:6px;margin-left:6px}
+.spb{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:7px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.spb:hover{border-color:var(--line3);color:var(--ink)}.spb svg{width:14px;height:14px}
+.crumb{font-size:11.5px;color:var(--ink3);margin-left:auto}.crumb b{color:var(--ink2);font-weight:500}
+
+.panel{display:none}.panel.on{display:block;animation:fade .4s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.panel.on{animation:none}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 17px}
+.kick{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3)}
+
+/* LANDING */
+.land-hero{text-align:center;padding:24px 0 26px}
+.land-hero h1{font-family:'Fraunces',serif;font-weight:500;font-size:30px}
+.land-hero p{font-size:14px;color:var(--ink2);margin-top:8px;max-width:42em;margin-left:auto;margin-right:auto}
+.search{max-width:560px;margin:20px auto 0;position:relative}
+.search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ink3)}
+.search input{width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:14px 16px 14px 44px;color:var(--ink);font:inherit;font-size:14px;transition:.15s}
+.search input:focus{outline:none;border-color:var(--line3);background:var(--surface2)}.search input::placeholder{color:var(--ink3)}
+.tfilters{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.tf{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:7px 13px;border-radius:8px;cursor:pointer;transition:.15s}
+.tf:hover{border-color:var(--line3);color:var(--ink)}.tf.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.land-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px;margin:24px 2px 14px}
+.land-eyebrow .ln{flex:1;height:1px;background:var(--line)}
+.land-eyebrow .tag{letter-spacing:0;text-transform:none;font-size:11px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:2px 10px}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.pcard{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px 17px;cursor:pointer;transition:.15s}
+.pcard:hover{border-color:var(--line2);background:var(--surface2);transform:translateY(-2px)}
+.pc-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pc-tk{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500}
+.tell{font-size:9px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:3px 8px;border-radius:6px}
+.tell.pos{background:var(--rec-bg);color:var(--rec)}.tell.neg{background:var(--crit-bg);color:var(--crit)}.tell.mod{background:var(--high-bg);color:var(--high)}
+.pc-spark{margin:12px 0 9px}.pc-spark svg{width:100%;height:auto;display:block;border-radius:6px}
+.pc-stat{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--ink2)}
+.pc-stat .n{font-family:'IBM Plex Mono',monospace;color:var(--ink);font-weight:500}
+.pc-read{font-size:11.5px;color:var(--ink2);line-height:1.4;margin-top:8px}
+
+/* SINGLE */
+.shead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.sname{font-family:'Fraunces',serif;font-weight:500;font-size:27px;line-height:1.05}
+.stk{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink2);margin-top:4px}
+.hr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:5px 11px;border-radius:9px;border:1px solid var(--line2);color:var(--ink2);background:var(--surface)}
+.chip .bd{width:7px;height:7px;border-radius:50%}
+
+.read{border-radius:14px;padding:16px 19px;margin-bottom:13px;display:flex;gap:15px;align-items:flex-start;border:1px solid var(--rc-bd);background:linear-gradient(100deg,var(--rc-bg),transparent 70%),var(--surface)}
+.read.pos{--rc:var(--rec);--rc-bg:var(--rec-bg);--rc-bd:var(--rec-bd)}
+.read.neg{--rc:var(--crit);--rc-bg:var(--crit-bg);--rc-bd:var(--crit-bd)}
+.read.mod{--rc:var(--high);--rc-bg:var(--high-bg);--rc-bd:var(--high-bd)}
+.read .ic{width:40px;height:40px;border-radius:11px;background:var(--rc-bg);color:var(--rc);display:flex;align-items:center;justify-content:center;flex:none}.read .ic svg{width:21px;height:21px}
+.read .rt{font-family:'Fraunces',serif;font-weight:500;font-size:19px;color:var(--rc)}
+.read .rb{font-size:13px;color:var(--ink2);margin-top:5px;line-height:1.5;max-width:62em}
+.read .rlink{margin-left:auto;flex:none}
+.rlink a{font-size:12px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;background:var(--surface2);transition:.15s;white-space:nowrap}
+.rlink a:hover{border-color:var(--line3);background:var(--surface3)}.rlink svg{width:12px;height:12px}
+
+.chartcard{padding:18px 20px}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.cpair{font-size:12px;color:var(--ink2)}.cpair b{color:var(--ink);font-weight:500}
+.wins{display:flex;gap:3px}
+.win{appearance:none;background:var(--surface2);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:11px;padding:5px 12px;border-radius:7px;cursor:pointer;transition:.15s}
+.win:hover{border-color:var(--line3);color:var(--ink)}.win.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.chartwrap svg{width:100%;height:auto;display:block;cursor:crosshair}
+.glt{fill:var(--ink3);font-size:12px;font-family:'IBM Plex Mono',monospace}
+.xlt{fill:var(--ink3);font-size:12px;font-family:'IBM Plex Mono',monospace;text-anchor:middle}
+.crosshair{stroke:var(--ink3);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+.fndline{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-dasharray:6 4;stroke-linejoin:round}
+.fndcase{fill:none;stroke:var(--bg);stroke-width:5;stroke-linejoin:round}
+.pin circle{transition:.15s;cursor:pointer}.pinlbl{fill:var(--ink2);font-size:12px;font-family:'IBM Plex Mono',monospace;text-anchor:middle;pointer-events:none}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.lg{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:6px 12px}
+.lg .sw{width:12px;height:12px;border-radius:3px}.lg .swl{width:16px;height:3px;border-radius:2px;background:var(--ink)}
+.lg .vv{font-family:'IBM Plex Mono',monospace;color:var(--ink);font-weight:500}
+
+/* conditional floor check */
+.floorcheck{border-radius:12px;padding:13px 16px;margin-bottom:13px;display:flex;gap:13px;align-items:center;border:1px solid var(--fc-bd);background:var(--fc-bg)}
+.floorcheck.pos{--fc:var(--rec);--fc-bg:var(--rec-bg);--fc-bd:var(--rec-bd)}
+.floorcheck.neg{--fc:var(--crit);--fc-bg:var(--crit-bg);--fc-bd:var(--crit-bd)}
+.floorcheck.warn{--fc:var(--high);--fc-bg:var(--high-bg);--fc-bd:var(--high-bd)}
+.floorcheck .fi{width:30px;height:30px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--fc);color:#0a0b0e;opacity:.92}.floorcheck .fi svg{width:17px;height:17px}
+.floorcheck .fc-k{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fc);font-weight:600}
+.floorcheck .ft{font-size:12.5px;color:var(--ink2);margin-top:2px;line-height:1.45}.floorcheck .ft b{color:var(--ink);font-weight:500}
+.floorcheck .fl{margin-left:auto;flex:none}
+.floorcheck .fl a{font-size:11.5px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:6px 11px;display:inline-flex;align-items:center;gap:6px;background:var(--surface);white-space:nowrap;transition:.15s}
+.floorcheck .fl a:hover{border-color:var(--line3);background:var(--surface3)}.floorcheck .fl svg{width:12px;height:12px}
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}
+/* freeze */
+.hz{display:flex;flex-direction:column;gap:9px}
+.hz-q{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink3);letter-spacing:.05em;margin-bottom:3px}
+.hzrow{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.hzrow .pn{width:78px;flex:none;display:flex;align-items:center;gap:7px}.hzrow .pn .d{width:9px;height:9px;border-radius:3px}
+.hzrow .b{flex:1;height:7px;border-radius:4px;background:var(--surface3);overflow:hidden}.hzrow .b i{display:block;height:100%;border-radius:4px;transition:width .12s}
+.hzrow .vv{font-family:'IBM Plex Mono',monospace;width:30px;text-align:right;flex:none;color:var(--ink)}
+.hz-div{height:1px;background:var(--line);margin:4px 0}
+.hzrow.sum .pn{color:var(--ink)}.hzrow.sum .vv{font-weight:600}
+
+/* interp */
+.interp{display:flex;flex-direction:column;gap:11px}
+.ipoint{display:flex;gap:11px}
+.ipoint .ico{width:26px;height:26px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface3);color:var(--ink2)}.ipoint .ico svg{width:15px;height:15px}
+.ipoint.good .ico{background:var(--rec-bg);color:var(--rec)}.ipoint.warn .ico{background:var(--crit-bg);color:var(--crit)}
+.ipoint .it{font-size:12.5px;font-weight:500}.ipoint .ib{font-size:11.5px;color:var(--ink2);line-height:1.45;margin-top:2px}
+
+/* events ledger */
+.ledger{display:grid;grid-template-columns:1.2fr 1fr;gap:20px}
+.lg-active{}
+.evrow{display:flex;gap:11px;padding:10px 0;border-top:1px solid var(--line)}
+.evrow:first-of-type{border-top:none}
+.evrow .dot{width:10px;height:10px;border-radius:50%;flex:none;margin-top:3px}
+.evrow.pledge .dot{background:var(--high)}.evrow.shdr .dot{background:var(--fii)}
+.evrow .ev-d{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)}
+.evrow .ev-t{font-size:12.5px;margin-top:1px}
+.dormcol{display:flex;flex-direction:column;gap:11px}
+.dorm{border:1px dashed var(--line2);border-radius:12px;padding:13px 15px}
+.dorm .dh{display:flex;align-items:center;gap:9px;color:var(--ink2)}
+.dorm .dh svg{width:15px;height:15px;color:var(--ink3)}
+.dorm .dh .nm{font-size:13px;font-weight:500}
+.dorm .dh .dtag{margin-left:auto;font-size:8.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line2);border-radius:5px;padding:2px 7px}
+.dorm .db{font-size:11.5px;color:var(--ink3);margin-top:8px;line-height:1.45}
+.dorm .ghost{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.ghost .gr{height:9px;border-radius:5px;background:var(--surface3);opacity:.6}
+.ghost .gr:nth-child(2){width:80%}.ghost .gr:nth-child(3){width:65%}
+
+/* sidebar */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:40}
+.backdrop.open{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;right:0;bottom:0;width:360px;max-width:88vw;background:var(--surface);border-left:1px solid var(--line2);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.7,.2,1);z-index:50;display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,.4)}
+.sidebar.open{transform:none}
+.sb-head{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+.sb-head h3{font-family:'Fraunces',serif;font-weight:500;font-size:17px}
+.sb-close{appearance:none;background:var(--surface2);border:1px solid var(--line2);color:var(--ink2);width:30px;height:30px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center}.sb-close:hover{color:var(--ink)}.sb-close svg{width:15px;height:15px}
+.sb-search{padding:14px 18px;position:relative}
+.sb-search svg{position:absolute;left:30px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--ink3)}
+.sb-search input{width:100%;background:var(--surface2);border:1px solid var(--line2);border-radius:10px;padding:10px 12px 10px 38px;color:var(--ink);font:inherit;font-size:13px}
+.sb-search input:focus{outline:none;border-color:var(--line3)}
+.sb-list{overflow-y:auto;padding:4px 12px 18px;flex:1}
+.sb-sec{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:12px 6px 7px}
+.sbitem{display:flex;align-items:center;gap:11px;padding:10px;border-radius:10px;cursor:pointer;transition:.13s}
+.sbitem:hover{background:var(--surface2)}.sbitem.cur{background:var(--surface3)}
+.sbitem .sb-meta{flex:1;min-width:0}.sbitem .sb-tk{font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:500}.sbitem .sb-cl{font-size:10px;color:var(--ink3)}
+.sbitem .sb-tell{font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;padding:2px 6px;border-radius:5px;flex:none}
+.sb-tell.pos{background:var(--rec-bg);color:var(--rec)}.sb-tell.neg{background:var(--crit-bg);color:var(--crit)}.sb-tell.mod{background:var(--high-bg);color:var(--high)}
+
+.foot{padding:24px 26px 0;font-size:11px;color:var(--ink3);line-height:1.6;border-top:1px solid var(--line);margin-top:22px}
+a:focus-visible,.spb:focus-visible,.win:focus-visible,.pcard:focus-visible,.sbitem:focus-visible,.tf:focus-visible{outline:2px solid var(--fii);outline-offset:2px;border-radius:4px}
+@media(max-width:1080px){.pgrid{grid-template-columns:repeat(2,1fr)}.brow,.ledger{grid-template-columns:1fr}}
+@media(max-width:680px){.pgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="strip">
+    <span class="tool" id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V8l6-4 6 4 6-4v13"/><path d="M3 21h18"/></svg>Ownership</span>
+    <div class="spbtns">
+      <button class="spb" id="openSearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Search stock</button>
+      <button class="spb" id="openScope"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Across your scope</button>
+    </div>
+    <span class="crumb" id="crumb">your watchlist &amp; portfolio</span>
+  </div>
+
+  <!-- LANDING -->
+  <div class="panel on" id="landing">
+    <div class="land-hero">
+      <h1>Who's buying, who's selling — against the floor</h1>
+      <p>Promoter, FII, DII and retail flows read against the soundness of the business. Pick a flow tell to study, or search any name.</p>
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="landSearch" placeholder="Search a stock…"></div>
+      <div class="tfilters">
+        <button class="tf on" data-tell="all">All tells</button>
+        <button class="tf" data-tell="neg">Distribution / stress</button>
+        <button class="tf" data-tell="pos">Accumulation / rotation</button>
+      </div>
+    </div>
+    <div class="land-eyebrow">Ownership moving against the floor<span class="ln"></span><span class="tag">in your scope</span></div>
+    <div class="pgrid" id="picks"></div>
+  </div>
+
+  <!-- SINGLE -->
+  <div class="panel" id="single">
+    <div class="shead">
+      <div><div class="sname" id="s-name"></div><div class="stk" id="s-tk"></div></div>
+      <div class="hr-right" id="s-chips"></div>
+    </div>
+
+    <div class="read" id="readBanner"></div>
+
+    <div class="floorcheck" id="floorCheck" style="display:none"></div>
+
+    <div class="card chartcard">
+      <div class="chead"><span class="cpair">Holding split over time — <b style="color:var(--ink)">who owns it</b>, and how that's shifting</span>
+        <div class="wins"><button class="win" data-win="1y">1Y</button><button class="win" data-win="2y">2Y</button><button class="win on" data-win="3y">3Y</button></div>
+      </div>
+      <div class="chartwrap"><svg id="chart" viewBox="0 0 1000 400" preserveAspectRatio="none"></svg></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="brow">
+      <div class="card">
+        <div class="chead"><span class="kick">Holdings, at this point</span><span style="font-size:11px;color:var(--ink3);font-style:italic">hover the chart to scrub</span></div>
+        <div class="hz" id="hz"></div>
+      </div>
+      <div class="card">
+        <div class="chead"><span class="kick">How to read it</span></div>
+        <div class="interp" id="interp"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:13px">
+      <div class="chead"><span class="kick">Events &amp; ledger</span></div>
+      <div class="ledger">
+        <div class="lg-active" id="ledgerActive"></div>
+        <div class="dormcol">
+          <div class="dorm">
+            <div class="dh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 4-6"/></svg><span class="nm">Block &amp; bulk deals</span><span class="dtag">pending feed</span></div>
+            <div class="db">Dated block and bulk transactions will surface here once the deal feed is confirmed and scoring. Capability present; no coverage implied yet.</div>
+            <div class="ghost"><div class="gr"></div><div class="gr"></div><div class="gr"></div></div>
+          </div>
+          <div class="dorm">
+            <div class="dh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span class="nm">Insider trades</span><span class="dtag">pending feed</span></div>
+            <div class="db">Promoter and insider buy/sell (NSE PIT) will surface here — the conviction tell — once the feed is live.</div>
+            <div class="ghost"><div class="gr"></div><div class="gr"></div><div class="gr"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Illustrative data for layout review. The chart reads quarterly shareholding against the model's Foundation — structure and direction are real, values are placeholders. Block-deal and insider layers are shown as pending feeds, not as empty. Ownership is a flow tell to investigate, never a signal to follow.</div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-head"><h3>Switch stock</h3><button class="sb-close" id="sbClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="sb-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="sbSearch" placeholder="Search any stock…"></div>
+  <div class="sb-list" id="sbList"></div>
+</aside>
+
+<script>
+const LBL=['Q1\u00b723','Q2\u00b723','Q3\u00b723','Q4\u00b723','Q1\u00b724','Q2\u00b724','Q3\u00b724','Q4\u00b724','Q1\u00b725','Q2\u00b725','Q3\u00b725','Q4\u00b725'];
+const HOLD=[['promoter','Promoter','var(--promoter)'],['fii','FII','var(--fii)'],['dii','DII','var(--dii)'],['retail','Retail','var(--retail)']];
+const STOCKS={
+ VEDL:{name:'Vedanta',cls:'Metals',tell:'neg',band:'Fragile',
+   promoter:[63,63,62,61,60,59,58,57,56,55,54,54],fii:[16,16,15,15,14,13,13,12,11,11,10,10],dii:[10,10,10,10,10,10,10,10,10,10,10,10],retail:[11,11,13,14,16,18,19,21,23,24,26,26],
+   foundation:[58,57,56,55,54,53,52,51,50,49,49,48],
+   read:{t:'Supply moving to weaker hands.',b:'Promoter and FII holdings have fallen for several quarters while retail absorbed the difference — distribution, against a weak and softening floor.'},
+   interp:[['warn','Who\u2019s moving?','Promoter and FIIs reducing; retail is absorbing the supply.'],['warn','Against what floor?','Distribution while the Foundation is weak and falling — supply into weaker hands as the business softens. The negative configuration.']],
+   ev:[{i:5,t:'Promoter pledge rose to 18%',k:'pledge'},{i:8,t:'FII holding crossed below 12%',k:'shdr'},{i:10,t:'Retail crossed above 24%',k:'shdr'}]},
+ ADANIPORTS:{name:'Adani Ports',cls:'Infrastructure',tell:'neg',band:'Steady',
+   promoter:[63,63,62,61,60,58,57,56,55,54,54,54],fii:[18,18,18,19,19,20,20,21,21,22,22,22],dii:[12,12,12,13,13,13,14,14,14,14,14,14],retail:[7,7,8,7,8,9,9,9,10,10,10,10],
+   foundation:[66,66,65,65,64,64,63,63,63,63,63,63],
+   read:{t:'Promoter stress on a softening floor.',b:'Promoter holding has fallen with pledging rising while the Foundation eased — the kind of ownership signal that rewards early attention.'},
+   interp:[['warn','Who\u2019s moving?','Promoter holding falling with pledging rising; institutions are picking up the slack.'],['warn','Against what floor?','Promoter stress on a softening floor — the pledge trend is the thing to watch here.']],
+   ev:[{i:4,t:'Promoter pledge rose to 12%',k:'pledge'},{i:7,t:'Promoter holding fell below 56%',k:'shdr'}]},
+ BHARTIARTL:{name:'Bharti Airtel',cls:'Telecom',tell:'mod',band:'Healthy',
+   promoter:[56,56,56,56,56,56,56,56,56,56,56,56],fii:[22,22,21,20,20,19,18,18,17,17,16,16],dii:[14,14,14,14,13,13,13,12,12,12,12,12],retail:[8,8,9,10,11,12,13,14,15,15,16,16],
+   foundation:[72,72,72,72,72,72,72,72,72,72,72,72],
+   read:{t:'Institutions stepping back from a sound business.',b:'Both FII and DII reduced against a steady Foundation — a flow tell worth understanding before the rest of the picture moves.'},
+   interp:[['warn','Who\u2019s moving?','Both FII and DII reducing; retail rising to fill the gap.'],['warn','Against what floor?','Dual institutional exit against a steady floor — smart money leaving a sound business. Understand why before acting.']],
+   ev:[{i:5,t:'FII share fell below 19%',k:'shdr'},{i:8,t:'DII began trimming',k:'shdr'}]},
+ SUNPHARMA:{name:'Sun Pharma',cls:'Pharma · Defensive',tell:'pos',band:'Steady',
+   promoter:[55,55,55,55,55,55,55,55,55,55,55,55],fii:[14,14,15,15,16,17,17,18,19,19,20,20],dii:[12,12,12,13,13,13,14,14,15,15,16,16],retail:[19,19,18,17,16,15,14,13,11,11,9,9],
+   foundation:[63,63,64,65,66,67,68,69,70,71,72,72],
+   read:{t:'Smart money accumulating under weakness.',b:'FIIs and DIIs added through the soft patch while the Foundation was still recovering — the conviction configuration. A place to look, not a buy.'},
+   interp:[['good','Who\u2019s moving?','FIIs and DIIs both added; retail share fell as they bought.'],['good','Against what floor?','Accumulation through a weak-but-recovering floor — the configuration the tests found regime-robust. A tell to investigate, not to follow.']],
+   ev:[{i:6,t:'FII + DII share crossed 32%',k:'shdr'},{i:9,t:'Retail fell below 11%',k:'shdr'}]},
+ TCS:{name:'TCS',cls:'IT services',tell:'pos',band:'Healthy',
+   promoter:[72,72,72,72,72,72,72,72,72,72,72,72],fii:[14,14,13,13,13,12,12,12,11,11,11,11],dii:[8,8,9,9,9,10,10,10,11,11,11,11],retail:[6,6,6,6,6,6,6,6,6,6,6,6],
+   foundation:[79,79,80,80,80,80,80,80,80,80,80,80],
+   read:{t:'An orderly rotation, not a distribution.',b:'DIIs picked up what FIIs trimmed over a strong, stable floor; promoter holding unchanged.'},
+   interp:[['good','Who\u2019s moving?','DIIs picked up roughly what FIIs trimmed; promoter steady.'],['good','Against what floor?','Orderly rotation over a strong, stable floor — no distribution, no stress. The benign case.']],
+   ev:[{i:6,t:'DII share overtook prior FII level',k:'shdr'}]}
+};
+const ORDER=['VEDL','ADANIPORTS','BHARTIARTL','SUNPHARMA','TCS'];
+/* conditional floor check — fires only when flow and floor genuinely diverge */
+const FC={
+ VEDL:{fires:true,tone:'neg',t:'<b>Distribution while the floor is weak (48) and falling</b> — supply moving into weaker hands as the business itself softens. Flow and fundamentals point the same way: down.'},
+ ADANIPORTS:{fires:true,tone:'neg',t:'<b>Promoter stepping back as the floor softens (63)</b> — the pledge trend compounds an already-easing foundation.'},
+ BHARTIARTL:{fires:true,tone:'warn',t:'<b>Institutions leaving a sound floor (72)</b> — the exit-under-strength configuration: smart money reducing a business the numbers still rate. Worth understanding why.'},
+ SUNPHARMA:{fires:true,tone:'pos',t:'<b>Institutions accumulated through a weak-but-recovering floor (now 72)</b> — the conviction configuration the tests found regime-robust. A tell to investigate, not to follow.'},
+ TCS:{fires:false}
+};
+const INTERP={
+ VEDL:[['warn','Who\u2019s moving?','Promoter and FIIs reducing for several quarters; retail absorbing the supply.'],['warn','How one-sided?','Both smart-money holders out together, retail up ~15 points — a clean one-way distribution, not a rotation.']],
+ ADANIPORTS:[['warn','Who\u2019s moving?','Promoter holding falling with pledging rising; institutions picking up the slack.'],['warn','How one-sided?','Promoter-driven — institutions are absorbing, but the promoter trend is the signal here.']],
+ BHARTIARTL:[['warn','Who\u2019s moving?','Both FII and DII reducing; retail rising to fill the gap.'],['warn','How one-sided?','A dual exit — both institutional holders leaving together, retail up ~8 points.']],
+ SUNPHARMA:[['good','Who\u2019s moving?','FIIs and DIIs both added; retail share fell as they bought.'],['good','How one-sided?','Aligned buying — both institutional holders accumulating together, not a swap.']],
+ TCS:[['good','Who\u2019s moving?','DIIs picked up roughly what FIIs trimmed; promoter steady.'],['good','How one-sided?','A swap, not a build — total institutional share barely changed. Orderly rotation.']]
+};
+const TELL={pos:'Accumulation',neg:'Distribution',mod:'Inst. exit'};
+const TELLNAME={VEDL:'Distribution to retail',ADANIPORTS:'Promoter stress',BHARTIARTL:'Dual institutional exit',SUNPHARMA:'Smart-money accumulation',TCS:'Clean rotation'};
+const TELLIC={pos:'<path d="M3 17l6-6 4 4 8-8"/><path d="M21 11V5h-6"/>',neg:'<path d="M3 7l6 6 4-4 8 8"/><path d="M21 17v-6h-6"/>',mod:'<path d="M16 3l5 5-5 5M21 8H9M8 21l-5-5 5-5M3 16h12"/>'};
+const instNow=s=>s.fii[11]+s.dii[11], instDelta=s=>(s.fii[11]+s.dii[11])-(s.fii[0]+s.dii[0]);
+let CUR='VEDL',WIN='3y',scrubIdx=null;
+const X0=58,X1=910,Y0=24,Y1=330,yOf=p=>Y1-(p/100)*(Y1-Y0);
+const winRange=()=>WIN==='1y'?[8,11]:WIN==='2y'?[4,11]:[0,11];
+const xOf=(li,n)=>X0+li*((X1-X0)/(n-1));
+
+function miniStack(s,w,h){const n=12,xo=i=>i*(w/(n-1)),yo=p=>h-(p/100)*h;let out='';
+  const cum=[];for(let i=0;i<n;i++){const p=s.promoter[i],f=s.fii[i],d=s.dii[i];cum.push([0,p,p+f,p+f+d,100]);}
+  for(let hh=0;hh<4;hh++){const up=[],dn=[];for(let i=0;i<n;i++){up.push(`${xo(i).toFixed(1)},${yo(cum[i][hh+1]).toFixed(1)}`);dn.push(`${xo(i).toFixed(1)},${yo(cum[i][hh]).toFixed(1)}`);}out+=`<polygon points="${up.concat(dn.reverse()).join(' ')}" fill="${HOLD[hh][2]}" opacity=".8"/>`;}
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${out}</svg>`;}
+
+function renderPicks(q,tell){q=(q||'').toLowerCase();tell=tell||'all';
+  const list=ORDER.filter(k=>tell==='all'||STOCKS[k].tell===tell).filter(k=>!q||k.toLowerCase().includes(q)||STOCKS[k].name.toLowerCase().includes(q));
+  document.getElementById('picks').innerHTML=list.map(k=>{const s=STOCKS[k],id=instDelta(s);return `<div class="pcard" data-k="${k}" tabindex="0"><div class="pc-top"><span class="pc-tk">${k}</span><span class="tell ${s.tell}">${TELLNAME[k]}</span></div><div class="pc-spark">${miniStack(s,260,46)}</div><div class="pc-stat">Institutional <span class="n">${instNow(s)}%</span> <span style="color:${id>=0?'var(--rec)':'var(--crit)'}">${id>=0?'\u25B2':'\u25BC'} ${Math.abs(id)}</span></div><div class="pc-read">${s.read.t}</div></div>`;}).join('')||'<div style="color:var(--ink3);padding:20px">No tell of this type in your scope.</div>';
+  document.querySelectorAll('.pcard').forEach(c=>{c.addEventListener('click',()=>loadStock(c.dataset.k));c.addEventListener('keydown',e=>{if(e.key==='Enter')loadStock(c.dataset.k);});});
+}
+function renderSidebar(q){q=(q||'').toLowerCase();
+  const list=ORDER.filter(k=>!q||k.toLowerCase().includes(q)||STOCKS[k].name.toLowerCase().includes(q));
+  document.getElementById('sbList').innerHTML='<div class="sb-sec">Ownership tells in your scope</div>'+list.map(k=>{const s=STOCKS[k];return `<div class="sbitem ${k===CUR?'cur':''}" data-k="${k}"><div class="sb-meta"><div class="sb-tk">${k}</div><div class="sb-cl">${s.cls}</div></div><span class="sb-tell ${s.tell}">${TELLNAME[k]}</span></div>`;}).join('');
+  document.querySelectorAll('.sbitem').forEach(it=>it.addEventListener('click',()=>{loadStock(it.dataset.k);closeSidebar();}));
+}
+
+function renderChart(){const s=STOCKS[CUR],[a,b]=winRange(),n=b-a+1,svg=document.getElementById('chart');let out='';
+  // y grid (0/25/50/75/100 %)
+  [25,50,75,100].forEach(v=>{const y=yOf(v).toFixed(1);out+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 5"/><text class="glt" x="${X0-8}" y="${+y+4}" text-anchor="end">${v}%</text>`;});
+  // stacked areas
+  const cum=[];for(let i=a;i<=b;i++){const p=s.promoter[i],f=s.fii[i],d=s.dii[i];cum.push([0,p,p+f,p+f+d,100]);}
+  for(let hh=0;hh<4;hh++){const up=[],dn=[];for(let j=0;j<n;j++){up.push(`${xOf(j,n).toFixed(1)},${yOf(cum[j][hh+1]).toFixed(1)}`);dn.push(`${xOf(j,n).toFixed(1)},${yOf(cum[j][hh]).toFixed(1)}`);}out+=`<polygon points="${up.concat(dn.slice().reverse()).join(' ')}" fill="${HOLD[hh][2]}" opacity=".82"/>`;
+    // label each band at right end mid
+    const last=hh, midY=(yOf(cum[n-1][hh+1])+yOf(cum[n-1][hh]))/2, val=s[HOLD[hh][0]][b];
+    if(val>=8) out+=`<text x="${X1-6}" y="${(midY+4).toFixed(1)}" text-anchor="end" style="font-size:12px;font-family:IBM Plex Mono;fill:#fff;opacity:.85">${HOLD[hh][1]} ${val}%</text>`;}
+  for(let j=0;j<n;j++){if(j%(n>6?2:1)===0||j===n-1)out+=`<text class="xlt" x="${xOf(j,n).toFixed(1)}" y="358">${LBL[a+j]}</text>`;}
+  s.ev.filter(e=>e.i>=a&&e.i<=b).forEach(e=>{const x=xOf(e.i-a,n).toFixed(1),c=e.k==='pledge'?'var(--high)':'var(--fii)';out+=`<line x1="${x}" y1="${Y0}" x2="${x}" y2="376" stroke="${c}" stroke-width="1" stroke-dasharray="2 4" opacity=".4"/><g class="pin"><circle cx="${x}" cy="379" r="9" fill="var(--surface3)" stroke="${c}" stroke-width="1.5"/><text class="pinlbl" x="${x}" y="383">${s.ev.indexOf(e)+1}</text></g>`;});
+  out+=`<line class="crosshair" id="cross-line" x1="0" y1="${Y0}" x2="0" y2="${Y1}"/>`;
+  svg.innerHTML=out;
+  document.getElementById('legend').innerHTML=HOLD.map(h=>`<span class="lg"><span class="sw" style="background:${h[2]}"></span>${h[1]} <span class="vv">${s[h[0]][b]}%</span></span>`).join('');
+  setScrub(scrubIdx===null?b:scrubIdx);
+}
+function setScrub(i){const s=STOCKS[CUR],[a,b]=winRange(),n=b-a+1;scrubIdx=i;
+  document.getElementById('hz').innerHTML=`<div class="hz-q">${LBL[i]}</div>`+HOLD.map(h=>`<div class="hzrow"><span class="pn"><span class="d" style="background:${h[2]}"></span>${h[1]}</span><span class="b"><i style="width:${s[h[0]][i]}%;background:${h[2]}"></i></span><span class="vv">${s[h[0]][i]}%</span></div>`).join('')+`<div class="hz-div"></div><div class="hzrow sum"><span class="pn">Institutional</span><span class="b"><i style="width:${s.fii[i]+s.dii[i]}%;background:linear-gradient(90deg,var(--fii),var(--dii))"></i></span><span class="vv">${s.fii[i]+s.dii[i]}%</span></div><div style="font-size:11px;color:var(--ink3);margin-top:6px">floor context · Foundation <span class="num" style="color:var(--ink2)">${s.foundation[i]}</span> ${s.foundation[i]<60?'weak':s.foundation[i]<72?'mid':'strong'}</div>`;
+  const cl=document.getElementById('cross-line');if(cl){const x=xOf(i-a,n);cl.setAttribute('x1',x);cl.setAttribute('x2',x);cl.style.opacity=.8;}
+}
+const chartEl=document.getElementById('chart');
+chartEl.addEventListener('mousemove',ev=>{const r=chartEl.getBoundingClientRect(),vx=(ev.clientX-r.left)/r.width*1000,[a,b]=winRange(),n=b-a+1;let best=a,bd=1e9;for(let i=a;i<=b;i++){const d=Math.abs(xOf(i-a,n)-vx);if(d<bd){bd=d;best=i;}}setScrub(best);});
+chartEl.addEventListener('mouseleave',()=>setScrub(winRange()[1]));
+document.querySelectorAll('.win').forEach(w=>w.addEventListener('click',()=>{document.querySelectorAll('.win').forEach(x=>x.classList.remove('on'));w.classList.add('on');WIN=w.dataset.win;scrubIdx=null;renderChart();}));
+
+function loadStock(k){CUR=k;const s=STOCKS[k];WIN='3y';document.querySelectorAll('.win').forEach(x=>x.classList.toggle('on',x.dataset.win==='3y'));scrubIdx=null;
+  document.getElementById('s-name').textContent=s.name;
+  document.getElementById('s-tk').textContent=k+' · '+s.cls;
+  const tc=s.tell==='pos'?'var(--rec)':s.tell==='neg'?'var(--crit)':'var(--high)';
+  document.getElementById('s-chips').innerHTML=`<span class="chip"><span class="bd" style="background:${s.band==='Healthy'?'var(--c-healthy)':s.band==='Steady'?'var(--c-steady)':s.band==='Fragile'?'var(--crit)':'var(--c-below)'}"></span>${s.band}</span><span class="chip" style="color:${tc};border-color:${tc}33">${TELLNAME[k]}</span>`;
+  const rb=document.getElementById('readBanner');rb.className='read '+s.tell;
+  rb.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${TELLIC[s.tell]}</svg></span><div><div class="rt">${s.read.t}</div><div class="rb">${s.read.b}</div></div><div class="rlink"><a href="#">Open ${k} health page <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>`;
+  document.getElementById('interp').innerHTML=INTERP[k].map(p=>`<div class="ipoint ${p[0]}"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p[0]==='good'?'<path d="M20 6L9 17l-5-5"/>':'<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'}</svg></span><div><div class="it">${p[1]}</div><div class="ib">${p[2]}</div></div></div>`).join('');
+  const fc=FC[k],fce=document.getElementById('floorCheck');
+  if(fc.fires){fce.style.display='flex';fce.className='floorcheck '+fc.tone;
+    fce.innerHTML=`<span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V8l6-4 6 4 6-4v13"/><path d="M3 21h18"/></svg></span><div><div class="fc-k">Floor check · flow vs fundamentals</div><div class="ft">${fc.t}</div></div><div class="fl"><a href="#">View as divergence <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>`;
+  } else {fce.style.display='none';}
+  const E=s.ev;document.getElementById('ledgerActive').innerHTML='<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">From shareholding &amp; pledging</div>'+E.slice().reverse().map(e=>`<div class="evrow ${e.k}"><span class="dot"></span><div><div class="ev-d">${LBL[e.i]}</div><div class="ev-t">${e.t}</div></div></div>`).join('');
+  document.getElementById('landing').classList.remove('on');document.getElementById('single').classList.add('on');
+  document.getElementById('crumb').innerHTML='viewing <b>'+k+'</b> · Switch stock to change';
+  renderChart();renderSidebar();window.scrollTo({top:0,behavior:'smooth'});
+}
+function openSidebar(f){document.getElementById('sidebar').classList.add('open');document.getElementById('backdrop').classList.add('open');renderSidebar();if(f)setTimeout(()=>document.getElementById('sbSearch').focus(),300);}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('backdrop').classList.remove('open');}
+document.getElementById('openSearch').addEventListener('click',()=>openSidebar(true));
+document.getElementById('openScope').addEventListener('click',()=>openSidebar(false));
+document.getElementById('sbClose').addEventListener('click',closeSidebar);
+document.getElementById('backdrop').addEventListener('click',closeSidebar);
+document.getElementById('sbSearch').addEventListener('input',e=>renderSidebar(e.target.value));
+let curTell='all';
+document.getElementById('landSearch').addEventListener('input',e=>renderPicks(e.target.value,curTell));
+document.querySelectorAll('.tf').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.tf').forEach(x=>x.classList.remove('on'));f.classList.add('on');curTell=f.dataset.tell;renderPicks(document.getElementById('landSearch').value,curTell);}));
+document.getElementById('homeBtn').addEventListener('click',()=>{document.getElementById('single').classList.remove('on');document.getElementById('landing').classList.add('on');document.getElementById('crumb').textContent='your watchlist & portfolio';renderPicks('',curTell);});
+
+renderPicks();renderSidebar();
+</script>
+</body>
+</html>

@@ -1,15 +1,38 @@
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+/**
+ * Vytal Card — depth from surface + hairline, not heavy shadow.
+ *   default : bg-card · 1px --line · radius 16px
+ *   hero    : larger radius, low-opacity wash + soft radial glow (verdict heroes)
+ * Accents are applied via className on top:
+ *   top-accent (pillar):    border-t-2 border-t-p-found | -p-mom | -p-mkt | -p-own
+ *   left-accent (severity): border-l-[3px] border-l-crit | -high | -rec | -ctx
+ */
+const cardVariants = cva(
+  "relative flex flex-col gap-6 rounded-xl border border-line py-6 text-card-foreground transition-colors",
+  {
+    variants: {
+      variant: {
+        default: "bg-card",
+        hero: "card-hero rounded-2xl",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  }
+);
+
+function Card({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof cardVariants>) {
   return (
     <div
       data-slot="card"
-      className={cn(
-        " text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm border-border/50 bg-background/50 backdrop-blur-sm",
-        className
-      )}
+      className={cn(cardVariants({ variant }), className)}
       {...props}
     />
   );
@@ -83,6 +106,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 
 export {
   Card,
+  cardVariants,
   CardHeader,
   CardFooter,
   CardTitle,

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vytal — Divergence</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#090a0d;--surface:#111319;--surface2:#171a20;--surface3:#20242c;
+  --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.10);--line3:rgba(255,255,255,.17);
+  --ink:#f1efe9;--ink2:#9b9c9c;--ink3:#62646c;
+  --c-fragile:#e2584d;--c-below:#e0913f;--c-steady:#cda74f;--c-healthy:#48ba7c;--c-pristine:#4ea1e6;
+  --p-found:#5d92d8;--p-mom:#a085d8;--p-mkt:#d6a652;--p-own:#4fb6a4;
+  --high:#e0a13e;--high-bg:rgba(224,161,62,.13);--high-bd:rgba(224,161,62,.4);
+  --rec:#48ba7c;--rec-bg:rgba(72,186,124,.13);--rec-bd:rgba(72,186,124,.42);
+  --crit:#e2584d;--ctx:#7f93b2;--ctx-bg:rgba(127,147,178,.12);--ctx-bd:rgba(127,147,178,.34);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 50px}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.shell{padding:0 26px}
+
+.strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 0 12px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.tool{font-family:'Fraunces',serif;font-weight:500;font-size:16px;display:flex;align-items:center;gap:9px;cursor:pointer}
+.tool svg{width:18px;height:18px;color:var(--p-mkt)}
+.spbtns{display:flex;gap:6px;margin-left:6px}
+.spb{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:7px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.spb:hover{border-color:var(--line3);color:var(--ink)}.spb svg{width:14px;height:14px}
+.crumb{font-size:11.5px;color:var(--ink3);margin-left:auto}.crumb b{color:var(--ink2);font-weight:500}
+
+.panel{display:none}.panel.on{display:block;animation:fade .4s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.panel.on{animation:none}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 17px}
+.kick{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3)}
+
+/* LANDING */
+.land-hero{text-align:center;padding:24px 0 26px}
+.land-hero h1{font-family:'Fraunces',serif;font-weight:500;font-size:30px}
+.land-hero p{font-size:14px;color:var(--ink2);margin-top:8px;max-width:40em;margin-left:auto;margin-right:auto}
+.search{max-width:560px;margin:20px auto 0;position:relative}
+.search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ink3)}
+.search input{width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:14px 16px 14px 44px;color:var(--ink);font:inherit;font-size:14px;transition:.15s}
+.search input:focus{outline:none;border-color:var(--line3);background:var(--surface2)}
+.search input::placeholder{color:var(--ink3)}
+.tfilters{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.tf{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:7px 13px;border-radius:8px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+.tf:hover{border-color:var(--line3);color:var(--ink)}.tf.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.tf .d{width:7px;height:7px;border-radius:50%}
+.land-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px;margin:24px 2px 14px}
+.land-eyebrow .ln{flex:1;height:1px;background:var(--line)}
+.land-eyebrow .tag{letter-spacing:0;text-transform:none;font-size:11px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:2px 10px}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.pcard{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px 17px;cursor:pointer;transition:.15s}
+.pcard:hover{border-color:var(--line2);background:var(--surface2);transform:translateY(-2px)}
+.pc-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pc-tk{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500}
+.typ{font-size:9px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:3px 8px;border-radius:6px}
+.typ.pa{background:var(--high-bg);color:var(--high)}.typ.fa{background:var(--ctx-bg);color:var(--ctx)}.typ.oa{background:rgba(79,182,164,.14);color:var(--p-own)}
+.pc-gap{display:flex;align-items:baseline;gap:9px;margin:13px 0 4px}
+.pc-gap .g{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:500}
+.pc-gap .dir{font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:4px}
+.dir.wid{color:var(--high)}.dir.nar{color:var(--rec)}
+.pc-spark{margin:8px 0}.pc-spark svg{width:100%;height:auto;display:block}
+.pc-read{font-size:11.5px;color:var(--ink2);line-height:1.4;margin-top:6px}
+
+/* SINGLE */
+.shead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.sname{font-family:'Fraunces',serif;font-weight:500;font-size:27px;line-height:1.05}
+.stk{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink2);margin-top:4px}
+.hr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:5px 11px;border-radius:9px;border:1px solid var(--line2);color:var(--ink2);background:var(--surface)}
+.chip .bd{width:7px;height:7px;border-radius:50%}
+
+.read{border-radius:14px;padding:16px 19px;margin-bottom:13px;display:flex;gap:15px;align-items:flex-start;border:1px solid var(--rc-bd);background:linear-gradient(100deg,var(--rc-bg),transparent 70%),var(--surface)}
+.read.pa{--rc:var(--high);--rc-bg:var(--high-bg);--rc-bd:var(--high-bd)}
+.read.fa{--rc:var(--ctx);--rc-bg:var(--ctx-bg);--rc-bd:var(--ctx-bd)}
+.read.oa{--rc:var(--p-own);--rc-bg:rgba(79,182,164,.13);--rc-bd:rgba(79,182,164,.4)}
+.read .ic{width:40px;height:40px;border-radius:11px;background:var(--rc-bg);color:var(--rc);display:flex;align-items:center;justify-content:center;flex:none}.read .ic svg{width:21px;height:21px}
+.read .rt{font-family:'Fraunces',serif;font-weight:500;font-size:19px;color:var(--rc)}
+.read .rb{font-size:13px;color:var(--ink2);margin-top:5px;line-height:1.5;max-width:62em}
+.read .rmask{font-size:11.5px;color:var(--high);margin-top:8px;display:inline-flex;align-items:center;gap:6px}.read .rmask svg{width:12px;height:12px}
+.read .rlink{margin-left:auto;flex:none}
+.rlink a{font-size:12px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;background:var(--surface2);transition:.15s;white-space:nowrap}
+.rlink a:hover{border-color:var(--line3);background:var(--surface3)}.rlink svg{width:12px;height:12px}
+
+/* chart */
+.chartcard{padding:18px 20px}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.cpair{font-size:12px;color:var(--ink2)}.cpair b{color:var(--ink);font-weight:500}
+.wins{display:flex;gap:3px}
+.win{appearance:none;background:var(--surface2);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:11px;padding:5px 12px;border-radius:7px;cursor:pointer;transition:.15s}
+.win:hover{border-color:var(--line3);color:var(--ink)}.win.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.chartwrap svg{width:100%;height:auto;display:block;cursor:crosshair}
+.gl{stroke:var(--line);stroke-width:1;stroke-dasharray:2 5}
+.glt{fill:var(--ink3);font-size:12px;font-family:'IBM Plex Mono',monospace}
+.ln{fill:none;stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+.lnlbl{font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:500}
+.xlt{fill:var(--ink3);font-size:12px;font-family:'IBM Plex Mono',monospace;text-anchor:middle}
+.gaplabel{fill:var(--ink);font-size:13px;font-family:'IBM Plex Mono',monospace;font-weight:500}
+.crosshair{stroke:var(--ink3);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+.pin circle{transition:.15s;cursor:pointer}.pinlbl{fill:var(--ink2);font-size:12px;font-family:'IBM Plex Mono',monospace;text-anchor:middle;pointer-events:none}
+
+/* bottom row */
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}
+/* freeze (gap state) */
+.gz{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+.gz-l{flex:none}
+.gz-q{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink3);letter-spacing:.05em}
+.gz-g{display:flex;align-items:baseline;gap:9px;margin-top:4px}
+.gz-g .num{font-size:38px;font-weight:500}
+.gz-g .u{font-size:13px;color:var(--ink2)}
+.gz-dir{font-size:12px;margin-top:6px;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.gz-r{flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px}
+.gzrow{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.gzrow .pn{width:96px;flex:none;display:flex;align-items:center;gap:7px}.gzrow .pn .d{width:8px;height:8px;border-radius:2px}
+.gzrow .b{flex:1;height:7px;border-radius:4px;background:var(--surface3);overflow:hidden}.gzrow .b i{display:block;height:100%;border-radius:4px;transition:width .12s}
+.gzrow .vv{font-family:'IBM Plex Mono',monospace;width:26px;text-align:right;flex:none;color:var(--ink)}
+.gzhint{font-size:11px;color:var(--ink3);font-style:italic;margin-top:11px}
+
+/* interpretation panel */
+.interp{display:flex;flex-direction:column;gap:11px}
+.ipoint{display:flex;gap:11px}
+.ipoint .ico{width:26px;height:26px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface3);color:var(--ink2)}.ipoint .ico svg{width:15px;height:15px}
+.ipoint.good .ico{background:var(--rec-bg);color:var(--rec)}.ipoint.warn .ico{background:var(--high-bg);color:var(--high)}
+.ipoint .it{font-size:12.5px;font-weight:500}.ipoint .ib{font-size:11.5px;color:var(--ink2);line-height:1.45;margin-top:2px}
+
+/* sidebar */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:40}
+.backdrop.open{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;right:0;bottom:0;width:360px;max-width:88vw;background:var(--surface);border-left:1px solid var(--line2);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.7,.2,1);z-index:50;display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,.4)}
+.sidebar.open{transform:none}
+.sb-head{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+.sb-head h3{font-family:'Fraunces',serif;font-weight:500;font-size:17px}
+.sb-close{appearance:none;background:var(--surface2);border:1px solid var(--line2);color:var(--ink2);width:30px;height:30px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center}.sb-close:hover{color:var(--ink)}.sb-close svg{width:15px;height:15px}
+.sb-search{padding:14px 18px;position:relative}
+.sb-search svg{position:absolute;left:30px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--ink3)}
+.sb-search input{width:100%;background:var(--surface2);border:1px solid var(--line2);border-radius:10px;padding:10px 12px 10px 38px;color:var(--ink);font:inherit;font-size:13px}
+.sb-search input:focus{outline:none;border-color:var(--line3)}
+.sb-list{overflow-y:auto;padding:4px 12px 18px;flex:1}
+.sb-sec{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:12px 6px 7px}
+.sbitem{display:flex;align-items:center;gap:11px;padding:10px;border-radius:10px;cursor:pointer;transition:.13s}
+.sbitem:hover{background:var(--surface2)}.sbitem.cur{background:var(--surface3)}
+.sbitem .sb-meta{flex:1;min-width:0}
+.sbitem .sb-tk{font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:500}
+.sbitem .sb-cl{font-size:10px;color:var(--ink3)}
+.sbitem .sb-g{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;flex:none}
+.sbitem .sb-typ{font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;padding:2px 6px;border-radius:5px;flex:none}
+.sb-typ.pa{background:var(--high-bg);color:var(--high)}.sb-typ.fa{background:var(--ctx-bg);color:var(--ctx)}.sb-typ.oa{background:rgba(79,182,164,.14);color:var(--p-own)}
+
+.foot{padding:24px 26px 0;font-size:11px;color:var(--ink3);line-height:1.6;border-top:1px solid var(--line);margin-top:22px}
+a:focus-visible,.spb:focus-visible,.win:focus-visible,.pcard:focus-visible,.sbitem:focus-visible,.tf:focus-visible{outline:2px solid var(--c-pristine);outline-offset:2px;border-radius:4px}
+@media(max-width:1080px){.pgrid{grid-template-columns:repeat(2,1fr)}.brow{grid-template-columns:1fr}}
+@media(max-width:680px){.pgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="strip">
+    <span class="tool" id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7L3 12l5 5M16 7l5 5-5 5"/></svg>Divergence &amp; Convergence</span>
+    <div class="spbtns">
+      <button class="spb" id="openSearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Search stock</button>
+      <button class="spb" id="openScope"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Across your scope</button>
+    </div>
+    <span class="crumb" id="crumb">your watchlist &amp; portfolio</span>
+  </div>
+
+  <!-- LANDING -->
+  <div class="panel on" id="landing">
+    <div class="land-hero">
+      <h1>Where the pillars disagree</h1>
+      <p>The gap between price, fundamentals, and ownership — and which way it's resolving. Pick a tension to study, or search any name.</p>
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="landSearch" placeholder="Search a stock…"></div>
+      <div class="tfilters">
+        <button class="tf on" data-typ="all">All tensions</button>
+        <button class="tf" data-typ="pa"><span class="d" style="background:var(--high)"></span>Price ahead</button>
+        <button class="tf" data-typ="fa"><span class="d" style="background:var(--ctx)"></span>Fundamentals ahead</button>
+        <button class="tf" data-typ="oa"><span class="d" style="background:var(--p-own)"></span>Ownership against</button>
+      </div>
+    </div>
+    <div class="land-eyebrow">Widest tensions in your scope<span class="ln"></span><span class="tag">ranked by gap</span></div>
+    <div class="pgrid" id="picks"></div>
+  </div>
+
+  <!-- SINGLE -->
+  <div class="panel" id="single">
+    <div class="shead">
+      <div><div class="sname" id="s-name"></div><div class="stk" id="s-tk"></div></div>
+      <div class="hr-right" id="s-chips"></div>
+    </div>
+
+    <div class="read" id="readBanner"></div>
+
+    <div class="card chartcard">
+      <div class="chead"><span class="cpair" id="cpair"></span>
+        <div class="wins"><button class="win" data-win="1y">1Y</button><button class="win" data-win="2y">2Y</button><button class="win on" data-win="3y">3Y</button></div>
+      </div>
+      <div class="chartwrap"><svg id="chart" viewBox="0 0 1000 400" preserveAspectRatio="none"></svg></div>
+    </div>
+
+    <div class="brow">
+      <div class="card">
+        <div class="chead"><span class="kick">The gap, at this point</span><span class="gzhint" style="margin:0">hover the chart to scrub</span></div>
+        <div class="gz">
+          <div class="gz-l">
+            <div class="gz-q" id="gz-q"></div>
+            <div class="gz-g"><span class="num" id="gz-g"></span><span class="u">pts</span></div>
+            <div class="gz-dir" id="gz-dir"></div>
+          </div>
+          <div class="gz-r" id="gz-rows"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chead"><span class="kick">How to read it</span></div>
+        <div class="interp" id="interp"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Illustrative data for layout review. The chart reads the gap between the model's pillars over time — structure and direction are real, values are placeholders. Divergence is a state to investigate, never a timing signal: the gap tells you the bill is due, never that it's due today.</div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-head"><h3>Switch stock</h3><button class="sb-close" id="sbClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="sb-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="sbSearch" placeholder="Search any stock…"></div>
+  <div class="sb-list" id="sbList"></div>
+</aside>
+
+<script>
+const LBL=['Q1\u00b723','Q2\u00b723','Q3\u00b723','Q4\u00b723','Q1\u00b724','Q2\u00b724','Q3\u00b724','Q4\u00b724','Q1\u00b725','Q2\u00b725','Q3\u00b725','Q4\u00b725'];
+/* hi = the higher line, lo = the lower line; labels name which pillar each is */
+const STOCKS={
+ TATASTEEL:{name:'Tata Steel',cls:'Metals · Cyclical',typ:'pa',hiName:'Market',loName:'Fundamentals (F·M)',hiCol:'var(--p-mkt)',loCol:'var(--p-found)',band:'Steady',dir:'wid',
+   hi:[72,73,74,75,76,77,77,78,78,78,79,78],lo:[71,70,69,68,67,66,65,63,62,61,61,61],
+   read:{t:'Price has run ahead of cooling fundamentals.',b:'The Market pillar pulled away as fundamentals softened — the gap has widened for six quarters. A masked caution: historically the reading the market defers longest, so look for the catalyst rather than the date.',mask:true},
+   ev:[{i:7,t:'Gap crossed wide (15+)',k:'band'}],
+   interp:[['warn','Whose move?','Price rose while fundamentals fell — both legs widened the gap. The least reassuring kind.'],['warn','What it means','Deferred, not escaped. The market can hold this for a long time; the bill is due, never that it\u2019s due today.']]},
+ SIEMENS:{name:'Siemens',cls:'Capital goods',typ:'fa',hiName:'Fundamentals (F·M)',loName:'Market',hiCol:'var(--p-found)',loCol:'var(--p-mkt)',band:'Healthy',dir:'wid',
+   hi:[69,69,70,70,71,71,72,72,72,72,72,72],lo:[62,60,58,55,53,51,49,48,47,46,46,46],
+   read:{t:'Sound fundamentals, a de-rated price.',b:'Fundamentals held strong while the Market pillar fell away — the value configuration. Historically one of the more robust divergences in the model, but a state to investigate, not a buy.',mask:false},
+   ev:[{i:3,t:'Price de-rating begins',k:'mkt'},{i:6,t:'Gap crossed wide (15+)',k:'band'}],
+   interp:[['good','Whose move?','Price fell to open the gap while fundamentals held — the configuration the tests found most durable.'],['warn','What it means','Robust on average, but still a read. The market can stay cheap; this is where to look, not a signal to act.']]},
+ DIXON:{name:'Dixon Tech',cls:'Cons. durables · Growth',typ:'pa',hiName:'Market',loName:'Fundamentals (F·M)',hiCol:'var(--p-mkt)',loCol:'var(--p-found)',band:'Below par',dir:'wid',
+   hi:[68,70,71,72,73,74,74,74,74,74,74,74],lo:[66,65,64,62,61,60,59,58,58,57,57,57],
+   read:{t:'A growth premium stretching from the floor.',b:'Price held up on the growth story while the foundation softened — the widest price-ahead gap in your scope. Expectation-driven, and the most exposed if the story breaks.',mask:true},
+   ev:[{i:6,t:'Gap crossed wide (15+)',k:'band'}],
+   interp:[['warn','Whose move?','Fundamentals slid while price stayed up — the gap is the market holding a story the numbers aren\u2019t yet backing.'],['warn','What it means','Highest-beta version of the caution. Deferred, but fragile if sentiment turns.']]},
+ BHARTIARTL:{name:'Bharti Airtel',cls:'Telecom',typ:'oa',hiName:'Foundation',loName:'Ownership',hiCol:'var(--p-found)',loCol:'var(--p-own)',band:'Healthy',dir:'wid',
+   hi:[70,71,71,72,72,72,73,73,73,73,73,73],lo:[68,67,66,64,63,62,61,60,59,59,58,58],
+   read:{t:'Owners stepping back from a holding floor.',b:'The Foundation held while Ownership drifted down — institutions trimming a sound business. Worth understanding why before the rest of the picture follows.',mask:false},
+   ev:[{i:5,t:'Ownership crossed weak',k:'own'}],
+   interp:[['warn','Whose move?','Ownership fell against a steady floor — the people closest to it are reducing while the numbers hold.'],['warn','What it means','A flow tell to investigate, never to follow. Read it against why, not as a verdict.']]},
+ LT:{name:'Larsen & Toubro',cls:'Capital goods',typ:'fa',hiName:'Fundamentals (F·M)',loName:'Market',hiCol:'var(--p-found)',loCol:'var(--p-mkt)',band:'Healthy',dir:'nar',
+   hi:[72,72,72,73,73,73,73,73,73,73,73,73],lo:[58,59,60,62,64,66,67,68,69,70,70,71],
+   read:{t:'A value gap closing — price rising to meet it.',b:'Fundamentals held while the Market pillar climbed back toward them — the gap is narrowing, and it\u2019s price doing the moving. The healthy resolution of a value divergence.',mask:false},
+   ev:[{i:4,t:'Price began re-rating up',k:'mkt'},{i:9,t:'Gap narrowing through notable',k:'band'}],
+   interp:[['good','Whose move?','Price is rising to meet steady fundamentals — convergence by the right leg. The constructive way a gap closes.'],['good','What it means','The tension is resolving upward. Still a read, not a buy, but the healthy direction of travel.']]}
+};
+const ORDER=['DIXON','TATASTEEL','SIEMENS','BHARTIARTL','LT'];
+const TYPN={pa:'Price ahead',fa:'Fundamentals ahead',oa:'Ownership against'};
+const TYPIC={pa:'<path d="M3 17l6-6 4 4 8-8"/><path d="M21 11V5h-6"/>',fa:'<path d="M3 7l6 6 4-4 8 8"/><path d="M21 17v-6h-6"/>',oa:'<path d="M16 3l5 5-5 5M21 8H9M8 21l-5-5 5-5M3 16h12"/>'};
+const gapNow=s=>Math.round(s.hi[11]-s.lo[11]);
+const BNAME=s=>s<55?'Fragile':s<62?'Below par':s<68?'Steady':s<74?'Healthy':'Pristine';
+const EVCOL={band:'var(--high)',mkt:'var(--p-mkt)',own:'var(--p-own)',mom:'var(--p-mom)'};
+let CUR='DIXON',WIN='3y',scrubIdx=null;
+const X0=58,X1=920,Y0=24,Y1=330,yOf=v=>Y0+(82-v)*((Y1-Y0)/(82-42));
+const winRange=()=>WIN==='1y'?[8,11]:WIN==='2y'?[4,11]:[0,11];
+const xOf=(li,n)=>X0+li*((X1-X0)/(n-1));
+
+function spark(s,w,h){const hi=s.hi,lo=s.lo,n=hi.length,x0=3,x1=w-3,y0=5,y1=h-5,yo=v=>y0+(82-v)/(82-42)*(y1-y0),xo=i=>x0+i*((x1-x0)/(n-1));
+  const up=hi.map((v,i)=>`${xo(i).toFixed(1)},${yo(v).toFixed(1)}`),dn=lo.map((v,i)=>`${xo(i).toFixed(1)},${yo(v).toFixed(1)}`);
+  const poly=up.concat(dn.slice().reverse()).join(' ');
+  const fill=s.dir==='nar'?'var(--rec)':'var(--high)';
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polygon points="${poly}" fill="${fill}" opacity=".14"/><polyline points="${up.join(' ')}" fill="none" stroke="${s.hiCol}" stroke-width="1.8"/><polyline points="${dn.join(' ')}" fill="none" stroke="${s.loCol}" stroke-width="1.8"/></svg>`;}
+
+function renderPicks(q,typ){q=(q||'').toLowerCase();typ=typ||'all';
+  const list=ORDER.filter(k=>typ==='all'||STOCKS[k].typ===typ).filter(k=>!q||k.toLowerCase().includes(q)||STOCKS[k].name.toLowerCase().includes(q)).sort((a,b)=>gapNow(STOCKS[b])-gapNow(STOCKS[a]));
+  document.getElementById('picks').innerHTML=list.map(k=>{const s=STOCKS[k],g=gapNow(s);return `<div class="pcard" data-k="${k}" tabindex="0"><div class="pc-top"><span class="pc-tk">${k}</span><span class="typ ${s.typ}">${TYPN[s.typ]}</span></div><div class="pc-gap"><span class="g">${g}</span><span class="dir ${s.dir}">${s.dir==='wid'?'\u25B2 widening':'\u25BC narrowing'}</span></div><div class="pc-spark">${spark(s,260,48)}</div><div class="pc-read">${s.read.t}</div></div>`;}).join('')||'<div style="color:var(--ink3);padding:20px">No tension of this type in your scope.</div>';
+  document.querySelectorAll('.pcard').forEach(c=>{c.addEventListener('click',()=>loadStock(c.dataset.k));c.addEventListener('keydown',e=>{if(e.key==='Enter')loadStock(c.dataset.k);});});
+}
+function renderSidebar(q){q=(q||'').toLowerCase();
+  const list=ORDER.filter(k=>!q||k.toLowerCase().includes(q)||STOCKS[k].name.toLowerCase().includes(q)).sort((a,b)=>gapNow(STOCKS[b])-gapNow(STOCKS[a]));
+  document.getElementById('sbList').innerHTML='<div class="sb-sec">Widest tensions in your scope</div>'+list.map(k=>{const s=STOCKS[k];return `<div class="sbitem ${k===CUR?'cur':''}" data-k="${k}"><div class="sb-meta"><div class="sb-tk">${k}</div><div class="sb-cl">${s.cls}</div></div><span class="sb-typ ${s.typ}">${TYPN[s.typ]}</span><span class="sb-g" style="color:${s.dir==='nar'?'var(--rec)':'var(--high)'}">${gapNow(s)}</span></div>`;}).join('');
+  document.querySelectorAll('.sbitem').forEach(it=>it.addEventListener('click',()=>{loadStock(it.dataset.k);closeSidebar();}));
+}
+
+function renderChart(){const s=STOCKS[CUR],[a,b]=winRange(),n=b-a+1,svg=document.getElementById('chart');let out='';
+  [74,68,62,55].forEach(v=>{const y=yOf(v).toFixed(1);out+=`<line class="gl" x1="${X0}" y1="${y}" x2="${X1}" y2="${y}"/><text class="glt" x="${X1+8}" y="${+y+4}">${v}</text>`;});
+  // gap fill
+  const up=[],dn=[];for(let i=a;i<=b;i++){up.push(`${xOf(i-a,n).toFixed(1)},${yOf(s.hi[i]).toFixed(1)}`);dn.push(`${xOf(i-a,n).toFixed(1)},${yOf(s.lo[i]).toFixed(1)}`);}
+  const fill=s.dir==='nar'?'var(--rec)':'var(--high)';
+  out+=`<polygon points="${up.concat(dn.slice().reverse()).join(' ')}" fill="${fill}" opacity=".13"/>`;
+  out+=`<polyline class="ln" stroke="${s.hiCol}" points="${up.join(' ')}"/><polyline class="ln" stroke="${s.loCol}" points="${dn.join(' ')}"/>`;
+  // line labels at right end
+  out+=`<text class="lnlbl" x="${(+up[up.length-1].split(',')[0]+8)}" y="${(+up[up.length-1].split(',')[1]+4)}" fill="${s.hiCol}">${s.hiName.split(' ')[0]}</text>`;
+  out+=`<text class="lnlbl" x="${(+dn[dn.length-1].split(',')[0]+8)}" y="${(+dn[dn.length-1].split(',')[1]+4)}" fill="${s.loCol}">${s.loName.split(' ')[0]}</text>`;
+  // gap label mid
+  const midI=Math.floor((a+b)/2),mx=xOf(midI-a,n),my=(yOf(s.hi[midI])+yOf(s.lo[midI]))/2;
+  out+=`<text class="gaplabel" x="${mx.toFixed(1)}" y="${my.toFixed(1)}" text-anchor="middle">gap ${Math.round(s.hi[midI]-s.lo[midI])}</text>`;
+  for(let i=a;i<=b;i++){if((i-a)%(n>6?2:1)===0||i===b)out+=`<text class="xlt" x="${xOf(i-a,n).toFixed(1)}" y="358">${LBL[i]}</text>`;}
+  s.ev.filter(e=>e.i>=a&&e.i<=b).forEach(e=>{const x=xOf(e.i-a,n).toFixed(1),c=EVCOL[e.k];out+=`<line x1="${x}" y1="${Y0}" x2="${x}" y2="376" stroke="${c}" stroke-width="1" stroke-dasharray="2 4" opacity=".35"/><g class="pin"><circle cx="${x}" cy="379" r="9" fill="var(--surface3)" stroke="${c}" stroke-width="1.5"/><text class="pinlbl" x="${x}" y="383">${s.ev.indexOf(e)+1}</text></g>`;});
+  out+=`<line class="crosshair" id="cross-line" x1="0" y1="${Y0}" x2="0" y2="${Y1}"/>`;
+  svg.innerHTML=out;
+  document.getElementById('cpair').innerHTML=`<b style="color:${s.hiCol}">${s.hiName}</b> vs <b style="color:${s.loCol}">${s.loName}</b> — the gap and its direction`;
+  setScrub(scrubIdx===null?b:scrubIdx);
+}
+function setScrub(i){const s=STOCKS[CUR],[a,b]=winRange(),n=b-a+1;scrubIdx=i;const g=Math.round(s.hi[i]-s.lo[i]);
+  document.getElementById('gz-q').textContent=LBL[i];
+  document.getElementById('gz-g').textContent=g;
+  const g0=Math.round(s.hi[a]-s.lo[a]),dd=document.getElementById('gz-dir');
+  const widening=g>g0;dd.innerHTML=(widening?'\u25B2 widened ':'\u25BC narrowed ')+Math.abs(g-g0)+' over window';dd.style.color=widening?'var(--high)':'var(--rec)';
+  document.getElementById('gz-rows').innerHTML=[[s.hiName,s.hi[i],s.hiCol],[s.loName,s.lo[i],s.loCol]].map(r=>`<div class="gzrow"><span class="pn"><span class="d" style="background:${r[2]}"></span>${r[0].split(' ')[0]}</span><span class="b"><i style="width:${r[1]}%;background:${r[2]}"></i></span><span class="vv">${r[1]}</span></div>`).join('');
+  const cl=document.getElementById('cross-line');if(cl){const x=xOf(i-a,n);cl.setAttribute('x1',x);cl.setAttribute('x2',x);cl.style.opacity=.8;}
+}
+const chartEl=document.getElementById('chart');
+chartEl.addEventListener('mousemove',ev=>{const r=chartEl.getBoundingClientRect(),vx=(ev.clientX-r.left)/r.width*1000,[a,b]=winRange(),n=b-a+1;let best=a,bd=1e9;for(let i=a;i<=b;i++){const d=Math.abs(xOf(i-a,n)-vx);if(d<bd){bd=d;best=i;}}setScrub(best);});
+chartEl.addEventListener('mouseleave',()=>setScrub(winRange()[1]));
+document.querySelectorAll('.win').forEach(w=>w.addEventListener('click',()=>{document.querySelectorAll('.win').forEach(x=>x.classList.remove('on'));w.classList.add('on');WIN=w.dataset.win;scrubIdx=null;renderChart();}));
+
+function loadStock(k){CUR=k;const s=STOCKS[k];WIN='3y';document.querySelectorAll('.win').forEach(x=>x.classList.toggle('on',x.dataset.win==='3y'));scrubIdx=null;
+  document.getElementById('s-name').textContent=s.name;
+  document.getElementById('s-tk').textContent=k+' · '+s.cls;
+  document.getElementById('s-chips').innerHTML=`<span class="chip"><span class="bd" style="background:${s.band==='Healthy'?'var(--c-healthy)':s.band==='Steady'?'var(--c-steady)':'var(--c-below)'}"></span>${s.band}</span><span class="chip" style="color:${s.dir==='nar'?'var(--rec)':'var(--high)'};border-color:${s.dir==='nar'?'var(--rec)':'var(--high)'}33">gap ${gapNow(s)} · ${s.dir==='nar'?'narrowing':'widening'}</span>`;
+  const rb=document.getElementById('readBanner');rb.className='read '+s.typ;
+  rb.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${TYPIC[s.typ]}</svg></span><div><div class="rt">${s.read.t}</div><div class="rb">${s.read.b}</div>${s.read.mask?'<div class="rmask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>The pond is hot — this read may be deferred further.</div>':''}</div><div class="rlink"><a href="#">Open ${k} health page <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>`;
+  document.getElementById('interp').innerHTML=s.interp.map(p=>`<div class="ipoint ${p[0]}"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p[0]==='good'?'<path d="M20 6L9 17l-5-5"/>':'<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'}</svg></span><div><div class="it">${p[1]}</div><div class="ib">${p[2]}</div></div></div>`).join('');
+  document.getElementById('landing').classList.remove('on');document.getElementById('single').classList.add('on');
+  document.getElementById('crumb').innerHTML='viewing <b>'+k+'</b> · Switch stock to change';
+  renderChart();renderSidebar();window.scrollTo({top:0,behavior:'smooth'});
+}
+function openSidebar(f){document.getElementById('sidebar').classList.add('open');document.getElementById('backdrop').classList.add('open');renderSidebar();if(f)setTimeout(()=>document.getElementById('sbSearch').focus(),300);}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('backdrop').classList.remove('open');}
+document.getElementById('openSearch').addEventListener('click',()=>openSidebar(true));
+document.getElementById('openScope').addEventListener('click',()=>openSidebar(false));
+document.getElementById('sbClose').addEventListener('click',closeSidebar);
+document.getElementById('backdrop').addEventListener('click',closeSidebar);
+document.getElementById('sbSearch').addEventListener('input',e=>renderSidebar(e.target.value));
+document.getElementById('landSearch').addEventListener('input',e=>renderPicks(e.target.value,curTyp));
+let curTyp='all';
+document.querySelectorAll('.tf').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.tf').forEach(x=>x.classList.remove('on'));f.classList.add('on');curTyp=f.dataset.typ;renderPicks(document.getElementById('landSearch').value,curTyp);}));
+document.getElementById('homeBtn').addEventListener('click',()=>{document.getElementById('single').classList.remove('on');document.getElementById('landing').classList.add('on');document.getElementById('crumb').textContent='your watchlist & portfolio';renderPicks('',curTyp);});
+
+renderPicks();renderSidebar();
+</script>
+</body>
+</html>

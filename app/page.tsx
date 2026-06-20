@@ -1,25 +1,30 @@
-import Faq3 from "@/components/mvpblocks/faq-3";
-import Features from "@/components/mvpblocks/feature-1";
-import Footer4Col from "@/components/mvpblocks/footer-4col";
-import GradientHero from "@/components/mvpblocks/gradient-hero";
-import Header1 from "@/components/mvpblocks/header-1";
-import SimplePricing from "@/components/mvpblocks/simple-pricing";
-import Sparkle from "@/components/mvpblocks/sparkles-logo";
-import TestimonialsCarousel from "@/components/mvpblocks/testimonials-carousel";
+import { SmoothScroll } from "@/components/landing/smooth-scroll";
+import { ScrollProgress } from "@/components/landing/scroll-progress";
+import { LandingNav } from "@/components/landing/landing-nav";
+import { Hero } from "@/components/landing/hero";
+import { HealthScoreSection } from "@/components/landing/health-score-section";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { PlatformSection } from "@/components/landing/platform-section";
+import { StatsBand } from "@/components/landing/stats-band";
+import { Testimonials } from "@/components/landing/testimonials";
+import { PricingSection } from "@/components/landing/pricing-section";
+import { CtaFooter } from "@/components/landing/cta-footer";
 
-const page = () => {
+export default function LandingPage() {
   return (
-    <div>
-      <Header1/>
-      <GradientHero />
-      <Sparkle />
-      <Features />
-      <SimplePricing />
-      <Faq3 />
-      <TestimonialsCarousel />
-      <Footer4Col />
-    </div>
+    <SmoothScroll>
+      <ScrollProgress />
+      <main className="relative overflow-x-hidden bg-background">
+        <LandingNav />
+        <Hero />
+        <HealthScoreSection />
+        <HowItWorks />
+        <PlatformSection />
+        <StatsBand />
+        <Testimonials />
+        <PricingSection />
+        <CtaFooter />
+      </main>
+    </SmoothScroll>
   );
-};
-
-export default page;
+}

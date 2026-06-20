@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vytal — Peer Group Health</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#090a0d;--surface:#111319;--surface2:#171a20;--surface3:#20242c;
+  --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.10);--line3:rgba(255,255,255,.17);
+  --ink:#f1efe9;--ink2:#9b9c9c;--ink3:#62646c;
+  --c-fragile:#e2584d;--c-below:#e0913f;--c-steady:#cda74f;--c-healthy:#48ba7c;--c-pristine:#4ea1e6;
+  --p-found:#5d92d8;--p-mom:#a085d8;--p-mkt:#d6a652;--p-own:#4fb6a4;
+  --crit:#e2584d;--crit-bg:rgba(226,88,77,.12);--crit-bd:rgba(226,88,77,.40);
+  --high:#e0a13e;--high-bg:rgba(224,161,62,.12);--high-bd:rgba(224,161,62,.38);
+  --rec:#48ba7c;--rec-bg:rgba(72,186,124,.12);--rec-bd:rgba(72,186,124,.40);
+  --ctx:#7f93b2;--ctx-bg:rgba(127,147,178,.11);--ctx-bd:rgba(127,147,178,.32);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 60px}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.shell{padding:0 26px;max-width:1500px;margin:0 auto}
+
+/* ===== CONTEXT + SIBLING TABS ===== */
+.top{padding:14px 0 0;border-bottom:1px solid var(--line);margin-bottom:20px}
+.bc{font-size:12.5px;color:var(--ink3);margin-bottom:14px}.bc b{color:var(--ink2);font-weight:500}.bc .sep{margin:0 8px;opacity:.5}
+.pg-id{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+.pg-name{font-family:'Fraunces',serif;font-weight:500;font-size:30px;line-height:1.05}
+.pg-meta{font-size:12.5px;color:var(--ink2);margin-top:5px}
+.pg-summary{display:flex;gap:10px;flex-wrap:wrap}
+.sm{display:flex;flex-direction:column;gap:2px;background:var(--surface2);border:1px solid var(--line2);border-radius:11px;padding:8px 14px}
+.sm .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.sm .v{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500}
+.tabs{display:flex;gap:2px;overflow-x:auto}
+.tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--ink3);font:inherit;font-size:13px;font-weight:500;padding:11px 16px;cursor:pointer;white-space:nowrap;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+.tab:hover{color:var(--ink2)}
+.tab.on{color:var(--ink);border-bottom-color:var(--c-steady)}
+.tab.on svg{color:var(--c-steady)}
+.tab svg{width:15px;height:15px}
+
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px;margin:30px 2px 14px}
+.eyebrow:first-of-type{margin-top:6px}
+.eyebrow .ln{flex:1;height:1px;background:var(--line)}
+.eyebrow .pill{font-family:'IBM Plex Mono',monospace;letter-spacing:0;text-transform:none;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:3px 11px;font-size:11px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+.kick{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3)}
+
+/* ===== SECTION 1: POND PORTRAIT ===== */
+.portrait{display:grid;grid-template-columns:1.55fr 1fr;gap:22px}
+.pond-chart svg{width:100%;height:auto;display:block}
+.charflag{font-family:'Fraunces',serif;font-size:16px;line-height:1.5;color:var(--ink);margin-top:14px}
+.charflag b{font-weight:500}
+.vitals{display:flex;flex-direction:column;gap:16px}
+.vrow{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.vrow .vk{font-size:12px;color:var(--ink2)}
+.vrow .vv{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500}
+.vrow .vv.dn{color:var(--high)}.vrow .vv.up{color:var(--rec)}
+.bandmix{margin-top:4px}
+.bandmix .bm-h{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:9px}
+.bm-bar{display:flex;height:30px;border-radius:8px;overflow:hidden;gap:2px}
+.bm-seg{display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#0a0b0e}
+.bm-key{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--ink2)}
+.bm-key span{display:inline-flex;align-items:center;gap:6px}.bm-key .d{width:8px;height:8px;border-radius:2px}
+.hold-note{font-size:11.5px;color:var(--ink3);margin-top:6px;display:flex;align-items:center;gap:8px}
+.hold-note .ring{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);flex:none}
+
+/* ===== SECTION 2: STRUCTURE ===== */
+.structure{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.movers{display:flex;flex-direction:column;gap:9px}
+.mv-col-h{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:3px}
+.mvrow{display:flex;align-items:center;gap:12px;padding:9px 11px;border-radius:10px;background:var(--surface2);border:1px solid var(--line)}
+.mvrow.glow{background:var(--rec-bg);border-color:var(--rec-bd)}
+.mvrow .tk{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;flex:1}
+.mvrow .spark{flex:none}
+.mvrow .delta{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;flex:none;width:38px;text-align:right}
+.delta.up{color:var(--rec)}.delta.dn{color:var(--high)}
+.mvrow .rtag{font-size:9px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;color:var(--rec);background:rgba(72,186,124,.16);padding:2px 7px;border-radius:5px;flex:none}
+/* pathology */
+.paths{display:flex;flex-direction:column;gap:11px}
+.path{padding:13px 15px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);border-left:3px solid var(--pt)}
+.path.crit{--pt:var(--crit)}.path.high{--pt:var(--high)}
+.path-top{display:flex;align-items:center;gap:10px}
+.path-n{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500}
+.path-name{font-size:13px;font-weight:500}
+.path-scope{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:3px 9px;border-radius:6px}
+.path-scope.wide{background:var(--crit-bg);color:var(--crit)}.path-scope.iso{background:var(--surface3);color:var(--ink3)}
+.path-bar{height:5px;border-radius:3px;background:var(--surface3);margin:10px 0 8px;overflow:hidden}.path-bar i{display:block;height:100%;background:var(--pt);border-radius:3px}
+.path-names{font-size:11.5px;color:var(--ink2);font-family:'IBM Plex Mono',monospace}
+.path-read{font-size:11px;color:var(--ink3);font-style:italic;margin-top:6px}
+
+/* ===== SECTION 3: PROSPECTS / HAZARDS ===== */
+.ph{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.ph-col-h{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600;margin-bottom:11px}
+.ph-col-h svg{width:16px;height:16px}.ph-col-h.good{color:var(--rec)}.ph-col-h.bad{color:var(--crit)}
+.phcard{border:1px solid var(--line);border-radius:13px;background:var(--surface);padding:15px 16px;margin-bottom:11px;position:relative;overflow:hidden}
+.phcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cc)}
+.phcard.rec{--cc:var(--rec);--ccbg:var(--rec-bg)}.phcard.ctx{--cc:var(--ctx);--ccbg:var(--ctx-bg)}.phcard.crit{--cc:var(--crit);--ccbg:var(--crit-bg)}.phcard.high{--cc:var(--high);--ccbg:var(--high-bg)}
+.ph-top{display:flex;align-items:center;gap:10px}
+.ph-tk{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500}
+.ph-sc{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink2)}
+.ph-tag{margin-left:auto;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:3px 9px;border-radius:6px;background:var(--ccbg);color:var(--cc)}
+.ph-why{font-size:12px;color:var(--ink2);line-height:1.45;margin:10px 0 12px}
+.ph-funnels{display:flex;gap:7px;flex-wrap:wrap}
+.fn{font-size:11px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center;gap:6px;background:var(--surface2);transition:.15s}.fn:hover{border-color:var(--line3);background:var(--surface3)}.fn svg{width:11px;height:11px}
+.fn.tool{color:var(--ink2)}
+
+/* ===== SECTION 4: METRIC EXPLORER ===== */
+.mex-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.mex-chips{display:flex;gap:6px;flex-wrap:wrap}
+.mc{appearance:none;background:var(--surface2);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:7px 13px;border-radius:8px;cursor:pointer;transition:.15s}
+.mc:hover{border-color:var(--line3);color:var(--ink)}.mc.on{background:var(--surface3);border-color:var(--line3);color:var(--ink);font-weight:500}
+.mc .cat{font-size:9px;color:var(--ink3);margin-left:5px}
+.mex-body{display:grid;grid-template-columns:1.6fr 1fr;gap:22px;align-items:center}
+.mex-chart svg{width:100%;height:auto;display:block}
+.mex-side{display:flex;flex-direction:column;gap:14px}
+.mex-stat{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.mex-stat:last-child{border-bottom:none;padding-bottom:0}
+.mex-stat .sk{font-size:11.5px;color:var(--ink2)}
+.mex-stat .sv{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500}
+.mex-bar-note{font-size:11.5px;color:var(--ink2);line-height:1.5;background:var(--surface2);border:1px solid var(--line2);border-radius:11px;padding:12px 14px}
+.mex-bar-note b{color:var(--ink);font-weight:500}
+.mex-trans{font-size:11px;color:var(--ink3);font-style:italic;margin-top:14px;padding-left:13px;border-left:2px solid var(--line2);line-height:1.5}
+
+/* ===== METRIC EXPLORER SERIES REVEAL ===== */
+.mex-reveal{appearance:none;background:var(--surface2);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:11.5px;padding:7px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.mex-reveal:hover{border-color:var(--line3);color:var(--ink)}.mex-reveal svg{width:13px;height:13px;transition:transform .2s}.mex-reveal.on svg{transform:rotate(180deg)}.mex-reveal.on{color:var(--ink);border-color:var(--line3)}
+.mex-series{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+.mex-series .mh{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:11px}
+.stbl{width:100%;border-collapse:collapse;font-size:12px}
+.stbl th{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:600;text-align:right;padding:6px 10px;border-bottom:1px solid var(--line)}
+.stbl th:first-child{text-align:left}
+.stbl td{padding:7px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--ink2);border-bottom:1px solid var(--line)}
+.stbl td:first-child{text-align:left;font-weight:500;color:var(--ink)}
+.stbl tr:last-child td{border-bottom:none}
+.stbl td.now{color:var(--ink);font-weight:500}
+.stbl .held td:first-child::after{content:" ●";color:var(--ink3);font-size:9px}
+.stbl .spk{width:70px}
+
+/* ===== RAW DATA FLOOR ===== */
+.rawfloor{padding:0;overflow:hidden}
+.raw-toggle{width:100%;appearance:none;background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:18px 22px;display:flex;align-items:center;gap:15px;text-align:left;transition:background .15s}
+.raw-toggle:hover{background:var(--surface2)}
+.raw-toggle .ric{width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface3);color:var(--ink2)}.raw-toggle .ric svg{width:20px;height:20px}
+.raw-toggle .rt-meta{flex:1}
+.raw-toggle .rt-t{font-size:14.5px;font-weight:600}
+.raw-toggle .rt-s{font-size:12px;color:var(--ink3);margin-top:2px}
+.raw-toggle .rt-chev{flex:none;color:var(--ink3);transition:transform .25s}.raw-toggle .rt-chev svg{width:20px;height:20px}
+.rawfloor.open .raw-toggle .rt-chev{transform:rotate(180deg)}
+.raw-body{padding:0 22px 20px;display:none}
+.rawfloor.open .raw-body{display:block;animation:rawfade .3s ease}
+@keyframes rawfade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.rawfloor.open .raw-body{animation:none}}
+.raw-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 0 14px}
+.per-toggle{display:flex;gap:3px;background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:3px}
+.per-toggle button{appearance:none;background:none;border:none;color:var(--ink3);font:inherit;font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;transition:.15s}
+.per-toggle button.on{background:var(--surface3);color:var(--ink)}
+.raw-hint{font-size:11px;color:var(--ink3);font-style:italic}
+.rawtbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.rawtbl thead th{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:600;text-align:right;padding:9px 12px;border-bottom:1px solid var(--line2);cursor:pointer;white-space:nowrap;user-select:none;transition:color .15s}
+.rawtbl thead th:hover{color:var(--ink2)}
+.rawtbl thead th:first-child{text-align:left}
+.rawtbl thead th .ar{color:var(--c-steady);margin-left:3px}
+.rawtbl tbody td{padding:10px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--ink2);border-bottom:1px solid var(--line)}
+.rawtbl tbody td:first-child{text-align:left;font-weight:500;color:var(--ink);font-family:'IBM Plex Mono',monospace;cursor:pointer}
+.rawtbl tbody tr.main:hover td{background:var(--surface2)}
+.rawtbl tbody tr.main td:first-child::before{content:"▸ ";color:var(--ink3);font-size:10px;transition:.15s}
+.rawtbl tbody tr.main.exp td:first-child::before{content:"▾ ";color:var(--ink2)}
+.rawtbl tbody tr.main .hld{color:var(--ink3);font-size:9px;margin-left:5px}
+.detail-cell{padding:0!important;border-bottom:1px solid var(--line2)!important}
+.detail-wrap{padding:16px 14px;background:var(--surface2);display:grid;grid-template-columns:1.5fr 1fr;gap:22px}
+.detail-wrap .dh{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px}
+@media(max-width:900px){.detail-wrap{grid-template-columns:1fr}}
+
+.foot{padding:24px 26px 0;max-width:1500px;margin:30px auto 0;font-size:11px;color:var(--ink3);line-height:1.6;border-top:1px solid var(--line)}
+a:focus-visible,.tab:focus-visible,.mc:focus-visible,.fn:focus-visible{outline:2px solid var(--c-pristine);outline-offset:2px;border-radius:4px}
+@media(max-width:1180px){.portrait,.mex-body{grid-template-columns:1fr}.structure,.ph{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ===== CONTEXT + SIBLING TABS ===== -->
+  <div class="top">
+    <div class="bc"><b>Markets</b><span class="sep">›</span>Peer Groups<span class="sep">›</span><b style="color:var(--ink)">Metals &amp; Mining</b></div>
+    <div class="pg-id">
+      <div>
+        <div class="pg-name">Metals &amp; Mining</div>
+        <div class="pg-meta">Compulsory peer group · PG7 · 11 constituents · large &amp; mid cap</div>
+      </div>
+      <div class="pg-summary">
+        <div class="sm"><span class="k">Median health</span><span class="v">62</span></div>
+        <div class="sm"><span class="k">Range</span><span class="v">51–71</span></div>
+        <div class="sm"><span class="k">Pond drift</span><span class="v" style="color:var(--high)">▼ 1</span></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab">Overview</button>
+      <button class="tab">Fundamentals</button>
+      <button class="tab">Shareholding</button>
+      <button class="tab">Technicals</button>
+      <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-7 4 16 3-9 2 5h5"/></svg>Health</button>
+      <button class="tab">News</button>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 1: POND PORTRAIT ===== -->
+  <div class="eyebrow">What kind of pond is this<span class="ln"></span></div>
+  <div class="card portrait">
+    <div class="pond-chart">
+      <div class="kick" style="margin-bottom:12px">The population, spread by health</div>
+      <svg id="pond" viewBox="0 0 1000 220" preserveAspectRatio="none"></svg>
+      <div class="charflag" id="charRead"></div>
+    </div>
+    <div class="vitals">
+      <div class="bandmix">
+        <div class="bm-h">Band mix</div>
+        <div class="bm-bar" id="bmBar"></div>
+        <div class="bm-key">
+          <span><span class="d" style="background:var(--c-healthy)"></span>Healthy 2</span>
+          <span><span class="d" style="background:var(--c-steady)"></span>Steady 4</span>
+          <span><span class="d" style="background:var(--c-below)"></span>Below 3</span>
+          <span><span class="d" style="background:var(--c-fragile)"></span>Fragile 2</span>
+        </div>
+      </div>
+      <div class="vrow"><span class="vk">Median composite</span><span class="vv">62</span></div>
+      <div class="vrow"><span class="vk">Dispersion (range)</span><span class="vv">20 pts · wide</span></div>
+      <div class="vrow"><span class="vk">Pond drift vs last Q</span><span class="vv dn">▼ 1 pt</span></div>
+      <div class="vrow"><span class="vk">Your holdings here</span><span class="vv">2 of 11</span></div>
+      <div class="hold-note"><span class="ring"></span>Ringed dots are names you hold — TATASTEEL, VEDL</div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 2: STRUCTURE ===== -->
+  <div class="eyebrow">What's moving inside it<span class="ln"></span></div>
+  <div class="structure">
+    <div class="card">
+      <div class="kick" style="margin-bottom:14px">Movers — who's pulling away, who's slipping</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="movers"><div class="mv-col-h" style="color:var(--rec)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 17l6-6 4 4 8-8"/></svg>Rising</div><div id="risers"></div></div>
+        <div class="movers"><div class="mv-col-h" style="color:var(--high)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7l6 6 4-4 8 8"/></svg>Slipping</div><div id="slippers"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="kick" style="margin-bottom:14px">Group pathology — is it clustering?</div>
+      <div class="paths" id="paths"></div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 3: PROSPECTS / HAZARDS ===== -->
+  <div class="eyebrow">Where to look<span class="ln"></span><span class="pill">funnels into the stock page &amp; tools, scoped to this pond</span></div>
+  <div class="ph">
+    <div>
+      <div class="ph-col-h good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Worth a closer look</div>
+      <div id="prospects"></div>
+    </div>
+    <div>
+      <div class="ph-col-h bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Hazards to avoid</div>
+      <div id="hazards"></div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 4: METRIC EXPLORER ===== -->
+  <div class="eyebrow">Metric distribution explorer<span class="ln"></span><span class="pill">the substrate behind every bar</span></div>
+  <div class="card">
+    <div class="mex-head">
+      <div class="mex-chips" id="mexChips"></div>
+      <button class="mex-reveal" id="mexReveal">Show quarterly series <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+    </div>
+    <div class="mex-body">
+      <div class="mex-chart">
+        <svg id="mexChart" viewBox="0 0 1000 220" preserveAspectRatio="none"></svg>
+      </div>
+      <div class="mex-side" id="mexSide"></div>
+    </div>
+    <div class="mex-series" id="mexSeries" hidden></div>
+    <div class="mex-trans" id="mexTrans"></div>
+  </div>
+
+  <!-- ===== SECTION 5: RAW DATA FLOOR ===== -->
+  <div class="eyebrow">The underlying record<span class="ln"></span><span class="pill">every number behind the scores — on demand</span></div>
+  <div class="card rawfloor" id="rawFloor">
+    <button class="raw-toggle" id="rawToggle">
+      <span class="ric"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg></span>
+      <span class="rt-meta"><span class="rt-t">Show the underlying data</span><span class="rt-s">The actual reported figures — quarterly and annual, per name, plus shareholding. The raw layer beneath every verdict above.</span></span>
+      <span class="rt-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
+    </button>
+    <div class="raw-body">
+      <div class="raw-controls">
+        <div class="per-toggle"><button class="on" data-per="q">Quarterly</button><button data-per="a">Annual</button></div>
+        <span class="raw-hint">Click any name to expand its full series &amp; shareholding</span>
+      </div>
+      <table class="rawtbl"><thead id="rawHead"></thead><tbody id="rawBodyTbl"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div class="foot">Illustrative data for layout review — names, scores and metric values are placeholders; the peer group structure, the distribution logic, and the data-derived bars are real. The explorer shows the actual spread each threshold is computed from. Vytal is a data platform, not an investment advisor.</div>
+
+<script>
+const HOLD=['TATASTEEL','VEDL'];
+const NAMES=[['JSWSTEEL',71],['HINDALCO',69],['APLAPOLLO',67],['TATASTEEL',64],['JSL',63],['NMDC',62],['SAIL',58],['JINDALSTEL',57],['HINDZINC',55],['NALCO',53],['VEDL',51]];
+const bandOf=s=>s<55?['Fragile','var(--c-fragile)']:s<62?['Below','var(--c-below)']:s<68?['Steady','var(--c-steady)']:s<74?['Healthy','var(--c-healthy)']:['Pristine','var(--c-pristine)'];
+
+/* ---- pond distribution ---- */
+(function(){const W=1000,lo=47,hi=74,X0=30,X1=910,Y=120,xo=v=>X0+(v-lo)/(hi-lo)*(X1-X0);let s='';
+  // band regions (vertical tints)
+  const zones=[[47,55,'var(--c-fragile)'],[55,62,'var(--c-below)'],[62,68,'var(--c-steady)'],[68,74,'var(--c-healthy)']];
+  zones.forEach(z=>{const x1=xo(z[0]),x2=xo(z[1]);s+=`<rect x="${x1}" y="20" width="${x2-x1}" height="160" fill="${z[2]}" opacity=".06"/>`;});
+  [['55',55],['62',62],['68',68]].forEach(b=>{const x=xo(b[1]);s+=`<line x1="${x}" y1="20" x2="${x}" y2="180" stroke="var(--line2)" stroke-width="1" stroke-dasharray="2 4"/><text x="${x}" y="200" text-anchor="middle" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--ink3)">${b[0]}</text>`;});
+  s+=`<line x1="${X0}" y1="${Y}" x2="${X1}" y2="${Y}" stroke="var(--line2)" stroke-width="1"/>`;
+  // median marker
+  const med=xo(62);s+=`<line x1="${med}" y1="34" x2="${med}" y2="${Y}" stroke="var(--ink2)" stroke-width="1.5"/><text x="${med}" y="30" text-anchor="middle" style="font-size:10px;font-family:IBM Plex Mono;fill:var(--ink2)">median 62</text>`;
+  // dots with alternating labels
+  const sorted=NAMES.slice().sort((a,b)=>a[1]-b[1]);
+  sorted.forEach((p,i)=>{const x=xo(p[1]),col=bandOf(p[1])[1],held=HOLD.includes(p[0]),above=i%2===0,ly=above?Y-20:Y+30,dy=above?Y-8:Y+8;
+    s+=`<line x1="${x}" y1="${Y}" x2="${x}" y2="${dy}" stroke="${col}" stroke-width="1" opacity=".4"/>`;
+    s+=`<circle cx="${x}" cy="${Y}" r="${held?7:5.5}" fill="${col}"${held?' stroke="var(--ink)" stroke-width="2"':''}/>`;
+    s+=`<text x="${x}" y="${ly}" text-anchor="middle" style="font-size:10.5px;font-family:IBM Plex Mono;fill:${held?'var(--ink)':'var(--ink2)'};font-weight:${held?600:400}">${p[0]}</text>`;
+    s+=`<text x="${x}" y="${above?Y-32:Y+44}" text-anchor="middle" style="font-size:9px;font-family:IBM Plex Mono;fill:var(--ink3)">${p[1]}</text>`;});
+  document.getElementById('pond').innerHTML=s;})();
+document.getElementById('charRead').innerHTML='A <b>middling pond with a quality top and a fragile tail</b> — two healthy leaders, but dispersion runs wide (20 points) and two names sit fragile. The group has drifted down a point this quarter.';
+
+/* ---- band mix bar ---- */
+const MIX=[['Healthy',2,'var(--c-healthy)'],['Steady',4,'var(--c-steady)'],['Below',3,'var(--c-below)'],['Fragile',2,'var(--c-fragile)']];
+document.getElementById('bmBar').innerHTML=MIX.map(m=>`<div class="bm-seg" style="flex:${m[1]};background:${m[2]}">${m[1]}</div>`).join('');
+
+/* ---- movers ---- */
+const spark=(dir)=>{const pts=dir>0?'2,12 12,9 22,7 32,3':'2,4 12,7 22,9 32,12';return `<svg width="36" height="15" viewBox="0 0 36 15"><polyline points="${pts}" fill="none" stroke="${dir>0?'var(--rec)':'var(--high)'}" stroke-width="1.8" stroke-linecap="round"/></svg>`;};
+const RISERS=[['NMDC',4,true],['JSL',2,false],['HINDALCO',1,false]];
+const SLIPPERS=[['VEDL',-4,false],['TATASTEEL',-3,false],['SAIL',-2,false]];
+document.getElementById('risers').innerHTML=RISERS.map(m=>`<div class="mvrow ${m[2]?'glow':''}"><span class="tk">${m[0]}</span>${m[2]?'<span class="rtag">recovering</span>':''}<span class="spark">${spark(1)}</span><span class="delta up">+${m[1]}</span></div>`).join('');
+document.getElementById('slippers').innerHTML=SLIPPERS.map(m=>`<div class="mvrow"><span class="tk">${m[0]}</span><span class="spark">${spark(-1)}</span><span class="delta dn">${m[1]}</span></div>`).join('');
+
+/* ---- pathology ---- */
+const PATHS=[
+ {name:'Margin compression',n:3,of:11,names:'TATASTEEL · SAIL · JINDALSTEL',tone:'crit',scope:'group-wide',read:'A cyclical theme across the pond — not company-specific. Read it as sector pressure.'},
+ {name:'Promoter pledge rising',n:2,of:11,names:'VEDL · JINDALSTEL',tone:'high',scope:'group-wide',read:'Leverage stress showing in two names — worth watching if commodity prices turn.'},
+ {name:'Distribution to retail',n:1,of:11,names:'VEDL',tone:'high',scope:'isolated',read:'Confined to one name — a single-stock concern, not a pond signal.'}
+];
+document.getElementById('paths').innerHTML=PATHS.map(p=>`<div class="path ${p.tone}"><div class="path-top"><span class="path-n">${p.n}/${p.of}</span><span class="path-name">${p.name}</span><span class="path-scope ${p.scope==='group-wide'?'wide':'iso'}">${p.scope}</span></div><div class="path-bar"><i style="width:${p.n/p.of*100}%"></i></div><div class="path-names">${p.names}</div><div class="path-read">${p.read}</div></div>`).join('');
+
+/* ---- prospects / hazards ---- */
+const fn=(label,tool)=>`<a class="fn ${tool?'tool':''}" href="#">${label} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>`;
+const PROSPECTS=[
+ {tk:'JSWSTEEL',sc:71,tag:'Leader',tone:'rec',why:'Healthiest in the pond — top on returns and stability, no flags firing.',f:[['Open health','']]},
+ {tk:'NMDC',sc:62,tag:'Recovering',tone:'rec',why:'Composite up 4 off a weak base — the most durable signal in the model.',f:[['Open health',''],['Trajectory, scoped','t']]},
+ {tk:'HINDALCO',sc:69,tag:'Value config',tone:'ctx',why:'Fundamentals sit ahead of a de-rated price — the regime-robust divergence.',f:[['Open health',''],['Divergence, scoped','t']]}
+];
+const HAZARDS=[
+ {tk:'VEDL',sc:51,tag:'Fragile',tone:'crit',why:'Fragile floor with promoter distribution to retail — two flags firing at once.',f:[['Open health',''],['Ownership, scoped','t']]},
+ {tk:'TATASTEEL',sc:64,tag:'Deteriorating',tone:'high',why:'Price ahead of cooling fundamentals; institutions stepping back beneath the floor.',f:[['Open health',''],['Divergence, scoped','t']]}
+];
+const phCard=p=>`<div class="phcard ${p.tone}"><div class="ph-top"><span class="ph-tk">${p.tk}</span><span class="ph-sc">${p.sc}</span><span class="ph-tag">${p.tag}</span></div><div class="ph-why">${p.why}</div><div class="ph-funnels">${p.f.map(x=>fn(x[0],x[1])).join('')}</div></div>`;
+document.getElementById('prospects').innerHTML=PROSPECTS.map(phCard).join('');
+document.getElementById('hazards').innerHTML=HAZARDS.map(phCard).join('');
+
+/* ---- metric explorer ---- */
+const METRICS={
+ ROCE:{cat:'Profitability',unit:'%',bar:17,dir:'high',vals:{APLAPOLLO:22,HINDZINC:21,NMDC:19,JSWSTEEL:18,HINDALCO:16,TATASTEEL:14,JSL:13,JINDALSTEL:12,SAIL:11,NALCO:10,VEDL:9}},
+ 'D/E':{cat:'Stability',unit:'×',bar:0.75,dir:'low',vals:{NMDC:0.1,NALCO:0.1,HINDZINC:0.2,APLAPOLLO:0.3,HINDALCO:0.6,TATASTEEL:0.62,JSL:0.8,JSWSTEEL:0.9,SAIL:1.1,JINDALSTEL:1.3,VEDL:1.8}},
+ OPM:{cat:'Profitability',unit:'%',bar:18,dir:'high',vals:{HINDZINC:34,NMDC:31,JSWSTEEL:22,APLAPOLLO:9,HINDALCO:21,TATASTEEL:23,JSL:17,JINDALSTEL:19,SAIL:14,NALCO:20,VEDL:25}},
+ 'Rev growth':{cat:'Growth',unit:'%',bar:8,dir:'high',vals:{APLAPOLLO:24,JSWSTEEL:11,NMDC:9,HINDALCO:7,TATASTEEL:6,JSL:8,JINDALSTEL:5,SAIL:3,HINDZINC:12,NALCO:6,VEDL:2}}
+};
+let curMetric='ROCE';
+document.getElementById('mexChips').innerHTML=Object.keys(METRICS).map(m=>`<button class="mc ${m===curMetric?'on':''}" data-m="${m}">${m}<span class="cat">${METRICS[m].cat}</span></button>`).join('');
+function renderMetric(){const M=METRICS[curMetric],entries=Object.entries(M.vals),vals=entries.map(e=>e[1]);
+  const lo=Math.min(...vals),hi=Math.max(...vals),pad=(hi-lo)*0.12,mn=lo-pad,mx=hi+pad;
+  const X0=40,X1=915,Y=110,xo=v=>X0+(v-mn)/(mx-mn)*(X1-X0);
+  const pass=v=>M.dir==='high'?v>=M.bar:v<=M.bar;
+  const sortedVals=vals.slice().sort((a,b)=>a-b),median=sortedVals[Math.floor(sortedVals.length/2)];
+  const passCount=vals.filter(pass).length;
+  let s='';
+  // good-side tint relative to bar
+  const bx=xo(M.bar);
+  if(M.dir==='high'){s+=`<rect x="${bx}" y="24" width="${X1-bx}" height="150" fill="var(--rec)" opacity=".05"/>`;}
+  else{s+=`<rect x="${X0}" y="24" width="${bx-X0}" height="150" fill="var(--rec)" opacity=".05"/>`;}
+  s+=`<line x1="${X0}" y1="${Y}" x2="${X1}" y2="${Y}" stroke="var(--line2)" stroke-width="1"/>`;
+  // bar (threshold) line
+  s+=`<line x1="${bx}" y1="30" x2="${bx}" y2="178" stroke="var(--c-steady)" stroke-width="2" stroke-dasharray="4 3"/><text x="${bx}" y="24" text-anchor="middle" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--c-steady);font-weight:600">bar ${M.bar}${M.unit}</text>`;
+  // median
+  const mdx=xo(median);s+=`<text x="${mdx}" y="196" text-anchor="middle" style="font-size:9.5px;font-family:IBM Plex Mono;fill:var(--ink3)">median ${median}${M.unit}</text><line x1="${mdx}" y1="${Y}" x2="${mdx}" y2="186" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="1 3"/>`;
+  // dots
+  entries.sort((a,b)=>a[1]-b[1]).forEach((e,i)=>{const x=xo(e[1]),held=HOLD.includes(e[0]),ok=pass(e[1]),col=ok?'var(--rec)':'var(--high)',above=i%2===0,ly=above?Y-18:Y+28,dy=above?Y-7:Y+7;
+    s+=`<line x1="${x}" y1="${Y}" x2="${x}" y2="${dy}" stroke="${col}" stroke-width="1" opacity=".35"/>`;
+    s+=`<circle cx="${x}" cy="${Y}" r="${held?6.5:5}" fill="${col}"${held?' stroke="var(--ink)" stroke-width="2"':''}/>`;
+    s+=`<text x="${x}" y="${ly}" text-anchor="middle" style="font-size:9.5px;font-family:IBM Plex Mono;fill:${held?'var(--ink)':'var(--ink2)'};font-weight:${held?600:400}">${e[0]}</text>`;});
+  document.getElementById('mexChart').innerHTML=s;
+  document.getElementById('mexSide').innerHTML=`
+    <div class="mex-stat"><span class="sk">Clearing the bar</span><span class="sv">${passCount} of 11</span></div>
+    <div class="mex-stat"><span class="sk">Group median</span><span class="sv">${median}${M.unit}</span></div>
+    <div class="mex-stat"><span class="sk">Spread</span><span class="sv">${lo}–${hi}${M.unit}</span></div>
+    <div class="mex-bar-note">The bar for <b>${curMetric}</b> in this pond is <b>${M.bar}${M.unit}</b> — derived from this distribution, not set by hand. ${M.dir==='high'?'Higher is healthier':'Lower is healthier'}; green marks names on the healthy side.</div>`;
+  document.getElementById('mexTrans').textContent='This is the substrate behind the peer-Z lens: every name is scored against the spread you see here, and the bar is recomputed from it each quarter — so the threshold is always defensible against the real group, never an analyst guess.';
+}
+/* ---- shared: deterministic series ---- */
+function seeded(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return ()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);h^=h>>>16;return(h>>>0)/4294967296;};}
+function ser(base,n,seed,vol,trend){const r=seeded(seed);const out=[];let v=base;for(let i=0;i<n;i++){out.unshift(v);const step=(trend||0)+(r()-0.5)*vol;v=v/(1+step);}return out;}
+function fmt(v,d){return (d?v.toFixed(d):Math.round(v).toLocaleString('en-IN'));}
+function miniSpk(arr,col){const n=arr.length,mn=Math.min(...arr),mx=Math.max(...arr),rng=mx-mn||1,x=i=>i*(68/(n-1)),y=v=>13-((v-mn)/rng)*11+1;return `<svg width="70" height="16" viewBox="0 0 70 16"><polyline points="${arr.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linecap="round"/></svg>`;}
+const QLAB=['Q1FY24','Q2FY24','Q3FY24','Q4FY24','Q1FY25','Q2FY25','Q3FY25','Q4FY25'];
+const YLAB=['FY21','FY22','FY23','FY24','FY25'];
+const COMPRESS=['TATASTEEL','SAIL','JINDALSTEL'];
+
+/* ---- metric explorer: quarterly series reveal ---- */
+function renderMetricSeries(){const M=METRICS[curMetric],entries=Object.entries(M.vals).sort((a,b)=>b[1]-a[1]);
+  const head='<th>Name</th>'+QLAB.slice(3).map(q=>`<th>${q.replace('FY','·')}</th>`).join('')+'<th></th>';
+  const rows=entries.map(([tk,val])=>{const dn=COMPRESS.includes(tk)&&curMetric==='OPM';const s=ser(val,5,tk+curMetric,0.10,dn?-0.04:0.01);const held=HOLD.includes(tk);
+    return `<tr class="${held?'held':''}">${`<td>${tk}</td>`}${s.map((v,i)=>`<td class="${i===4?'now':''}">${fmt(v,M.unit==='×'?2:0)}${i===4?M.unit:''}</td>`).join('')}<td class="spk">${miniSpk(s,dn?'var(--high)':'var(--ink3)')}</td></tr>`;}).join('');
+  document.getElementById('mexSeries').innerHTML=`<div class="mh">${curMetric} — last 5 quarters, the series behind each dot</div><table class="stbl"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;}
+document.getElementById('mexReveal').addEventListener('click',function(){const sec=document.getElementById('mexSeries');const show=sec.hasAttribute('hidden');if(show){sec.removeAttribute('hidden');renderMetricSeries();this.classList.add('on');this.childNodes[0].textContent='Hide quarterly series ';}else{sec.setAttribute('hidden','');this.classList.remove('on');this.childNodes[0].textContent='Show quarterly series ';}});
+// keep series in sync when metric changes
+const _origRender=renderMetric;renderMetric=function(){_origRender();const sec=document.getElementById('mexSeries');if(sec&&!sec.hasAttribute('hidden'))renderMetricSeries();};
+
+/* ---- raw data floor ---- */
+const RAW={
+ JSWSTEEL:{sales:44000,np:2900,opm:22,roce:18,roe:14,de:0.9,revgr:11},
+ HINDALCO:{sales:55000,np:3700,opm:21,roce:16,roe:13,de:0.6,revgr:7},
+ APLAPOLLO:{sales:5200,np:290,opm:9,roce:22,roe:25,de:0.3,revgr:24},
+ TATASTEEL:{sales:58000,np:3100,opm:23,roce:14,roe:11,de:0.62,revgr:6},
+ JSL:{sales:9800,np:720,opm:17,roce:13,roe:15,de:0.8,revgr:8},
+ NMDC:{sales:6200,np:2100,opm:31,roce:19,roe:18,de:0.1,revgr:9},
+ SAIL:{sales:28000,np:1400,opm:14,roce:11,roe:8,de:1.1,revgr:3},
+ JINDALSTEL:{sales:12500,np:980,opm:19,roce:12,roe:13,de:1.3,revgr:5},
+ HINDZINC:{sales:8100,np:2300,opm:34,roce:21,roe:22,de:0.2,revgr:12},
+ NALCO:{sales:3900,np:540,opm:20,roce:10,roe:9,de:0.1,revgr:6},
+ VEDL:{sales:38000,np:1800,opm:25,roce:9,roe:7,de:1.8,revgr:2}
+};
+const RCOLS=[['sales','Sales','₹Cr',0],['np','Net Profit','₹Cr',0],['opm','OPM','%',1],['roce','ROCE','%',1],['roe','ROE','%',1],['de','D/E','×',2],['revgr','Rev gr','%',1]];
+let rawSort={k:'sales',dir:-1},rawPer='q',rawOpen=null;
+function renderRawHead(){document.getElementById('rawHead').innerHTML='<tr>'+[['tk','Name']].concat(RCOLS.map(c=>[c[0],c[1]])).map(c=>{const on=rawSort.k===c[0];return `<th data-k="${c[0]}">${c[1]}${on?`<span class="ar">${rawSort.dir<0?'▼':'▲'}</span>`:''}</th>`;}).join('')+'</tr>';
+  document.querySelectorAll('#rawHead th').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(rawSort.k===k)rawSort.dir*=-1;else{rawSort={k,dir:k==='tk'?1:-1};}rawOpen=null;renderRawHead();renderRawRows();}));}
+function renderRawRows(){const keys=Object.keys(RAW).sort((a,b)=>{if(rawSort.k==='tk')return a<b?-1*rawSort.dir:rawSort.dir;return (RAW[a][rawSort.k]-RAW[b][rawSort.k])*rawSort.dir;});
+  document.getElementById('rawBodyTbl').innerHTML=keys.map(tk=>{const d=RAW[tk],held=HOLD.includes(tk);return `<tr class="main ${rawOpen===tk?'exp':''}" data-tk="${tk}"><td>${tk}${held?'<span class="hld">●held</span>':''}</td>${RCOLS.map(c=>`<td>${fmt(d[c[0]],c[3])}</td>`).join('')}</tr>`+(rawOpen===tk?`<tr class="detailrow"><td class="detail-cell" colspan="8">${detailHTML(tk)}</td></tr>`:'');}).join('');
+  document.querySelectorAll('#rawBodyTbl tr.main td:first-child').forEach(td=>td.addEventListener('click',()=>{const tk=td.parentElement.dataset.tk;rawOpen=rawOpen===tk?null:tk;renderRawRows();}));}
+function detailHTML(tk){const d=RAW[tk],per=rawPer,labs=per==='q'?QLAB:YLAB,n=labs.length;const dn=COMPRESS.includes(tk);
+  const sales=ser(d.sales*(per==='q'?0.25:1),n,tk+'s'+per,0.08,0.02),np=ser(d.np*(per==='q'?0.25:1),n,tk+'n'+per,0.14,dn?-0.03:0.02),opm=ser(d.opm,n,tk+'o'+per,0.06,dn?-0.05:0.005),eps=ser(d.np/180*(per==='q'?0.25:1),n,tk+'e'+per,0.13,dn?-0.03:0.02);
+  const rrow=(nm,arr,u,dec)=>`<tr><td>${nm}</td>${arr.map(v=>`<td>${fmt(v,dec)}${u||''}</td>`).join('')}</tr>`;
+  const results=`<div><div class="dh">Reported results · ${per==='q'?'quarterly':'annual'}</div><table class="stbl"><thead><tr><th>Line</th>${labs.map(l=>`<th>${l.replace('FY','·F')}</th>`).join('')}</tr></thead><tbody>${rrow('Sales (₹Cr)',sales,'',0)}${rrow('Net Profit (₹Cr)',np,'',0)}${rrow('OPM',opm,'%',1)}${rrow('EPS (₹)',eps,'',1)}</tbody></table></div>`;
+  // shareholding (last 4 periods)
+  const isVedl=tk==='VEDL';const promB=d.de>1.2?(isVedl?59:48):(d.roce>17?70:55);
+  const promArr=ser(promB,4,tk+'p',0.02,isVedl?-0.04:0.003).map(v=>Math.round(v));
+  const fiiArr=ser(d.roce>16?18:13,4,tk+'f',0.05,isVedl?0.03:-0.01).map(v=>Math.round(v));
+  const diiArr=ser(13,4,tk+'d',0.05,0.005).map(v=>Math.round(v));
+  const pubArr=promArr.map((p,i)=>100-p-fiiArr[i]-diiArr[i]);
+  const slabs=(per==='q'?QLAB:YLAB).slice(-4);
+  const shrow=(nm,arr)=>`<tr><td>${nm}</td>${arr.map(v=>`<td>${v}%</td>`).join('')}</tr>`;
+  const shares=`<div><div class="dh">Shareholding pattern</div><table class="stbl"><thead><tr><th>Holder</th>${slabs.map(l=>`<th>${l.replace('FY','·F')}</th>`).join('')}</tr></thead><tbody>${shrow('Promoter',promArr)}${shrow('FII',fiiArr)}${shrow('DII',diiArr)}${shrow('Public',pubArr)}</tbody></table>${isVedl?'<div style="font-size:10.5px;color:var(--high);font-style:italic;margin-top:8px">Promoter sliding, public rising — the distribution the flag above flags.</div>':''}</div>`;
+  return `<div class="detail-wrap">${results}${shares}</div>`;}
+document.getElementById('rawToggle').addEventListener('click',()=>{const f=document.getElementById('rawFloor');f.classList.toggle('open');if(f.classList.contains('open')&&!document.getElementById('rawBodyTbl').innerHTML){renderRawHead();renderRawRows();}});
+document.querySelectorAll('.per-toggle button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.per-toggle button').forEach(x=>x.classList.remove('on'));b.classList.add('on');rawPer=b.dataset.per;renderRawRows();}));
+
+/* metric chip handlers + initial render */
+document.querySelectorAll('.mc').forEach(c=>c.addEventListener('click',()=>{document.querySelectorAll('.mc').forEach(x=>x.classList.remove('on'));c.classList.add('on');curMetric=c.dataset.m;renderMetric();}));
+renderMetric();
+</script>
+</body>
+</html>

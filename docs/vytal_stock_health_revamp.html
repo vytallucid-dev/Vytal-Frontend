@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vytal — Stock Health</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#090a0d;--surface:#111319;--surface2:#171a20;--surface3:#20242c;
+  --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.10);--line3:rgba(255,255,255,.17);
+  --ink:#f1efe9;--ink2:#9b9c9c;--ink3:#62646c;
+  --c-fragile:#e2584d;--c-below:#e0913f;--c-steady:#cda74f;--c-healthy:#48ba7c;--c-pristine:#4ea1e6;
+  --p-found:#5d92d8;--p-mom:#a085d8;--p-mkt:#d6a652;--p-own:#4fb6a4;
+  --crit:#e2584d;--crit-bg:rgba(226,88,77,.12);--crit-bd:rgba(226,88,77,.40);
+  --high:#e0a13e;--high-bg:rgba(224,161,62,.12);--high-bd:rgba(224,161,62,.38);
+  --rec:#48ba7c;--rec-bg:rgba(72,186,124,.12);--rec-bd:rgba(72,186,124,.38);
+  --ctx:#7f93b2;--ctx-bg:rgba(127,147,178,.11);--ctx-bd:rgba(127,147,178,.32);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 60px}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.shell{padding:0 26px;max-width:1500px;margin:0 auto}
+
+.strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 0 12px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.bc{font-size:12.5px;color:var(--ink3)}.bc b{color:var(--ink2);font-weight:500}.bc .sep{margin:0 8px;opacity:.5}
+.acts{margin-left:auto;display:flex;gap:7px}
+.act{appearance:none;background:var(--surface);border:1px solid var(--line2);color:var(--ink2);font:inherit;font-size:12px;padding:7px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.act:hover{border-color:var(--line3);color:var(--ink)}.act svg{width:14px;height:14px}
+
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px;margin:30px 2px 14px}
+.eyebrow .ln{flex:1;height:1px;background:var(--line)}
+.eyebrow .pill{font-family:'IBM Plex Mono',monospace;letter-spacing:0;text-transform:none;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:3px 11px;font-size:11px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+
+/* ===== VERDICT HERO ===== */
+.hero{position:relative;overflow:hidden;border:1px solid var(--line2);border-radius:22px;padding:30px 32px;background:linear-gradient(180deg,rgba(205,167,79,.05),transparent 55%),var(--surface)}
+.hero::after{content:"";position:absolute;top:-90px;right:-40px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(205,167,79,.15),transparent 68%);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:30px;align-items:center;position:relative}
+.hero-name{font-family:'Fraunces',serif;font-weight:500;font-size:36px;line-height:1.04}
+.hero-tk{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink2);margin-top:5px;display:inline-block}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);border:1px solid var(--line2);border-radius:8px;padding:6px 11px;margin-left:10px;vertical-align:middle}.tag .d{width:5px;height:5px;border-radius:50%;background:var(--p-mkt)}
+.hero-diag{font-family:'Fraunces',serif;font-weight:400;font-size:22px;line-height:1.45;margin:20px 0 6px;max-width:24em}
+.hero-diag b{font-weight:500}
+.hero-sub{font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--ink2)}
+.chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:6px 12px;border-radius:9px;border:1px solid var(--line2);color:var(--ink2);background:var(--surface2)}
+.chip svg{width:14px;height:14px}
+.chip.warn{color:var(--high);background:var(--high-bg);border-color:var(--high-bd)}.chip.hot{color:var(--c-fragile);background:var(--crit-bg);border-color:var(--crit-bd)}
+/* condition scale (right of hero) */
+.scalebox{}
+.scalebox .lab{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px}
+.scale{display:flex;flex-direction:column;gap:6px}
+.seg{display:flex;align-items:center;gap:12px;border-radius:10px;padding:9px 13px;background:var(--surface2);border:1px solid transparent;transition:.2s}
+.seg .cap{width:4px;height:26px;border-radius:3px;opacity:.5}
+.seg .nm{font-size:12.5px;color:var(--ink3);font-weight:500}
+.seg .sub{font-size:10px;color:var(--ink3);margin-left:auto;opacity:.7}
+.s0 .cap{background:var(--c-fragile)}.s1 .cap{background:var(--c-below)}.s2 .cap{background:var(--c-steady)}.s3 .cap{background:var(--c-healthy)}.s4 .cap{background:var(--c-pristine)}
+.seg.on{background:var(--surface3);border-color:rgba(205,167,79,.45)}.seg.on .cap{opacity:1}.seg.on .nm{color:var(--ink);font-weight:600}
+.seg.on .sc{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--ink);margin-left:auto}
+
+/* ===== RISK RIBBON ===== */
+.ribbon{display:grid;grid-template-columns:1.05fr 1fr;gap:26px;align-items:center}
+.rib-head{display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-bottom:8px}
+.rib-bar{height:9px;border-radius:6px;background:linear-gradient(90deg,var(--c-healthy),var(--c-steady) 48%,var(--c-fragile));position:relative}
+.rib-mark{position:absolute;top:-6px;width:3px;height:21px;background:var(--ink);border-radius:2px}.rib-mark::after{content:"";position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:11px;height:11px;border-radius:50%;background:var(--ink);border:2px solid var(--surface)}
+.rib-mlbl{margin-top:14px;font-size:10.5px;color:var(--ink);font-family:'IBM Plex Mono',monospace}
+.rib-txt .l1{font-size:14.5px;font-weight:500}.rib-txt .l1 .num{font-size:14px}
+.rib-txt .l2{font-size:12.5px;color:var(--ink2);margin-top:6px;line-height:1.5}.rib-txt .l2 b{color:var(--ink);font-weight:500}
+
+/* ===== STANDING IN PG ===== */
+.pgwrap{display:grid;grid-template-columns:1.5fr 1fr;gap:22px}
+.pg-dist{}
+.pg-strip svg{width:100%;height:auto;display:block}
+.pg-neighbors{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap}
+.nb{flex:1;min-width:180px}
+.nb-h{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:9px}
+.nbrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
+.nbrow:first-of-type{border-top:none}
+.nbrow .tk{font-family:'IBM Plex Mono',monospace}
+.nbrow .sc{font-family:'IBM Plex Mono',monospace;color:var(--ink2)}
+.nbrow .gp{font-size:11px;font-family:'IBM Plex Mono'}.gp.up{color:var(--rec)}.gp.dn{color:var(--high)}
+/* per-pillar rank */
+.rankhead{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.rankhead .big{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:500}
+.rankhead .of{font-size:12px;color:var(--ink3)}
+.ranksub{font-size:11.5px;color:var(--ink2);margin-bottom:16px;line-height:1.45}
+.prr{margin-bottom:13px}
+.prr .t{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.prr .t .nm{display:flex;align-items:center;gap:7px}.prr .t .nm .d{width:7px;height:7px;border-radius:2px}
+.prr .t .rk{font-family:'IBM Plex Mono',monospace;font-weight:500}
+.prr.found .d{background:var(--p-found)}.prr.mom .d{background:var(--p-mom)}.prr.mkt .d{background:var(--p-mkt)}.prr.own .d{background:var(--p-own)}
+.track{height:7px;border-radius:4px;background:var(--surface3);position:relative}
+.track .lbl{position:absolute;top:-15px;font-size:8.5px;color:var(--ink3)}
+.track .dot{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid var(--surface)}
+.prr.found .dot{background:var(--p-found)}.prr.mom .dot{background:var(--p-mom)}.prr.mkt .dot{background:var(--p-mkt)}.prr.own .dot{background:var(--p-own)}
+.trackends{display:flex;justify-content:space-between;font-size:9px;color:var(--ink3);margin-top:4px}
+
+/* ===== ANATOMY ===== */
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;align-items:start}
+.pcard{border:1px solid var(--line);border-radius:14px;background:var(--surface);border-top:2px solid var(--pc);overflow:hidden}
+.pcard.found{--pc:var(--p-found)}.pcard.mom{--pc:var(--p-mom)}.pcard.mkt{--pc:var(--p-mkt)}.pcard.own{--pc:var(--p-own)}
+.pc-head{padding:16px 16px 14px;cursor:pointer}
+.pc-top{display:flex;align-items:center;gap:13px}
+.gauge{flex:none}.gauge svg{display:block}
+.pc-meta{min-width:0}
+.pc-name{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:7px}.pc-name .d{width:7px;height:7px;border-radius:2px;background:var(--pc)}
+.pc-w{font-size:10px;color:var(--ink3);font-weight:400}
+.pc-zone{font-size:10.5px;margin-top:3px}.z-strong{color:var(--rec)}.z-mid{color:var(--ink2)}.z-weak{color:var(--high)}.z-hot{color:var(--p-mkt)}
+.pc-line{font-size:12px;color:var(--ink2);margin-top:11px;line-height:1.45}
+.pc-exp{font-size:11px;color:var(--ink3);margin-top:11px;display:flex;align-items:center;gap:6px}.pc-exp svg{width:13px;height:13px;transition:transform .2s}
+.pcard.open .pc-exp svg{transform:rotate(180deg)}
+.metrics{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+.pcard.open .metrics{display:block}
+.metric{padding:11px 0;border-top:1px solid var(--line)}.metric:first-child{border-top:none;padding-top:13px}
+.m-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.m-n{font-size:12.5px}.m-v{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink2)}
+.pips{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.pip{font-size:10px;padding:2px 8px;border-radius:6px;background:var(--surface3);color:var(--ink2);white-space:nowrap}
+.pip.ok{background:var(--rec-bg);color:var(--rec)}.pip.bad{background:var(--high-bg);color:var(--high)}
+.m-foot{font-size:11px;color:var(--ink3);margin-top:12px;line-height:1.45}
+
+/* ===== TRAJECTORY ===== */
+.trajcard{padding:18px 20px}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.kick{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3)}
+.trajcard svg{width:100%;height:auto;display:block}
+.gl{stroke:var(--line2);stroke-width:1;stroke-dasharray:2 5}.glt{fill:var(--ink3);font-size:11px;font-family:'IBM Plex Mono',monospace}
+.ln{fill:none;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}.xlt{fill:var(--ink3);font-size:11px;font-family:'IBM Plex Mono',monospace;text-anchor:middle}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--ink2)}.legend i{display:inline-block;width:15px;height:3px;border-radius:2px;margin-right:7px;vertical-align:middle}
+.tlink{font-size:12px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;background:var(--surface2);transition:.15s}.tlink:hover{border-color:var(--line3);background:var(--surface3)}.tlink svg{width:12px;height:12px}
+
+/* ===== FINDINGS ===== */
+.findings{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.finding{border:1px solid var(--line);border-radius:14px;background:var(--surface);position:relative;overflow:hidden;padding:18px 20px}
+.finding::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--fc)}
+.finding.crit{--fc:var(--crit);--fcbg:var(--crit-bg)}.finding.high{--fc:var(--high);--fcbg:var(--high-bg)}.finding.rec{--fc:var(--rec);--fcbg:var(--rec-bg)}.finding.ctx{--fc:var(--ctx);--fcbg:var(--ctx-bg)}
+.f-head{display:flex;align-items:center;gap:10px}
+.f-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--fcbg);color:var(--fc)}.f-ic svg{width:17px;height:17px}
+.f-ttl{font-size:14px;font-weight:600}
+.f-tag{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:4px 10px;border-radius:7px;background:var(--fcbg);color:var(--fc)}
+.f-body{font-size:12.5px;color:var(--ink2);line-height:1.55;margin-top:11px}.f-body .num{color:var(--ink)}
+.f-viz{margin:13px 0 2px;background:var(--surface2);border-radius:11px;padding:12px 13px}.f-viz svg{width:100%;height:auto;display:block}
+.f-mask{font-size:11.5px;color:var(--high);margin-top:10px;display:flex;align-items:center;gap:7px}.f-mask svg{width:13px;height:13px;flex:none}
+.f-not{font-size:11.5px;color:var(--ink3);font-style:italic;margin-top:11px;padding-left:13px;border-left:2px solid var(--line2)}
+.f-cta{margin-top:13px}.f-cta a{font-size:12px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:7px;background:var(--surface2);transition:.15s}.f-cta a:hover{border-color:var(--line3);background:var(--surface3)}.f-cta svg{width:12px;height:12px}
+.spark{vertical-align:middle;margin-left:8px}
+.f-count{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:3px 11px}
+
+.foot{padding:24px 26px 0;max-width:1500px;margin:30px auto 0;font-size:11px;color:var(--ink3);line-height:1.6;border-top:1px solid var(--line)}
+a:focus-visible,.act:focus-visible,.pc-head:focus-visible{outline:2px solid var(--c-pristine);outline-offset:2px;border-radius:4px}
+@media(max-width:1180px){.hero-grid,.pgwrap,.ribbon{grid-template-columns:1fr}.pillars{grid-template-columns:repeat(2,1fr)}.findings{grid-template-columns:1fr}}
+@media(max-width:680px){.pillars{grid-template-columns:1fr}.hero-name{font-size:28px}.hero-diag{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="strip">
+    <span class="bc"><b>Research</b><span class="sep">›</span>Stock health<span class="sep">›</span><b style="color:var(--ink)">TATASTEEL</b></span>
+    <div class="acts">
+      <button class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Watchlist</button>
+      <button class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-7 4 16 3-9 2 5h5"/></svg>Trajectory</button>
+      <button class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ===== VERDICT ===== -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-name">Tata Steel<span class="tag"><span class="d"></span>Metals · Cyclical</span></div>
+        <div class="hero-tk">TATASTEEL · NSE</div>
+        <div class="hero-diag">Steady on the surface — but price has run ahead of cooling fundamentals, and institutions are quietly <b>stepping back</b>.</div>
+        <div class="hero-sub">The number says average. The story says look closer.</div>
+        <div class="chips">
+          <span class="chip warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l6 6 4-4 8 8"/><path d="M21 16v-6h-6"/></svg>Deteriorating</span>
+          <span class="chip warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7L3 12l5 5M16 7l5 5-5 5"/></svg>Wide divergence</span>
+          <span class="chip hot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c1.6 3-1.6 4 0 7 4-1 5 3.2 4 6a6 6 0 11-9-9c2-2 2.4-2.4 5-4z"/></svg>Pond running hot</span>
+        </div>
+      </div>
+      <div class="scalebox">
+        <div class="lab">Condition</div>
+        <div class="scale">
+          <div class="seg s0"><span class="cap"></span><span class="nm">Fragile</span></div>
+          <div class="seg s1"><span class="cap"></span><span class="nm">Below par</span></div>
+          <div class="seg s2 on"><span class="cap"></span><span class="nm">Steady</span><span class="sc">64</span></div>
+          <div class="seg s3"><span class="cap"></span><span class="nm">Healthy</span></div>
+          <div class="seg s4"><span class="cap"></span><span class="nm">Pristine</span><span class="sub">fully priced</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== RISK SHAPE ===== -->
+  <div class="eyebrow">How it rides<span class="ln"></span></div>
+  <div class="card ribbon">
+    <div>
+      <div class="rib-head"><span>Calm</span><span>Its normal</span><span>Wild</span></div>
+      <div class="rib-bar"><span class="rib-mark" style="left:54%"></span></div>
+      <div class="rib-mlbl">1.4× its own baseline</div>
+    </div>
+    <div class="rib-txt">
+      <div class="l1">Wilder than usual — worst drawdown in view <span class="num">−34%</span>.</div>
+      <div class="l2">Adequate floor for a cyclical — enough to weather the cycle, but expect <b>the cycle, not the balance sheet</b>, to drive how violently it moves.</div>
+    </div>
+  </div>
+
+  <!-- ===== STANDING IN PEER GROUP (NEW) ===== -->
+  <div class="eyebrow">Standing in its peer group<span class="ln"></span><span class="pill">Metals &amp; Mining · 11 names</span></div>
+  <div class="card pgwrap">
+    <div class="pg-dist">
+      <div class="kick" style="margin-bottom:12px">Where it sits in the pack — by composite</div>
+      <div class="pg-strip"><svg id="pgStrip" viewBox="0 0 1000 110" preserveAspectRatio="none"></svg></div>
+      <div class="pg-neighbors">
+        <div class="nb">
+          <div class="nb-h">Just above</div>
+          <div class="nbrow"><span class="tk">APLAPOLLO</span><span><span class="sc">67</span> <span class="gp up">+3</span></span></div>
+          <div class="nbrow"><span class="tk">HINDALCO</span><span><span class="sc">69</span> <span class="gp up">+5</span></span></div>
+        </div>
+        <div class="nb">
+          <div class="nb-h">Just below</div>
+          <div class="nbrow"><span class="tk">JSL</span><span><span class="sc">63</span> <span class="gp dn">−1</span></span></div>
+          <div class="nbrow"><span class="tk">NMDC</span><span><span class="sc">62</span> <span class="gp dn">−2</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="pg-rank">
+      <div class="kick" style="margin-bottom:12px">Rank within the group</div>
+      <div class="rankhead"><span class="big">#4</span><span class="of">of 11 · 68th percentile</span></div>
+      <div class="ranksub">A mid-pack name held up by its floor — its <b style="color:var(--p-found)">balance sheet ranks near the top</b>, but <b style="color:var(--p-mom)">momentum lags most of the group</b>.</div>
+      <div id="pillarRanks"></div>
+    </div>
+  </div>
+
+  <!-- ===== ANATOMY ===== -->
+  <div class="eyebrow">Anatomy<span class="ln"></span><span class="pill">4 pillars · tap to expand metrics</span></div>
+  <div class="pillars" id="pillars"></div>
+
+  <!-- ===== TRAJECTORY ===== -->
+  <div class="eyebrow">Trajectory<span class="ln"></span><span class="pill">7 quarters</span></div>
+  <div class="card trajcard">
+    <div class="chead"><span class="kick">Composite &amp; pillars over time</span><a class="tlink" href="#">Open in Trajectory tool <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+    <svg viewBox="0 0 1000 200" preserveAspectRatio="none">
+      <rect x="0" y="14" width="940" height="28" fill="var(--c-pristine)" opacity=".07"/><rect x="0" y="42" width="940" height="14" fill="var(--c-healthy)" opacity=".09"/><rect x="0" y="56" width="940" height="14" fill="var(--c-steady)" opacity=".10"/><rect x="0" y="70" width="940" height="16" fill="var(--c-below)" opacity=".08"/><rect x="0" y="86" width="940" height="80" fill="var(--c-fragile)" opacity=".06"/>
+      <text x="946" y="30" class="glt" fill="var(--c-pristine)">Prist</text><text x="946" y="55" class="glt" fill="var(--c-steady)">68</text><text x="946" y="86" class="glt" fill="var(--c-below)">62</text><text x="946" y="130" class="glt" fill="var(--c-fragile)">Frag</text>
+      <polyline class="ln" stroke="var(--p-found)" points="24,44 175,44 326,46 477,48 628,48 779,50 920,50"/>
+      <polyline class="ln" stroke="var(--p-mom)" points="24,48 175,54 326,60 477,66 628,72 779,76 920,78"/>
+      <polyline class="ln" stroke="var(--ink)" style="stroke-width:3" points="24,46 175,48 326,50 477,52 628,54 779,56 920,60"/>
+      <circle cx="477" cy="52" r="4" fill="var(--high)"/><line x1="477" y1="52" x2="477" y2="150" stroke="var(--high)" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/><text x="484" y="146" fill="var(--high)" style="font-size:11px">left Healthy</text>
+      <text x="24" y="184" class="xlt">Q1</text><text x="326" y="184" class="xlt">Q3</text><text x="628" y="184" class="xlt">Q5</text><text x="920" y="184" class="xlt">now</text>
+    </svg>
+    <div class="legend"><span><i style="background:var(--ink)"></i>Composite</span><span><i style="background:var(--p-found)"></i>Foundation</span><span><i style="background:var(--p-mom)"></i>Momentum</span></div>
+  </div>
+
+  <!-- ===== FINDINGS ===== -->
+  <div class="eyebrow">Notable findings<span class="ln"></span><span class="f-count"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>4 firing</span></div>
+  <div class="findings">
+    <div class="finding high">
+      <div class="f-head"><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l6 6 4-4 8 8"/><path d="M21 16v-6h-6"/></svg></span><span class="f-ttl">Deterioration from a high base</span><span class="f-tag">High</span></div>
+      <div class="f-body">Composite slid from Healthy into Steady over four quarters as Momentum crossed <span class="num">below</span> its weak mark — an early risk-regime change, usually before price reacts.</div>
+      <div class="f-viz"><svg viewBox="0 0 460 80" preserveAspectRatio="none"><rect x="0" y="10" width="460" height="20" fill="var(--c-healthy)" opacity=".08"/><rect x="0" y="30" width="460" height="44" fill="var(--c-steady)" opacity=".08"/><polyline class="ln" stroke="var(--ink)" style="stroke-width:2.4" points="14,20 90,25 166,32 242,42 318,50 394,56 450,60"/><circle cx="242" cy="42" r="3.2" fill="var(--high)"/></svg></div>
+      <div class="f-mask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>The pond is hot — price-linked reads may be deferred.</div>
+      <div class="f-not">Review your thesis, not sell — an early risk read, not a price call.</div>
+      <div class="f-cta"><a href="#">Open trajectory explorer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+    </div>
+    <div class="finding high">
+      <div class="f-head"><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7L3 12l5 5M16 7l5 5-5 5"/></svg></span><span class="f-ttl">Divergence — price ahead, ownership behind</span><span class="f-tag">High</span></div>
+      <div class="f-body">Market <span class="num">(78)</span> sits well above cooling fundamentals <span class="num">(F70 / M52)</span>, while owners pull back <span class="num">(58)</span> beneath a holding floor. <b style="color:var(--ink)">Two gaps at once.</b></div>
+      <div class="f-viz"><svg viewBox="0 0 460 90" preserveAspectRatio="none"><polygon points="14,24 90,22 166,20 242,19 318,18 394,17 450,17 450,33 394,33 318,32 242,31 166,29 90,27 14,27" fill="var(--high)" opacity=".16"/><polyline class="ln" stroke="var(--p-mkt)" style="stroke-width:2.4" points="14,24 90,22 166,20 242,19 318,18 394,17 450,17"/><polyline class="ln" stroke="var(--p-found)" style="stroke-width:2.4" points="14,27 90,29 166,30 242,31 318,32 394,33 450,33"/><text x="195" y="55" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--high)">gap +17, widening →</text></svg></div>
+      <div class="f-mask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>The pond is hot — the verdict may be deferred.</div>
+      <div class="f-not">You read the state, not the timing — divergences are sticky.</div>
+      <div class="f-cta"><a href="#">Explore divergence <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+    </div>
+    <div class="finding crit">
+      <div class="f-head"><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18V8l5 4 5-7 8 13"/></svg></span><span class="f-ttl">Pattern · Margin compression<svg class="spark" width="58" height="16" viewBox="0 0 58 16"><polyline points="2,4 16,6 30,9 44,12 56,14" fill="none" stroke="var(--crit)" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="f-tag">Red −8</span></div>
+      <div class="f-body">Operating margin compressing for <span class="num">4</span> quarters: <span class="num">28.1% → 26.4% → 24.8% → 23.0%</span>.</div>
+      <div class="f-not">A condition to look at — not a trade signal.</div>
+      <div class="f-cta"><a href="#">See on flags board <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+    </div>
+    <div class="finding ctx">
+      <div class="f-head"><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg></span><span class="f-ttl">Composition — a 64 that isn't typical</span><span class="f-tag">Context</span></div>
+      <div class="f-body">Average number, unusual mix: a solid floor and hot price masking a weak trajectory and exiting owners — a different animal from an aligned 64.</div>
+      <div class="f-viz"><svg viewBox="0 0 360 110" preserveAspectRatio="none"><g><rect x="34" y="44" width="40" height="56" rx="3" fill="none" stroke="var(--line3)" stroke-dasharray="3 3"/><rect x="34" y="41" width="40" height="59" rx="3" fill="var(--p-found)" opacity=".75"/><text x="54" y="108" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--ink3)" text-anchor="middle">F70</text></g><g><rect x="120" y="48" width="40" height="52" rx="3" fill="none" stroke="var(--line3)" stroke-dasharray="3 3"/><rect x="120" y="58" width="40" height="42" rx="3" fill="var(--p-mom)" opacity=".75"/><text x="140" y="108" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--ink3)" text-anchor="middle">M52</text></g><g><rect x="206" y="49" width="40" height="51" rx="3" fill="none" stroke="var(--line3)" stroke-dasharray="3 3"/><rect x="206" y="34" width="40" height="66" rx="3" fill="var(--p-mkt)" opacity=".8"/><text x="226" y="108" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--ink3)" text-anchor="middle">Mkt78</text></g><g><rect x="292" y="44" width="40" height="56" rx="3" fill="none" stroke="var(--line3)" stroke-dasharray="3 3"/><rect x="292" y="52" width="40" height="48" rx="3" fill="var(--p-own)" opacity=".75"/><text x="312" y="108" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--ink3)" text-anchor="middle">Own58</text></g></svg></div>
+      <div class="f-not">Dashed = typical profile for a Steady-band stock.</div>
+      <div class="f-cta"><a href="#">Open composition tool <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">Illustrative data for layout review — names, scores and metrics are placeholders; structure, states and rules are real. Vytal is a data platform, not an investment advisor: nothing here is a buy/sell signal or a price prediction.</div>
+
+<script>
+/* peer distribution strip */
+const PEERS=[['JSWSTEEL',71],['HINDALCO',69],['APLAPOLLO',67],['TATASTEEL',64],['JSL',63],['NMDC',62],['SAIL',58],['JINDALSTEL',57],['HINDZINC',55],['NALCO',53],['VEDL',51]];
+(function(){const W=1000,lo=48,hi=73,X0=24,X1=940,xo=v=>X0+(v-lo)/(hi-lo)*(X1-X0);let s='';
+  // band separators
+  [['55',55,'var(--c-below)'],['62',62,'var(--c-steady)'],['68',68,'var(--c-healthy)']].forEach(b=>{const x=xo(b[1]);s+=`<line x1="${x}" y1="20" x2="${x}" y2="62" stroke="${b[2]}" stroke-width="1" stroke-dasharray="2 4" opacity=".4"/><text x="${x}" y="14" text-anchor="middle" class="glt" fill="${b[2]}">${b[0]}</text>`;});
+  s+=`<line x1="${X0}" y1="50" x2="${X1}" y2="50" stroke="var(--line2)" stroke-width="1"/>`;
+  PEERS.forEach(p=>{const x=xo(p[1]),me=p[0]==='TATASTEEL';const col=p[1]<55?'var(--c-fragile)':p[1]<62?'var(--c-below)':p[1]<68?'var(--c-steady)':'var(--c-healthy)';
+    if(me){s+=`<circle cx="${x}" cy="50" r="9" fill="${col}" stroke="var(--ink)" stroke-width="2"/><text x="${x}" y="82" text-anchor="middle" style="font-size:12px;font-family:IBM Plex Mono;fill:var(--ink);font-weight:600">TATA · 64</text><text x="${x}" y="98" text-anchor="middle" style="font-size:10px;font-family:IBM Plex Mono;fill:var(--ink3)">#4 of 11</text>`;}
+    else{s+=`<circle cx="${x}" cy="50" r="5" fill="${col}" opacity=".75"/>`;}});
+  document.getElementById('pgStrip').innerHTML=s;})();
+
+/* per-pillar rank */
+const PR=[['found','Foundation',3],['mom','Momentum',8],['mkt','Market',2],['own','Ownership',6]];
+const N=11;
+document.getElementById('pillarRanks').innerHTML=PR.map(p=>{const pct=(N-p[2])/(N-1)*100;return `<div class="prr ${p[0]}"><div class="t"><span class="nm"><span class="d"></span>${p[1]}</span><span class="rk">#${p[2]}</span></div><div class="track"><span class="dot" style="left:${pct}%"></span></div><div class="trackends"><span>weakest in group</span><span>strongest</span></div></div>`;}).join('');
+
+/* anatomy pillars (expandable) */
+const PILLARS=[
+ {k:'found',name:'Foundation',w:'35% · the floor',score:70,off:56.5,zone:['near strong','z-mid'],line:'Solid balance sheet, returns trend softening. 3 of 4 metrics clear their bar.',open:true,
+  metrics:[['Debt / Equity','0.62',[['abs ✓ bar','ok'],['peer ahead','ok'],['trend flat','']]],['ROCE','14%',[['abs ✕ bar 17%','bad'],['peer mid',''],['trend ↓','bad']]],['Interest coverage','5.1×',[['abs ✓ bar','ok'],['peer mid',''],['trend ↓','bad']]],['OCF consistency','100%',[['abs ✓','ok'],['peer level',''],['stable','']]]],
+  foot:'Three lenses each — vs its own bar · vs peers · vs its own history. Strongest: balance sheet. Weakest: returns trend.'},
+ {k:'mom',name:'Momentum',w:'25%',score:52,off:72.4,zone:['below weak','z-weak'],line:'Fundamentals cooling — margins down four quarters.',open:false,
+  metrics:[['Operating margin trend','23.0%',[['abs ✕','bad'],['peer below','bad'],['trend ↓↓','bad']]],['Revenue growth (TTM)','6.2%',[['abs mid',''],['peer below','bad'],['trend ↓','bad']]],['Profit growth (TTM)','−4.1%',[['abs ✕','bad'],['peer below','bad'],['trend ↓','bad']]]],
+  foot:'The pillar dragging the composite. Every lens points down.'},
+ {k:'mkt',name:'Market',w:'20%',score:78,off:33.2,zone:['strong','z-hot'],line:'Price structure hot — read only against the others.',open:false,
+  metrics:[['52-week position','94%',[['high','bad']]],['Above 200-DMA','+12%',[['extended','bad']]],['Trend direction','up',[['rising','']]],['Relative volatility','1.4×',[['elevated','bad']]]],
+  foot:'A health read of price structure — not a timing or charting signal.'},
+ {k:'own',name:'Ownership',w:'20%',score:58,off:63.3,zone:['slipping','z-weak'],line:'Institutions stepping back as the floor holds.',open:false,
+  metrics:[['Promoter holding','33.9%',[['stable','']]],['FII trend','↓ 4q',[['reducing','bad']]],['DII trend','↓ 2q',[['reducing','bad']]],['Pledging','none',[['clear','ok']]]],
+  foot:'Directional flow scoring — who is moving, with or against the floor.'}
+];
+function gauge(score,off,col){return `<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="var(--surface3)" stroke-width="6"/><circle cx="32" cy="32" r="26" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="${off}" transform="rotate(-90 32 32)"/><text x="32" y="37" text-anchor="middle" style="font-family:IBM Plex Mono;font-size:17px;font-weight:500;fill:var(--ink)">${score}</text></svg>`;}
+document.getElementById('pillars').innerHTML=PILLARS.map(p=>`<div class="pcard ${p.k} ${p.open?'open':''}"><div class="pc-head"><div class="pc-top"><span class="gauge">${gauge(p.score,p.off,'var(--p-'+p.k+')')}</span><div class="pc-meta"><div class="pc-name"><span class="d"></span>${p.name}<span class="pc-w">${p.w}</span></div><div class="pc-zone ${p.zone[1]}">${p.zone[0]}</div></div></div><div class="pc-line">${p.line}</div><div class="pc-exp">${p.open?'Hide metrics':'Metrics & lenses'} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div><div class="metrics">${p.metrics.map(m=>`<div class="metric"><div class="m-top"><span class="m-n">${m[0]}</span><span class="m-v">${m[1]}</span></div><div class="pips">${m[2].map(pp=>`<span class="pip ${pp[1]}">${pp[0]}</span>`).join('')}</div></div>`).join('')}<div class="m-foot">${p.foot}</div></div></div>`).join('');
+document.querySelectorAll('.pcard .pc-head').forEach(h=>h.addEventListener('click',()=>{const c=h.closest('.pcard');c.classList.toggle('open');const e=c.querySelector('.pc-exp');e.childNodes[0].textContent=c.classList.contains('open')?'Hide metrics ':'Metrics & lenses ';}));
+</script>
+</body>
+</html>

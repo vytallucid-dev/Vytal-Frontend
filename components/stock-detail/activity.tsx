@@ -91,11 +91,11 @@ const Activity = () => {
 
   // Mock data for shareholding pie chart
   const shareholdingData = [
-    { name: "Promoters", value: 52.4, color: "#F59E0B" },
-    { name: "FII", value: 24.2, color: "#3B82F6" },
-    { name: "DII", value: 9.5, color: "#10B981" },
-    { name: "Retail", value: 10.8, color: "#8B5CF6" },
-    { name: "Others", value: 3.1, color: "#6B7280" },
+    { name: "Promoters", value: 52.4, color: "var(--warning)" },
+    { name: "FII", value: 24.2, color: "var(--p-found)" },
+    { name: "DII", value: 9.5, color: "var(--success)" },
+    { name: "Retail", value: 10.8, color: "var(--p-mom)" },
+    { name: "Others", value: 3.1, color: "var(--ink3)" },
   ];
 
   // Mock data for shareholding trend table
@@ -612,26 +612,26 @@ const Activity = () => {
                 <Bar
                   dataKey="fii"
                   name="FII Flow"
-                  fill="#3B82F6"
+                  fill="var(--p-found)"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   dataKey="dii"
                   name="DII Flow"
-                  fill="#10B981"
+                  fill="var(--success)"
                   radius={[4, 4, 0, 0]}
                 />
                 <Line
                   type="monotone"
                   dataKey="fii"
-                  stroke="#3B82F6"
+                  stroke="var(--p-found)"
                   strokeWidth={2}
                   dot={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="dii"
-                  stroke="#10B981"
+                  stroke="var(--success)"
                   strokeWidth={2}
                   dot={false}
                 />
@@ -1002,7 +1002,7 @@ const Activity = () => {
                     cy="50%"
                     innerRadius={60}
                     outerRadius={100}
-                    fill="#8884d8"
+                    fill="var(--p-mom)"
                     dataKey="value"
                     label={({ name, value }) => `${name}: ${value}%`}
                   >
@@ -1313,9 +1313,9 @@ const Activity = () => {
                     <Line
                       type="monotone"
                       dataKey="stake"
-                      stroke="#F59E0B"
+                      stroke="var(--warning)"
                       strokeWidth={3}
-                      dot={{ fill: "#F59E0B", r: 4 }}
+                      dot={{ fill: "var(--warning)", r: 4 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -2149,7 +2149,7 @@ const Activity = () => {
                   yAxisId="left"
                   dataKey="schemes"
                   name="MF Schemes"
-                  fill="#10B981"
+                  fill="var(--success)"
                   radius={[4, 4, 0, 0]}
                 />
                 <Line
@@ -2157,9 +2157,9 @@ const Activity = () => {
                   type="monotone"
                   dataKey="stake"
                   name="MF Stake %"
-                  stroke="#3B82F6"
+                  stroke="var(--p-found)"
                   strokeWidth={3}
-                  dot={{ fill: "#3B82F6", r: 5 }}
+                  dot={{ fill: "var(--p-found)", r: 5 }}
                 />
               </ComposedChart>
             </ResponsiveContainer>

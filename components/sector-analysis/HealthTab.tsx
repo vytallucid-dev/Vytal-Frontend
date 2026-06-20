@@ -366,13 +366,13 @@ const getScoreBgColor = (score: number) => {
 
 const getColorHex = (color: string) => {
   const hexColors: any = {
-    emerald: "#10b981",
-    blue: "#3b82f6",
-    purple: "#a855f7",
-    orange: "#f97316",
-    cyan: "#06b6d4",
+    emerald: "var(--success)",
+    blue: "var(--p-found)",
+    purple: "var(--p-mom)",
+    orange: "var(--warning)",
+    cyan: "var(--p-found)",
   };
-  return hexColors[color] || "#3b82f6";
+  return hexColors[color] || "var(--p-found)";
 };
 
 const getCategoryColor = (color: string, type: "bg" | "text" | "border") => {
@@ -879,7 +879,7 @@ export function HealthTab({ sectorData, getHealthColor }: HealthTabProps) {
                 config={{
                   count: {
                     label: "Companies",
-                    color: "#3b82f6",
+                    color: "var(--p-found)",
                   },
                 }}
                 className="h-48 w-full"
@@ -895,13 +895,13 @@ export function HealthTab({ sectorData, getHealthColor }: HealthTabProps) {
                   <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                     {healthData.distribution.ranges.map((entry, index) => {
                       const colorMap: any = {
-                        emerald: "#10b981",
-                        amber: "#f59e0b",
-                        orange: "#f97316",
-                        red: "#ef4444",
+                        emerald: "var(--success)",
+                        amber: "var(--warning)",
+                        orange: "var(--warning)",
+                        red: "var(--danger)",
                       };
                       return (
-                        <Cell key={`cell-${index}`} fill={colorMap[entry.color] || "#3b82f6"} />
+                        <Cell key={`cell-${index}`} fill={colorMap[entry.color] || "var(--p-found)"} />
                       );
                     })}
                   </Bar>

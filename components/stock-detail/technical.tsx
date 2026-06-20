@@ -384,8 +384,8 @@ const Technical = () => {
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #e5e7eb",
+                        backgroundColor: "var(--ink)",
+                        border: "1px solid var(--ink2)",
                         borderRadius: "6px",
                         padding: "6px 10px",
                         fontSize: "12px",
@@ -395,7 +395,7 @@ const Technical = () => {
                         outline: "none",
                       }}
                       cursor={{
-                        stroke: "#6366f1",
+                        stroke: "var(--p-mom)",
                         strokeWidth: 1,
                         strokeDasharray: "3 3",
                       }}
@@ -404,7 +404,7 @@ const Technical = () => {
                     {/* Current Price Line */}
                     <ReferenceLine
                       y={currentPrice}
-                      stroke="#6366f1"
+                      stroke="var(--p-mom)"
                       strokeDasharray="5 5"
                       label={{
                         value: `₹${currentPrice}`,
@@ -418,7 +418,7 @@ const Technical = () => {
                       <Line
                         type="monotone"
                         dataKey="price"
-                        stroke="#8b5cf6"
+                        stroke="var(--p-mom)"
                         strokeWidth={2}
                         dot={false}
                       />
@@ -427,18 +427,18 @@ const Technical = () => {
                       <Area
                         type="monotone"
                         dataKey="price"
-                        stroke="#8b5cf6"
+                        stroke="var(--p-mom)"
                         fill="rgba(139, 92, 246, 0.2)"
                       />
                     )}
                     {chartType === "bar" && (
-                      <Bar dataKey="price" fill="#8b5cf6" />
+                      <Bar dataKey="price" fill="var(--p-mom)" />
                     )}
                     {chartType === "candlestick" && (
                       <Line
                         type="monotone"
                         dataKey="close"
-                        stroke="#8b5cf6"
+                        stroke="var(--p-mom)"
                         strokeWidth={2}
                         dot={false}
                       />
@@ -461,8 +461,8 @@ const Technical = () => {
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #e5e7eb",
+                        backgroundColor: "var(--ink)",
+                        border: "1px solid var(--ink2)",
                         borderRadius: "6px",
                         padding: "4px 8px",
                         fontSize: "11px",
@@ -628,7 +628,7 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="price"
-                      stroke="#22c55e"
+                      stroke="var(--success)"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -695,7 +695,7 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="price"
-                      stroke="#3b82f6"
+                      stroke="var(--p-found)"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -762,7 +762,7 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="price"
-                      stroke="#a855f7"
+                      stroke="var(--p-mom)"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -884,23 +884,23 @@ const Technical = () => {
                   >
                     <ReferenceLine
                       y={70}
-                      stroke="#ef4444"
+                      stroke="var(--danger)"
                       strokeDasharray="3 3"
                     />
                     <ReferenceLine
                       y={30}
-                      stroke="#f97316"
+                      stroke="var(--warning)"
                       strokeDasharray="3 3"
                     />
                     <ReferenceLine
                       y={50}
-                      stroke="#6b7280"
+                      stroke="var(--ink3)"
                       strokeDasharray="2 2"
                     />
                     <Line
                       type="monotone"
                       dataKey="rsi"
-                      stroke="#8b5cf6"
+                      stroke="var(--p-mom)"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -974,11 +974,11 @@ const Technical = () => {
                       signal: -5 + i * 0.45 + Math.random() * 2,
                     }))}
                   >
-                    <ReferenceLine y={0} stroke="#6b7280" />
+                    <ReferenceLine y={0} stroke="var(--ink3)" />
                     <Line
                       type="monotone"
                       dataKey="macd"
-                      stroke="#3b82f6"
+                      stroke="var(--p-found)"
                       strokeWidth={1.5}
                       dot={false}
                       name="MACD"
@@ -986,7 +986,7 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="signal"
-                      stroke="#f97316"
+                      stroke="var(--warning)"
                       strokeWidth={1.5}
                       dot={false}
                       name="Signal"
@@ -1061,18 +1061,18 @@ const Technical = () => {
                   >
                     <ReferenceLine
                       y={80}
-                      stroke="#ef4444"
+                      stroke="var(--danger)"
                       strokeDasharray="3 3"
                     />
                     <ReferenceLine
                       y={20}
-                      stroke="#f97316"
+                      stroke="var(--warning)"
                       strokeDasharray="3 3"
                     />
                     <Line
                       type="monotone"
                       dataKey="k"
-                      stroke="#8b5cf6"
+                      stroke="var(--p-mom)"
                       strokeWidth={1.5}
                       dot={false}
                       name="%K"
@@ -1080,7 +1080,7 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="d"
-                      stroke="#ec4899"
+                      stroke="var(--p-mom)"
                       strokeWidth={1.5}
                       dot={false}
                       name="%D"
@@ -1658,8 +1658,8 @@ const Technical = () => {
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #e5e7eb",
+                          backgroundColor: "var(--ink)",
+                          border: "1px solid var(--ink2)",
                           borderRadius: "6px",
                           padding: "6px 10px",
                           fontSize: "11px",
@@ -1668,14 +1668,14 @@ const Technical = () => {
                       <Line
                         type="monotone"
                         dataKey="volume"
-                        stroke="#6366f1"
+                        stroke="var(--p-mom)"
                         strokeWidth={1}
                         dot={false}
                         name="20D Avg Volume"
                       />
                       <Bar
                         dataKey="volume"
-                        fill="#60a5fa"
+                        fill="var(--p-found)"
                         opacity={0.6}
                         name="Volume"
                       />
@@ -1988,13 +1988,13 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="price"
-                      stroke="#22c55e"
+                      stroke="var(--success)"
                       strokeWidth={2}
                       dot={false}
                     />
                     <ReferenceLine
                       y={1850}
-                      stroke="#ef4444"
+                      stroke="var(--danger)"
                       strokeDasharray="3 3"
                       label="Resistance"
                     />
@@ -2052,7 +2052,7 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="price"
-                      stroke="#8b5cf6"
+                      stroke="var(--p-mom)"
                       strokeWidth={1.5}
                       dot={false}
                     />
@@ -2110,7 +2110,7 @@ const Technical = () => {
                     <Line
                       type="monotone"
                       dataKey="price"
-                      stroke="#3b82f6"
+                      stroke="var(--p-found)"
                       strokeWidth={2}
                       dot={false}
                     />

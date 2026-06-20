@@ -623,11 +623,11 @@ export function FinancialTab() {
                 config={{
                   revenue: {
                     label: "Revenue (₹Cr)",
-                    color: "#3b82f6",
+                    color: "var(--p-found)",
                   },
                   profit: {
                     label: "Profit (₹Cr)",
-                    color: "#10b981",
+                    color: "var(--success)",
                   },
                 }}
                 className="h-80 w-full"
@@ -659,7 +659,7 @@ export function FinancialTab() {
                   <Bar
                     yAxisId="left"
                     dataKey="revenue"
-                    fill="#3b82f6"
+                    fill="var(--p-found)"
                     radius={[8, 8, 0, 0]}
                     opacity={0.8}
                   />
@@ -667,9 +667,9 @@ export function FinancialTab() {
                     yAxisId="right"
                     type="monotone"
                     dataKey="profit"
-                    stroke="#10b981"
+                    stroke="var(--success)"
                     strokeWidth={3}
-                    dot={{ fill: "#10b981", r: 4 }}
+                    dot={{ fill: "var(--success)", r: 4 }}
                   />
                 </ComposedChart>
               </ChartContainer>
@@ -784,7 +784,7 @@ export function FinancialTab() {
                     config={{
                       value: {
                         label: "Net Margin %",
-                        color: "#10b981",
+                        color: "var(--success)",
                       },
                     }}
                     className="h-40 w-full"
@@ -810,8 +810,8 @@ export function FinancialTab() {
                       <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="#10b981"
-                        fill="#10b981"
+                        stroke="var(--success)"
+                        fill="var(--success)"
                         fillOpacity={0.2}
                         strokeWidth={2}
                       />
@@ -1033,7 +1033,7 @@ export function FinancialTab() {
                   config={{
                     value: {
                       label: "Debt/Equity",
-                      color: "#10b981",
+                      color: "var(--success)",
                     },
                   }}
                   className="h-32 w-full"
@@ -1059,9 +1059,9 @@ export function FinancialTab() {
                     <Line
                       type="monotone"
                       dataKey="value"
-                      stroke="#10b981"
+                      stroke="var(--success)"
                       strokeWidth={2}
-                      dot={{ fill: "#10b981", r: 3 }}
+                      dot={{ fill: "var(--success)", r: 3 }}
                     />
                   </LineChart>
                 </ChartContainer>

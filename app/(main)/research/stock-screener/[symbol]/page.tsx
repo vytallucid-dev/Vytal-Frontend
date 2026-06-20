@@ -251,7 +251,7 @@ const StockDetailPage = () => {
         {activeTab === "overview" && <Overview stock={stock} />}
 
         {/* TAB 2: HEALTH SCORE */}
-        {activeTab === "health" && <HealthScore stock={stock} />}
+        {activeTab === "health" && <HealthScore />}
 
         {/* TAB 3: FUNDAMENTALS */}
         {activeTab === "fundamentals" && <Fundamentals />}
