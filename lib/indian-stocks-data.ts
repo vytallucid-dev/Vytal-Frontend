@@ -3,6 +3,11 @@ export interface Stock {
   name: string;
   sector: string;
   exchange: string;
+  /** Coverage flag — true when the stock has an in-force health score. When present,
+   *  the typeahead shows a band/coverage chip; absent on legacy/static callers. */
+  scored?: boolean;
+  /** In-force band label (lower-cased union) when scored — drives the typeahead chip. */
+  band?: string;
 }
 
 export const indianStocks: Stock[] = [

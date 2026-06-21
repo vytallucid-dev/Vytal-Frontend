@@ -4,6 +4,7 @@
 // reused from the stock-health shared.tsx — these are the Hub-specific reads.
 
 import { healthLabel } from "@/lib/format";
+import { findingName } from "@/lib/finding-names";
 import type { LabelBand, PillarKey } from "@/types/health";
 import type {
   UniverseHealthView,
@@ -333,15 +334,7 @@ export function universeCharacter(view: UniverseHealthView): string {
 }
 
 // ── short helpers ──────────────────────────────────────────────────────────────
-/** "ownership_R1_pledge" → "Promoter pledge rising" (known) else humanized. */
-export const FLAG_LABELS: Record<string, string> = {
-  ownership_R1_pledge: "Promoter pledge rising",
-};
+/** Resolve spec display name for a flag/pattern key via the canonical map. */
 export function flagLabel(key: string): string {
-  if (FLAG_LABELS[key]) return FLAG_LABELS[key];
-  return key
-    .replace(/^ownership_|^momentum_|^fundamentals_/i, "")
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .replace(/^\w/, (c) => c.toUpperCase());
+  return findingName(key);
 }

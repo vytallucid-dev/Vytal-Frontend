@@ -1,136 +1,165 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 import { StockAutocomplete } from "@/components/stock-autocomplete";
-import { TrendingUp, TrendingDown, Star } from "lucide-react";
-import { useState } from "react";
+import { Icons } from "@/lib/icons";
 import { motion } from "framer-motion";
-import { indianStocks, Stock } from "@/lib/indian-stocks-data";
+import { Stock } from "@/lib/indian-stocks-data";
 import { useRouter } from "next/navigation";
+import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
+import type { LabelBand } from "@/types/health";
 
-// Sample recommended stocks (Indian stocks)
-const recommendedStocks = [
-  { ticker: "TCS", name: "Tata Consultancy Services", trend: "up" },
-  { ticker: "INFY", name: "Infosys Ltd", trend: "up" },
-  { ticker: "RELIANCE", name: "Reliance Industries", trend: "up" },
-  { ticker: "HDFCBANK", name: "HDFC Bank", trend: "up" },
-  { ticker: "ICICIBANK", name: "ICICI Bank", trend: "up" },
-  { ticker: "TATAMOTORS", name: "Tata Motors", trend: "down" },
-  { ticker: "BHARTIARTL", name: "Bharti Airtel", trend: "up" },
-  { ticker: "ITC", name: "ITC Ltd", trend: "up" },
-];
+const BAND_CHIP: Record<LabelBand, string> = {
+  pristine: "bg-pristine/15 text-pristine",
+  healthy: "bg-healthy/15 text-healthy",
+  steady: "bg-steady/15 text-steady",
+  below_par: "bg-below/15 text-below",
+  fragile: "bg-fragile/15 text-fragile",
+};
+const BAND_LABEL: Record<LabelBand, string> = {
+  pristine: "Pristine",
+  healthy: "Healthy",
+  steady: "Steady",
+  below_par: "Below par",
+  fragile: "Fragile",
+};
 
 const StockScreenerPage = () => {
-  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const router = useRouter();
+  const { data: universe, isLoading } = useUniverseStocks();
 
-  const handleStockClick = (ticker: string) => {
-    router.push(`/research/stock-screener/${ticker}`);
-  };
+  // Full universe (scored + not-yet-scored) → the StockAutocomplete shape, so search
+  // spans every tracked stock. Coverage flag drives the typeahead chip.
+  const autocompleteStocks: Stock[] = useMemo(
+    () =>
+      (universe ?? []).map((s) => ({
+        symbol: s.symbol,
+        name: s.name,
+        sector: s.sector?.displayName ?? "",
+        exchange: "NSE",
+        scored: s.scored,
+        band: s.band ?? undefined,
+      })),
+    [universe],
+  );
 
-  const handleStockSelect = (stock: Stock) => {
-    setSelectedStock(stock);
-  };
+  // Recommended = highest-rated SCORED stocks (top composite).
+  const recommendedStocks = useMemo(
+    () =>
+      (universe ?? [])
+        .filter((s) => s.scored && s.composite != null && s.band != null)
+        .sort((a, b) => (b.composite ?? 0) - (a.composite ?? 0))
+        .slice(0, 8),
+    [universe],
+  );
+
+  const scoredCount = useMemo(
+    () => (universe ?? []).filter((s) => s.scored).length,
+    [universe],
+  );
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-6 py-12 pt-0">
-      <motion.div 
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6 py-12 pt-0">
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-4xl mx-auto text-center space-y-12"
+        className="mx-auto w-full max-w-4xl space-y-12 text-center"
       >
         {/* Title and Description */}
         <div className="space-y-4">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-6xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent"
+            className="font-display text-4xl font-semibold tracking-tight text-ink md:text-6xl"
           >
             Stock Analysis
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
+            className="mx-auto max-w-2xl text-lg text-ink2 md:text-xl"
           >
-            Search and analyze any stock to get comprehensive insights, health scores, and investment recommendations
+            Search and analyse any stock in the universe to get its health score,
+            diagnosis, and full pillar breakdown.
           </motion.p>
         </div>
 
         {/* Search Bar */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
         >
-          <StockAutocomplete 
-            stocks={indianStocks}
-            onStockSelect={handleStockSelect}
-            placeholder="Search Indian stocks by ticker or company name..."
+          <StockAutocomplete
+            stocks={autocompleteStocks}
+            placeholder="Search any stock by ticker or company name…"
           />
+          {!isLoading && universe && (
+            <p className="num mt-3 text-xs text-ink3">
+              {universe.length} stocks tracked · {scoredCount} scored
+            </p>
+          )}
         </motion.div>
 
         {/* Recommended Stocks */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="space-y-6"
         >
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Star className="w-4 h-4" />
-            <span className="text-sm font-medium">Recommended Stocks</span>
+          <div className="flex items-center justify-center gap-2 text-ink3">
+            <Icons.spark weight="duotone" className="h-4 w-4" />
+            <span className="text-sm font-medium">Top rated in the universe</span>
           </div>
-          
-            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-8 max-w-3xl mx-auto">
-            {recommendedStocks.map((stock, index) => (
-              <motion.button
-              key={stock.ticker}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ 
-                duration: 0.4, 
-                delay: 0.5 + (index * 0.05),
-                type: "spring",
-                stiffness: 300,
-                damping: 20
-              }}
-              onClick={() => handleStockClick(stock.ticker)}
-              className={`
-                group relative px-4 py-2 rounded-full border transition-all duration-300 hover:scale-105 hover:shadow-lg
-                ${selectedStock?.symbol === stock.ticker 
-                ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' 
-                : 'bg-background/60 border-border/50 hover:border-primary/50 hover:bg-background/80'
-                }
-              `}
-              >
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{stock.ticker}</span>
-                <div className="flex items-center gap-1">
-                {stock.trend === "up" ? (
-                  <TrendingUp className="w-3 h-3 text-green-500" />
-                ) : (
-                  <TrendingDown className="w-3 h-3 text-red-500" />
-                )}
-                </div>
-              </div>
-              <span className="text-xs opacity-70 hidden group-hover:block absolute -bottom-6 left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-background border border-border rounded px-2 py-1 shadow-lg">
-                {stock.name}
-              </span>
-              </motion.button>
-            ))}
-            </div>
-        </motion.div>
 
-        {/* Subtle background decoration */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl" />
-          <div className="absolute top-3/4 left-3/4 w-24 h-24 bg-green-500/5 rounded-full blur-2xl" />
-        </div>
+          {isLoading ? (
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-9 w-28 animate-pulse rounded-full bg-surface-2"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-8">
+              {recommendedStocks.map((stock, index) => (
+                <motion.button
+                  key={stock.symbol}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    duration: 0.4,
+                    delay: 0.5 + index * 0.05,
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
+                  }}
+                  onClick={() => router.push(`/research/stock-screener/${stock.symbol}`)}
+                  className="group relative rounded-full border border-line bg-surface-1 px-4 py-2 transition-all duration-300 hover:scale-105 hover:border-line3 hover:bg-surface-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-ink">{stock.symbol}</span>
+                    {stock.band && (
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${BAND_CHIP[stock.band]}`}
+                      >
+                        {BAND_LABEL[stock.band]}
+                      </span>
+                    )}
+                  </div>
+                  <span className="absolute -bottom-6 left-1/2 z-10 hidden -translate-x-1/2 transform whitespace-nowrap rounded-lg border border-line bg-surface-2 px-2 py-1 text-xs text-ink2 shadow-lg group-hover:block">
+                    {stock.name}
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          )}
+        </motion.div>
       </motion.div>
     </div>
   );

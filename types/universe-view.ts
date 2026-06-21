@@ -9,6 +9,7 @@ import type {
   PillarKey,
   TrajectoryMarker,
   DivergenceFlag,
+  FlowCategoryState,
 } from "./health";
 import type {
   ScopeDispersion,
@@ -35,6 +36,9 @@ export interface UniverseMemberView {
   firedPatterns: FiredPattern[];
   /** Sector for Hub Overview table grouping/filter. null if unlinked. */
   sector: { key: string; displayName: string } | null;
+  /** C/D ownership flow-category state — read-projection of score_ownership_flows.category_state.
+   *  undefined when the stock has no shareholding data. */
+  flowCategoryStates?: { C_insider: FlowCategoryState; D_block: FlowCategoryState };
 }
 
 export interface UniverseAggregate {

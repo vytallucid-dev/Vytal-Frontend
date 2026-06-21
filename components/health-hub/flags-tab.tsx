@@ -5,19 +5,8 @@ import { Reveal } from "@/components/ui/reveal";
 import { Icons } from "@/lib/icons";
 import { Panel } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
-import { flagLabel } from "./lib";
+import { prepareCensus, accentVars, type PreparedCensus, type Concern } from "@/lib/findings";
 import type { UniverseHealthView } from "@/types/universe-view";
-import type { PathologyCensusItem } from "@/types/peer-group";
-
-// ── concern classification from the pathology key ─────────────────────────────
-type Concern = "ownership" | "fundamentals" | "momentum" | "other";
-function concernOf(key: string): Concern {
-  const k = key.toLowerCase();
-  if (k.startsWith("ownership")) return "ownership";
-  if (k.startsWith("momentum")) return "momentum";
-  if (k.startsWith("fundamentals") || k.startsWith("foundation")) return "fundamentals";
-  return "other";
-}
 
 type FilterId = "all" | "red_flags" | "ownership" | "fundamentals" | "momentum" | "recovery";
 const FILTERS: { id: FilterId; label: string }[] = [
@@ -29,69 +18,82 @@ const FILTERS: { id: FilterId; label: string }[] = [
   { id: "recovery", label: "Constructive" },
 ];
 
-function severityTone(sev: string | null): { color: string; bg: string; bd: string } {
-  const s = (sev ?? "").toLowerCase();
-  if (s === "critical") return { color: "var(--crit)", bg: "var(--crit-bg)", bd: "var(--crit-bd)" };
-  if (s === "high") return { color: "var(--high)", bg: "var(--high-bg)", bd: "var(--high-bd)" };
-  return { color: "var(--ink3)", bg: "var(--surface3)", bd: "var(--line2)" };
-}
-
 function flagDescription(key: string): string {
   if (key === "ownership_R1_pledge")
-    return "Promoter pledged holding is rising — a financing-stress signal that overrides the composite. A hard ownership-quality check.";
+    return "Promoter pledged holding has crossed 50% of their stake, or risen sharply in one quarter — a financing-stress signal that overrides the composite. A hard ownership-quality check.";
   return "An auto-tier red flag that overrides the composite until it clears.";
 }
 
+const accentChip = (accent: PreparedCensus["accent"]) => {
+  const a = accentVars(accent);
+  return { color: a.color, background: a.bg, borderColor: a.bd } as const;
+};
+
+function StateChip({ p }: { p: PreparedCensus }) {
+  if (p.displayState === "dampened")
+    return (
+      <span className="num shrink-0 rounded-[5px] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide" style={accentChip(p.accent)}>
+        sector-wide
+      </span>
+    );
+  if (p.displayState === "pending_data_integration")
+    return (
+      <span className="shrink-0 rounded-[5px] border border-dashed border-line2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-ink3">
+        pending feed
+      </span>
+    );
+  return null;
+}
+
 // ── red-flag card (real) ───────────────────────────────────────────────────────
-function RedFlagCard({ p }: { p: PathologyCensusItem }) {
+function RedFlagCard({ p }: { p: PreparedCensus }) {
+  const a = accentVars(p.accent);
   return (
     <div
       className="rounded-xl border p-4"
       style={{
-        borderColor: "var(--crit-bd)",
-        borderLeft: "3px solid var(--crit)",
-        background: "linear-gradient(180deg,var(--crit-bg),transparent 70%),var(--surface)",
+        borderColor: a.bd,
+        borderLeft: `3px solid ${a.color}`,
+        background: `linear-gradient(180deg,${a.bg},transparent 70%),var(--surface)`,
       }}
     >
       <div className="flex items-center gap-2.5">
-        <span
-          className="grid size-8 shrink-0 place-items-center rounded-[9px]"
-          style={{ background: "var(--crit-bg)", color: "var(--crit)" }}
-        >
+        <span className="grid size-8 shrink-0 place-items-center rounded-[9px]" style={{ background: a.bg, color: a.color }}>
           <Icons.warning className="size-4" />
         </span>
         <span className="text-[14px] font-semibold">
-          {flagLabel(p.key)}
-          <span className="num ml-2" style={{ color: "var(--crit)" }}>
+          {p.name}
+          <span className="num ml-2" style={{ color: a.color }}>
             {p.members.join(", ")}
           </span>
         </span>
         <span
           className="ml-auto shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-          style={{ color: "var(--crit)", background: "var(--crit-bg)", borderColor: "var(--crit-bd)" }}
+          style={accentChip(p.accent)}
         >
           Watch with care
         </span>
       </div>
       <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink2">{flagDescription(p.key)}</p>
       <p className="mt-2 text-[11.5px] italic text-ink3">
-        Reach: {p.reach} ({p.memberCount} of {p.outOf} scored) — a single-name concern, not a universe signal.
+        Reach: {p.reach} ({p.memberCount} of {p.outOf} scored) — {p.reach === "isolated" ? "a single-name concern, not a universe signal." : p.reach === "widespread" ? "a group-wide read, not company-specific." : "a shared cluster worth watching."}
       </p>
     </div>
   );
 }
 
 // ── pattern card (renders only when real patterns fire) ───────────────────────
-function PatternCard({ p }: { p: PathologyCensusItem }) {
-  const tone = severityTone(p.severity);
+function PatternCard({ p }: { p: PreparedCensus }) {
+  const a = accentVars(p.accent);
   return (
     <div
       className="mb-2 rounded-xl border border-line bg-surface-1 p-3.5"
-      style={{ borderLeft: `3px solid ${tone.color}` }}
+      style={{ borderLeft: `3px solid ${a.color}` }}
     >
       <div className="flex items-center gap-2.5">
-        <span className="text-[13px] font-semibold">{flagLabel(p.key)}</span>
-        <span className="num ml-auto text-[12px] font-medium" style={{ color: tone.color }}>
+        <span className="text-[13px] font-semibold">{p.name}</span>
+        <StateChip p={p} />
+        <span className="num ml-auto text-[12px] font-medium" style={{ color: a.color }}>
           {p.memberCount}/{p.outOf}
         </span>
       </div>
@@ -113,10 +115,34 @@ function Tier({ title, count, children }: { title: string; count?: string; child
   );
 }
 
-function DormantCard({ title, tag, desc }: { title: string; tag: string; desc: string }) {
+function FeedStatusCard({
+  title,
+  live,
+  dormant,
+  total,
+  rulesNote,
+}: {
+  title: string;
+  live: number;
+  dormant: number;
+  total: number;
+  rulesNote: string;
+}) {
+  const allLive = total > 0 && dormant === 0;
+  const allDormant = total === 0 || live === 0;
+  const tag = allLive
+    ? "live"
+    : allDormant
+    ? "pending feed"
+    : `${live} live · ${dormant} pending`;
+  const desc = allLive
+    ? `Feed active across all ${total} scored names. ${rulesNote}`
+    : allDormant
+    ? `Feed not yet active. ${rulesNote}`
+    : `Feed active for ${live} of ${total} names — ${dormant} on pre-activation snapshots, self-heal on next rescore. ${rulesNote}`;
   return (
-    <div className="mb-2.5 rounded-xl border border-dashed border-line2 p-3.5">
-      <div className="flex items-center gap-2.5 text-ink3">
+    <div className={cn("mb-2.5 rounded-xl border p-3.5", allDormant ? "border-dashed border-line2" : "border-line bg-surface-1")}>
+      <div className="flex items-center gap-2.5">
         <span className="text-[13px] font-medium text-ink2">{title}</span>
         <span className="ml-auto rounded-[5px] border border-line2 px-2 py-0.5 text-[9px] uppercase tracking-wide text-ink3">
           {tag}
@@ -127,14 +153,58 @@ function DormantCard({ title, tag, desc }: { title: string; tag: string; desc: s
   );
 }
 
-function PatternsEmpty() {
+// ── threshold watch: band-edge proximity ─────────────────────────────────────
+// Canonical band edges from label.ts (lower-bound-inclusive):
+// <55 Fragile | [55,62) Below Par | [62,68) Steady | [68,74) Healthy | ≥74 Pristine
+const BAND_EDGES: Record<string, { lower: number; upper: number; nextDown: string; nextUp: string }> = {
+  fragile:   { lower: -Infinity, upper: 55,       nextDown: "—",         nextUp: "Below par" },
+  below_par: { lower: 55,        upper: 62,        nextDown: "Fragile",   nextUp: "Steady"    },
+  steady:    { lower: 62,        upper: 68,        nextDown: "Below par", nextUp: "Healthy"   },
+  healthy:   { lower: 68,        upper: 74,        nextDown: "Steady",    nextUp: "Pristine"  },
+  pristine:  { lower: 74,        upper: Infinity,  nextDown: "Healthy",   nextUp: "—"         },
+};
+
+type EdgeWatcher = { symbol: string; composite: number; gap: number; direction: "down" | "up"; toBand: string };
+
+function ThresholdWatchSection({ atRisk, approaching }: { atRisk: EdgeWatcher[]; approaching: EdgeWatcher[] }) {
+  if (atRisk.length === 0 && approaching.length === 0) {
+    return (
+      <div className="rounded-xl border border-line bg-surface-1 px-4 py-5 text-center text-[12px] text-ink3">
+        Nothing approaching a band edge within 3 pts this snapshot.
+      </div>
+    );
+  }
+  const WatchRow = ({ w }: { w: EdgeWatcher }) => (
+    <div className="flex items-baseline gap-2 py-2 text-[12px]">
+      <span className="num w-20 shrink-0 font-medium text-ink">{w.symbol}</span>
+      <span className="num text-ink2">{w.composite.toFixed(1)}</span>
+      <span className="ml-auto text-right text-[11.5px] text-ink3">
+        {w.gap.toFixed(1)} pt{w.gap.toFixed(1) !== "1.0" ? "s" : ""}{" "}
+        {w.direction === "down" ? `above ${w.toBand} floor` : `below ${w.toBand} floor`}
+      </span>
+    </div>
+  );
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface-1 py-10 text-center">
-      <Icons.success weight="duotone" className="size-8 text-healthy" />
-      <p className="text-[13px] font-medium text-ink">No patterns firing this snapshot</p>
-      <p className="max-w-sm text-[11.5px] text-ink3">
-        No momentum, ownership, or fundamentals pattern clusters across the scored universe this
-        period. The pattern engine is live; it is simply quiet.
+    <div className="flex flex-col gap-3">
+      {atRisk.length > 0 && (
+        <div>
+          <div className="mb-1.5 text-[10px] uppercase tracking-wide text-ink3">Near dropping a band</div>
+          <div className="divide-y divide-line rounded-xl border border-line bg-surface-1 px-3">
+            {atRisk.map((w) => <WatchRow key={w.symbol + "d"} w={w} />)}
+          </div>
+        </div>
+      )}
+      {approaching.length > 0 && (
+        <div>
+          <div className="mb-1.5 text-[10px] uppercase tracking-wide text-ink3">Near rising a band</div>
+          <div className="divide-y divide-line rounded-xl border border-line bg-surface-1 px-3">
+            {approaching.map((w) => <WatchRow key={w.symbol + "u"} w={w} />)}
+          </div>
+        </div>
+      )}
+      <p className="text-[11px] italic text-ink3">
+        Band-edge proximity only — derived from composite vs canonical thresholds (55 / 62 / 68 / 74).
+        Flag-trigger proximity (e.g. pledge ratio approaching R1) requires per-stock detail not yet in the universe contract.
       </p>
     </div>
   );
@@ -156,50 +226,101 @@ function DistroRow({ label, n, max, color }: { label: string; n: number; max: nu
 export function FlagsTab({ view }: { view: UniverseHealthView }) {
   const [filter, setFilter] = useState<FilterId>("all");
 
-  const redFlags = useMemo(() => view.pathology.filter((p) => p.kind === "red_flag"), [view.pathology]);
-  const patterns = useMemo(() => view.pathology.filter((p) => p.kind === "pattern"), [view.pathology]);
+  // Shared read-layer: A→I order, C-family consolidated, shared accent + display names —
+  // identical to the stock §5 and PG pathology surfaces. The board then facets by concern.
+  const prepared = useMemo(() => prepareCensus(view.pathology), [view.pathology]);
+  const redFlags = useMemo(() => prepared.filter((p) => p.kind === "red_flag"), [prepared]);
+  const patterns = useMemo(() => prepared.filter((p) => p.kind === "pattern"), [prepared]);
 
-  const matches = (p: PathologyCensusItem) => {
+  const matches = (p: PreparedCensus) => {
     switch (filter) {
       case "all":
         return true;
       case "red_flags":
         return p.kind === "red_flag";
       case "ownership":
-        return concernOf(p.key) === "ownership";
+        return p.concern === "ownership";
       case "fundamentals":
-        return concernOf(p.key) === "fundamentals";
+        return p.concern === "fundamentals";
       case "momentum":
-        return concernOf(p.key) === "momentum";
+        return p.concern === "momentum";
       case "recovery":
-        return (p.severity ?? "").toLowerCase() === "positive" || p.key.includes("recovery");
+        return p.accent === "rec";
       default:
         return true;
     }
   };
 
+  const cCounts = useMemo(() => {
+    let live = 0, dormant = 0;
+    for (const m of view.members) {
+      const s = m.flowCategoryStates?.C_insider;
+      if (s === "scored") live++;
+      else if (s) dormant++;
+    }
+    return { live, dormant, total: live + dormant };
+  }, [view.members]);
+
+  const dCounts = useMemo(() => {
+    let live = 0, dormant = 0;
+    for (const m of view.members) {
+      const s = m.flowCategoryStates?.D_block;
+      if (s === "scored") live++;
+      else if (s) dormant++;
+    }
+    return { live, dormant, total: live + dormant };
+  }, [view.members]);
+
+  const edgeWatchers = useMemo(() => {
+    const THRESHOLD = 3;
+    const atRisk: EdgeWatcher[] = [];
+    const approaching: EdgeWatcher[] = [];
+    for (const m of view.members) {
+      if (m.firedFlags.length > 0) continue; // already flagged — not a "near edge" candidate
+      const e = BAND_EDGES[m.labelBand];
+      if (!e) continue;
+      if (isFinite(e.lower)) {
+        const gap = m.composite - e.lower;
+        if (gap >= 0 && gap <= THRESHOLD) {
+          atRisk.push({ symbol: m.symbol, composite: m.composite, gap, direction: "down", toBand: e.nextDown });
+        }
+      }
+      if (isFinite(e.upper)) {
+        const gap = e.upper - m.composite;
+        if (gap >= 0 && gap <= THRESHOLD) {
+          approaching.push({ symbol: m.symbol, composite: m.composite, gap, direction: "up", toBand: e.nextUp });
+        }
+      }
+    }
+    atRisk.sort((a, b) => a.gap - b.gap);
+    approaching.sort((a, b) => a.gap - b.gap);
+    return { atRisk: atRisk.slice(0, 6), approaching: approaching.slice(0, 6) };
+  }, [view.members]);
+
   const shownFlags = redFlags.filter(matches);
-  const patternsByConcern: Record<Concern, PathologyCensusItem[]> = {
+  const patternsByConcern: Record<Concern, PreparedCensus[]> = {
     ownership: [],
     fundamentals: [],
     momentum: [],
     other: [],
   };
-  for (const p of patterns.filter(matches)) patternsByConcern[concernOf(p.key)].push(p);
-  const anyPatterns = patterns.filter(matches).length > 0;
+  for (const p of patterns.filter(matches)) patternsByConcern[p.concern].push(p);
+  // Count only the three displayed concern tiers (File 2 §5 — the structural divergence/
+  // trajectory/composition cards are a stock-§5 / Briefing concern, not the warnings console).
+  const matchedPatternCount =
+    patternsByConcern.ownership.length + patternsByConcern.fundamentals.length + patternsByConcern.momentum.length;
 
-  // by-severity counts (real)
+  // by-severity counts (over the shared accent map — crit / high / everything-else)
   const sevCounts = { critical: 0, high: 0, other: 0 };
-  for (const p of view.pathology) {
-    const s = (p.severity ?? "").toLowerCase();
-    if (s === "critical") sevCounts.critical += p.memberCount;
-    else if (s === "high") sevCounts.high += p.memberCount;
+  for (const p of prepared) {
+    if (p.accent === "crit") sevCounts.critical += p.memberCount;
+    else if (p.accent === "high") sevCounts.high += p.memberCount;
     else sevCounts.other += p.memberCount;
   }
   const sevMax = Math.max(sevCounts.critical, sevCounts.high, sevCounts.other, 1);
 
   const concernCounts: Record<Concern, number> = { ownership: 0, fundamentals: 0, momentum: 0, other: 0 };
-  for (const p of view.pathology) concernCounts[concernOf(p.key)] += p.memberCount;
+  for (const p of prepared) concernCounts[p.concern] += p.memberCount;
   const concernMax = Math.max(...Object.values(concernCounts), 1);
 
   return (
@@ -249,40 +370,51 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
             )}
           </Tier>
 
-          <Tier title="Patterns" count={anyPatterns ? undefined : "0 firing"}>
-            {anyPatterns ? (
-              <>
-                {(["momentum", "ownership", "fundamentals", "other"] as Concern[]).map((c) =>
-                  patternsByConcern[c].length ? (
-                    <div key={c} className="mb-3">
-                      <div className="mb-1.5 text-[10px] uppercase tracking-wide text-ink3">{c} patterns</div>
-                      {patternsByConcern[c].map((p) => (
-                        <PatternCard key={p.key} p={p} />
-                      ))}
-                    </div>
-                  ) : null,
+          <Tier title="Patterns" count={`${matchedPatternCount} firing`}>
+            {(["ownership", "fundamentals", "momentum"] as Concern[]).map((c) => (
+              <div key={c} className="mb-4">
+                <div className="mb-1.5 flex items-center gap-2.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink3">{c} patterns</span>
+                  <span className="h-px flex-1 bg-line" />
+                  <span className="num text-[10px] tracking-normal text-ink3">{patternsByConcern[c].length} firing</span>
+                </div>
+                {patternsByConcern[c].length > 0 ? (
+                  patternsByConcern[c].map((p) => <PatternCard key={p.key} p={p} />)
+                ) : (
+                  <div className="rounded-lg border border-line bg-surface-1 px-3 py-2.5 text-[11.5px] text-ink3">
+                    No {c} patterns this snapshot.
+                  </div>
                 )}
-              </>
-            ) : (
-              <PatternsEmpty />
+              </div>
+            ))}
+            {matchedPatternCount === 0 && (
+              <p className="mt-0.5 text-[11px] italic text-ink3">
+                Pattern engine is live — all three categories quiet this snapshot.
+              </p>
             )}
           </Tier>
 
-          <Tier title="Pending data integration">
-            <DormantCard
-              title="P5 · Insider-Confirmed Distress · P6 · Insider Conviction"
-              tag="insider feed"
-              desc="Live once the NSE PIT insider feed is confirmed and scoring. Capability present; no coverage implied."
+          <Tier title="Threshold watch · Near a band edge">
+            <ThresholdWatchSection
+              atRisk={edgeWatchers.atRisk}
+              approaching={edgeWatchers.approaching}
             />
-            <DormantCard
-              title="P10 · Promoter Defense Buying"
-              tag="block-deal feed"
-              desc="Live once the block-deal feed is confirmed and scoring."
+          </Tier>
+
+          <Tier title="Ownership feed status">
+            <FeedStatusCard
+              title="C · Insider-trade activity"
+              live={cCounts.live}
+              dormant={cCounts.dormant}
+              total={cCounts.total}
+              rulesNote="Scores C1 cluster-buy, C2 cluster-sell, and C3 sub-cluster signals from NSE PIT insider disclosures."
             />
-            <DormantCard
-              title="P9 · Capex Cycle"
-              tag="capex unavailable"
-              desc="Requires capex intensity, not in the current data stack. Renders when ingested."
+            <FeedStatusCard
+              title="D · Block-deal flow"
+              live={dCounts.live}
+              dormant={dCounts.dormant}
+              total={dCounts.total}
+              rulesNote="Scores net block-deal activity against market-cap — drives the promoter-defense signal."
             />
           </Tier>
         </div>
@@ -304,14 +436,6 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
               <DistroRow label="Momentum" n={concernCounts.momentum} max={concernMax} color="var(--p-mom)" />
               <DistroRow label="Fundamentals" n={concernCounts.fundamentals} max={concernMax} color="var(--p-found)" />
             </div>
-          </Panel>
-          <Panel>
-            <div className="mb-2 eyebrow">Sector-wide check</div>
-            <p className="text-[12px] leading-relaxed text-ink2">
-              No flag or pattern reaches across more than a fifth of any peer group this snapshot —
-              nothing is dampened. When a signal goes group-wide, its magnitude is halved and the card
-              is marked <span className="italic">sector-wide</span>.
-            </p>
           </Panel>
         </div>
       </div>

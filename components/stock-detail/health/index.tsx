@@ -78,7 +78,16 @@ export default function HealthScore() {
 
       {findings && (
         <Reveal>
-          <FindingsSection findings={findings} symbol={identity.symbol} />
+          {/* Hot-pond mask (File 1 §5) — the REAL PG-level signal: the stock's pond heat,
+              inherited from PGState.mask_heat and stamped on the snapshot. Replaces the old
+              stock-level proxy (the stock's own wide price-ahead divergence). A stock in a hot
+              pond now masks even if its OWN gap is modest; a stock in a calm/warm pond does not,
+              even if it's individually price-extended. null/pre-stamp ⇒ no mask (safe default). */}
+          <FindingsSection
+            findings={findings}
+            symbol={identity.symbol}
+            pondHot={verdict.pondMask?.isHot ?? false}
+          />
         </Reveal>
       )}
 

@@ -48,7 +48,7 @@ export function VerdictHero({
         className="pointer-events-none absolute -right-16 -top-24 h-80 w-80 rounded-full opacity-60"
         style={{ background: `radial-gradient(circle, ${BAND_META[activeBand].cssVar}26, transparent 68%)` }}
       />
-      <div className="relative grid items-center gap-8 lg:grid-cols-[1.5fr_1fr]">
+      <div className="relative grid items-start gap-8 lg:grid-cols-[1.5fr_1fr]">
         {/* ── left: the read ── */}
         <div>
           {sectorBits.length > 0 && (

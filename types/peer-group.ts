@@ -14,6 +14,7 @@ import type {
   SectorClass,
   TrajectoryMarker,
   DivergenceFlag,
+  FlowCategoryState,
 } from "./health";
 
 export type BandDistribution = Record<LabelBand, number>;
@@ -104,6 +105,8 @@ export interface FiredPattern {
   patternKey: string;
   direction: string | null;
   severity: string | null;
+  /** File 1 §5E display state; defaults "active". */
+  displayState?: "active" | "pending_data_integration" | "dampened";
 }
 
 export interface PeerGroupMemberView {
@@ -117,6 +120,9 @@ export interface PeerGroupMemberView {
   divergence: { flag: DivergenceFlag; gap: number };
   firedFlags: FiredFlag[];
   firedPatterns: FiredPattern[];
+  /** C/D ownership flow-category state — read-projection of score_ownership_flows.category_state.
+   *  undefined when the stock has no shareholding data. */
+  flowCategoryStates?: { C_insider: FlowCategoryState; D_block: FlowCategoryState };
 }
 
 export type PathologyReach = "isolated" | "cluster" | "widespread";
@@ -129,6 +135,10 @@ export interface PathologyCensusItem {
   outOf: number; // M scored at period
   members: string[];
   reach: PathologyReach;
+  /** Dominant display state across the firing members (File 1 §5E). A pattern dampened
+   *  PG-wide (>80%) surfaces here as "dampened" so the board can show the sector-wide chip.
+   *  Optional + defaults "active" — present once the census builder projects it. */
+  displayState?: "active" | "pending_data_integration" | "dampened";
 }
 
 export interface PeerMetricMemberPoint {

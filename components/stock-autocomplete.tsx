@@ -7,6 +7,22 @@ import { Stock } from "@/lib/indian-stocks-data";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
+// Band → chip token (the locked Vytal condition scale used app-wide).
+const BAND_CHIP: Record<string, string> = {
+  pristine: "bg-pristine/15 text-pristine",
+  healthy: "bg-healthy/15 text-healthy",
+  steady: "bg-steady/15 text-steady",
+  below_par: "bg-below/15 text-below",
+  fragile: "bg-fragile/15 text-fragile",
+};
+const BAND_LABEL: Record<string, string> = {
+  pristine: "Pristine",
+  healthy: "Healthy",
+  steady: "Steady",
+  below_par: "Below par",
+  fragile: "Fragile",
+};
+
 interface StockAutocompleteProps {
   stocks: Stock[];
   onStockSelect?: (stock: Stock) => void;
@@ -186,9 +202,23 @@ export function StockAutocomplete({
                         <span className="font-bold text-sm">
                           {highlightMatch(stock.symbol, searchTerm)}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                          {stock.exchange}
-                        </span>
+                        {stock.scored === undefined ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                            {stock.exchange}
+                          </span>
+                        ) : stock.scored && stock.band ? (
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                              BAND_CHIP[stock.band] ?? "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {BAND_LABEL[stock.band] ?? stock.band}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                            Not scored
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
                         {highlightMatch(stock.name, searchTerm)}

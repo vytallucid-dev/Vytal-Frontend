@@ -3,7 +3,8 @@
 import { Reveal } from "@/components/ui/reveal";
 import { Icons } from "@/lib/icons";
 import { SectionEyebrow, Panel } from "@/components/stock-detail/health/shared";
-import { pathologyLabel, pathologyRead } from "./lib";
+import { pathologyRead } from "./lib";
+import { prepareCensus, accentVars, type PreparedCensus } from "@/lib/findings";
 import type { PeerGroupMover, PathologyCensusItem } from "@/types/peer-group";
 
 function MoverSpark({ from, to }: { from: number; to: number }) {
@@ -86,25 +87,32 @@ function MoversColumn({
   );
 }
 
-function severityTone(sev: string | null): string {
-  const s = (sev ?? "").toLowerCase();
-  if (s === "critical") return "var(--c-fragile)";
-  if (s === "high") return "var(--c-below)";
-  return "var(--ink3)";
-}
-
-function PathologyCard({ p }: { p: PathologyCensusItem }) {
-  const tone = severityTone(p.severity);
+function PathologyCard({ p }: { p: PreparedCensus }) {
+  // Shared accent (severity → crit/high/rec/ctx) replaces the old local tone map so the
+  // pond census colours match the stock §5 cards exactly.
+  const a = accentVars(p.accent);
+  const pct = p.outOf ? Math.min(100, (p.memberCount / p.outOf) * 100) : 0;
   return (
     <div
       className="rounded-xl border border-line bg-surface-2 p-3.5"
-      style={{ borderLeft: `3px solid ${tone}` }}
+      style={{ borderLeft: `3px solid ${a.color}` }}
     >
       <div className="flex items-center gap-2.5">
         <span className="num text-[14px] font-medium text-ink">
           {p.memberCount}/{p.outOf}
         </span>
-        <span className="text-[13px] font-medium text-ink">{pathologyLabel(p.kind, p.key)}</span>
+        <span className="text-[13px] font-medium text-ink">{p.name}</span>
+        {p.subTypes && p.divergenceCount && p.divergenceCount > 0 ? (
+          <span className="text-[10px] text-ink3">{p.subTypes.map((s) => s.name).join(" · ")}</span>
+        ) : null}
+        {p.displayState === "dampened" && (
+          <span
+            className="num rounded-[5px] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+            style={{ color: a.color, background: a.bg }}
+          >
+            sector-wide
+          </span>
+        )}
         <span
           className="ml-auto rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
           style={
@@ -119,10 +127,7 @@ function PathologyCard({ p }: { p: PathologyCensusItem }) {
         </span>
       </div>
       <div className="my-2 h-[5px] overflow-hidden rounded-[3px] bg-surface-3">
-        <div
-          className="h-full rounded-[3px]"
-          style={{ width: `${(p.memberCount / p.outOf) * 100}%`, background: tone }}
-        />
+        <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: a.color }} />
       </div>
       <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
       <div className="mt-1.5 text-[11px] italic text-ink3">
@@ -152,6 +157,9 @@ export function StructureSection({
   movers: { risers: PeerGroupMover[]; slippers: PeerGroupMover[] };
   pathology: PathologyCensusItem[];
 }) {
+  // Shared read-layer: A→I order, C-family consolidated into one divergence row, shared
+  // accent + display names — the SAME ordering the stock §5 and Hub Flags surfaces use.
+  const census = prepareCensus(pathology);
   return (
     <section>
       <SectionEyebrow label="What's moving inside it" />
@@ -173,9 +181,9 @@ export function StructureSection({
             <div className="mb-3.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink3">
               Group pathology — is it clustering?
             </div>
-            {pathology.length ? (
+            {census.length ? (
               <div className="flex flex-col gap-2.5">
-                {pathology.map((p) => (
+                {census.map((p) => (
                   <PathologyCard key={`${p.kind}:${p.key}`} p={p} />
                 ))}
               </div>

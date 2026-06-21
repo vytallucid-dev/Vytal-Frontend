@@ -8,58 +8,53 @@ import News from "@/components/stock-detail/news";
 import Overview from "@/components/stock-detail/overview";
 import Technical from "@/components/stock-detail/technical";
 import Valuation from "@/components/stock-detail/valuation";
-import { NavigationCommandPalette } from "@/components/stock-detail/navigation-command-palette";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { indianStocks } from "@/lib/indian-stocks-data";
-import {
-  ArrowLeft,
-  Bell,
-  ChevronDown,
-  Plus,
-  Star,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
+import { QuerySkeleton } from "@/components/ui/query-skeleton";
+import { Icons } from "@/lib/icons";
+import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
+import { isApiError } from "@/lib/api/client";
+import type { Stock } from "@/lib/indian-stocks-data";
+import type { LabelBand } from "@/types/health";
+import { ArrowLeft, Bell, ChevronDown, Plus, Star } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const BAND_BADGE: Record<LabelBand, string> = {
+  pristine: "border-pristine/30 bg-pristine/10 text-pristine",
+  healthy: "border-healthy/30 bg-healthy/10 text-healthy",
+  steady: "border-steady/30 bg-steady/10 text-steady",
+  below_par: "border-below/30 bg-below/10 text-below",
+  fragile: "border-fragile/30 bg-fragile/10 text-fragile",
+};
 
 const StockDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const symbol = params.symbol as string;
-  const [stock, setStock] = useState(
-    indianStocks.find((s) => s.symbol === symbol),
-  );
+  const symbol = (params.symbol as string)?.toUpperCase();
   const [activeTab, setActiveTab] = useState("overview");
 
-  useEffect(() => {
-    const foundStock = indianStocks.find((s) => s.symbol === symbol);
-    setStock(foundStock);
-  }, [symbol]);
+  const {
+    data: health,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useStockHealth(symbol);
 
   // Handle URL query parameters for tab and section navigation
   useEffect(() => {
     const tab = searchParams.get("tab");
     const section = searchParams.get("section");
 
-    if (tab) {
-      setActiveTab(tab);
-    }
+    if (tab) setActiveTab(tab);
 
     if (section) {
       // Wait for tab content to render before scrolling
@@ -72,150 +67,149 @@ const StockDetailPage = () => {
     }
   }, [searchParams]);
 
-  if (!stock) {
+  // ── Loading ──────────────────────────────────────────────────────────────
+  if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-6">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>Stock Not Found</CardTitle>
-            <CardDescription>
-              The stock symbol "{symbol}" was not found in our database.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={() => router.push("/research/stock-screener")}
-              className="w-full"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Stock Screener
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mb-6 flex items-baseline gap-3">
+          <div className="shimmer h-9 w-32 rounded-lg bg-surface-2" />
+          <div className="shimmer h-5 w-48 rounded bg-surface-2" />
+        </div>
+        <QuerySkeleton rows={6} rowHeight="h-16" />
       </div>
     );
   }
 
-  // Mock data for demonstration
-  const mockData = {
-    currentPrice: 1820.5,
-    change: 58.4,
-    changePercent: 3.32,
-    previousClose: 1762.1,
-    open: 1765.0,
-    dayHigh: 1835.2,
-    dayLow: 1760.5,
-    marketCap: 1250000, // in Crores
-    pe: 18.5,
-    pb: 2.3,
-    dividendYield: 1.2,
-    high52Week: 1950.0,
-    low52Week: 1420.0,
-    volume: 2500000,
-    avgVolume: 2200000,
-    healthScore: 85,
-    healthTrend: "up",
-    healthPrevious: 82,
-    roe: 17.2,
-    netMargin: 24.5,
-    roce: 16.8,
-    operatingMargin: 28.2,
-    revenueGrowth: 14.2,
-    profitGrowth: 18.5,
-    debtEquity: 0.35,
-    interestCoverage: 9.2,
-    beta: 0.92,
-    avgDailyMove: 1.2,
-    eps: 98.5,
-    bookValue: 791.3,
-    listedYear: 1995,
-    sector: stock.sector,
-    industry: stock.sector === "Banking" ? "Private Sector Bank" : stock.sector,
+  // ── Off-platform / fetch error (404 = symbol not in universe) ─────────────
+  if (isError || !health) {
+    const maybeApiErr = (error as unknown as { apiError?: unknown })?.apiError;
+    const apiErr = isApiError(maybeApiErr) ? maybeApiErr : null;
+    const notFound = apiErr?.status === 404;
+
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6">
+        <div className="w-full max-w-md rounded-2xl border border-line bg-surface-1 p-8 text-center">
+          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border border-line2 bg-surface-2">
+            <Icons.search weight="duotone" className="size-6 text-ink3" />
+          </div>
+          <h2 className="font-display text-xl font-semibold text-ink">
+            {notFound
+              ? "Stock not in our universe"
+              : "Couldn't load this stock"}
+          </h2>
+          <p className="mt-2 text-sm text-ink2">
+            {notFound
+              ? `“${symbol}” isn't part of the tracked universe yet.`
+              : `Something went wrong loading ${symbol}.`}
+          </p>
+          <div className="mt-6 flex justify-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/research/stock-screener")}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to screener
+            </Button>
+            {!notFound && (
+              <Button onClick={() => refetch()}>
+                <Icons.refresh className="mr-2 h-4 w-4" />
+                Try again
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { identity, verdict } = health;
+
+  // Stock identity from the live universe (not the legacy static list).
+  const stock: Stock = {
+    symbol: identity.symbol,
+    name: identity.name,
+    sector: identity.sector?.displayName ?? "—",
+    exchange: "NSE",
   };
 
-  const isPositive = mockData.change > 0;
+  // The detail surface is the SAME for scored and not-yet-scored stocks — every tab
+  // renders identically; only the Health Score tab (<HealthScore />) shows its own
+  // honest not-scored placeholder when there's no score. The header band badge is
+  // shown only when a verdict exists; otherwise a neutral "Not yet scored" chip.
+  const scored = health.scored && !!verdict;
 
   return (
     <div className="min-h-screen pb-12">
-      {/* FIXED HEADER */}
-      <div className=" bg-background/95 backdrop-blur-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-            {/* Left: Company Info & Price */}
+      {/* HEADER */}
+      <div className="border-b border-line bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-7xl px-6 py-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            {/* Left: Company Info */}
             <div className="flex flex-col gap-3">
-              {/* Row 1: Ticker and Name */}
               <div className="flex items-baseline gap-3">
-                <h1 className="text-3xl font-bold">{stock.symbol}</h1>
-                <span className="text-lg text-muted-foreground">{stock.name}</span>
+                <h1 className="font-display text-3xl font-semibold text-ink">
+                  {stock.symbol}
+                </h1>
+                <span className="text-lg text-ink2">{stock.name}</span>
               </div>
-              
-              {/* Row 2: All badges/pills */}
+
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{stock.exchange}</Badge>
-                <Badge
-                  className={`${
-                    mockData.healthScore >= 80
-                      ? "bg-green-500/10 text-green-500 border-green-500/20"
-                      : mockData.healthScore >= 60
-                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                        : "bg-red-500/10 text-red-500 border-red-500/20"
-                  }`}
-                >
-                  Health: {mockData.healthScore}/100
-                </Badge>
-                <Badge variant="secondary" className="font-mono font-semibold">
-                  ₹{mockData.currentPrice.toFixed(2)}
-                </Badge>
-                <Badge
-                  variant="secondary"
-                  className={`${
-                    isPositive ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"
-                  }`}
-                >
-                  {isPositive ? (
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 mr-1" />
-                  )}
-                  {isPositive ? "+" : ""}₹{mockData.change.toFixed(2)} ({isPositive ? "+" : ""}{mockData.changePercent.toFixed(2)}%)
-                </Badge>
+                {stock.sector !== "—" && (
+                  <Badge variant="secondary">{stock.sector}</Badge>
+                )}
+                {scored && verdict ? (
+                  <Badge className={BAND_BADGE[verdict.label.band]}>
+                    <span className="num">{verdict.composite.toFixed(1)}</span>
+                    <span className="ml-1">· {verdict.label.label}</span>
+                  </Badge>
+                ) : (
+                  <Badge className="border-line2 bg-surface-2 text-ink3">
+                    Not yet scored
+                  </Badge>
+                )}
               </div>
             </div>
 
             {/* Right: Action Buttons */}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push("/research/stock-screener")}
+                className="inline-flex items-center gap-1.5 text-xs cursor-pointer text-ink3 underline-offset-4 transition-colors hover:text-ink hover:underline"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to screener
+              </button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     Quick Actions
-                    <ChevronDown className="w-4 h-4 ml-2" />
+                    <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem>
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Add to Portfolio
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Star className="w-4 h-4 mr-2" />
+                    <Star className="mr-2 h-4 w-4" />
                     Watchlist
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Bell className="w-4 h-4 mr-2" />
+                    <Bell className="mr-2 h-4 w-4" />
                     Set Alert
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              {/* Navigation Command Palette */}
-              <NavigationCommandPalette currentSymbol={symbol} />
             </div>
           </div>
         </div>
 
         {/* TAB NAVIGATION */}
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex border-b overflow-x-auto">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex overflow-x-auto border-b border-line">
             {[
               { id: "overview", label: "Overview" },
               { id: "health", label: "Health Score" },
@@ -230,12 +224,14 @@ const StockDetailPage = () => {
                 key={tab.id}
                 onClick={() => {
                   setActiveTab(tab.id);
-                  router.push(`/research/stock-screener/${symbol}?tab=${tab.id}`);
+                  router.push(
+                    `/research/stock-screener/${symbol}?tab=${tab.id}`,
+                  );
                 }}
-                className={`px-6 py-3 text-sm font-medium transition-colors relative whitespace-nowrap ${
+                className={`relative whitespace-nowrap px-6 py-3 text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-ink3 hover:text-ink"
                 }`}
               >
                 {tab.label}
@@ -246,29 +242,14 @@ const StockDetailPage = () => {
       </div>
 
       {/* TAB CONTENT */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* TAB 1: OVERVIEW */}
+      <div className="mx-auto max-w-7xl px-6 py-8">
         {activeTab === "overview" && <Overview stock={stock} />}
-
-        {/* TAB 2: HEALTH SCORE */}
         {activeTab === "health" && <HealthScore />}
-
-        {/* TAB 3: FUNDAMENTALS */}
         {activeTab === "fundamentals" && <Fundamentals />}
-
-        {/* TAB 4: VALUATION */}
         {activeTab === "valuation" && <Valuation />}
-
-        {/* TAB 5: TECHNICAL */}
         {activeTab === "technical" && <Technical />}
-
-        {/* TAB 6: ACTIVITY */}
         {activeTab === "activity" && <Activity />}
-
-        {/* TAB 7: EVENTS */}
         {activeTab === "events" && <CalendarComponent />}
-
-        {/* TAB 8: NEWS */}
         {activeTab === "news" && <News />}
       </div>
     </div>

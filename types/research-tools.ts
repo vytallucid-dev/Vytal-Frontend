@@ -27,6 +27,18 @@ export interface ScoredStockLite {
   band: LabelBand;
 }
 
+/** Lean row for EVERY stock in the universe (scored + not-yet-scored) — powers the
+ *  screener typeahead so it spans all tracked stocks, not just the scored subset.
+ *  `scored=false` rows carry null composite/band. Mirrors backend UniverseStockListItem. */
+export interface UniverseStockLite {
+  symbol: string;
+  name: string;
+  sector: SectorRef | null;
+  scored: boolean;
+  composite: number | null;
+  band: LabelBand | null;
+}
+
 /** A scored stock ranked for a tool's landing scan. `marker`/`delta`/`previousComposite`
  *  are null for a single-period (building-history) stock. `spark` = recent in-force
  *  composites, oldest→newest (≤8), for the card's mini chart. */

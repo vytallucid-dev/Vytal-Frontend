@@ -2,7 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
-import type { ScoredStockLite, StockScanItem, ToolId } from "@/types/research-tools";
+import type {
+  ScoredStockLite,
+  UniverseStockLite,
+  StockScanItem,
+  ToolId,
+} from "@/types/research-tools";
 
 /** Lean scored-stock universe → GET /api/stocks. Powers the name-switcher
  *  typeahead and the landing fallback. Cached app-wide under one key. */
@@ -10,6 +15,17 @@ export function useScoredStocks() {
   return useQuery<ScoredStockLite[]>({
     queryKey: ["stocks", "scored"],
     queryFn: () => apiFetch<ScoredStockLite[]>("/api/stocks"),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** FULL stock universe (scored + not-yet-scored) → GET /api/stocks/universe.
+ *  Powers the stock-screener typeahead so search spans every tracked stock, not
+ *  only the scored subset. Cached app-wide under one key. */
+export function useUniverseStocks() {
+  return useQuery<UniverseStockLite[]>({
+    queryKey: ["stocks", "universe"],
+    queryFn: () => apiFetch<UniverseStockLite[]>("/api/stocks/universe"),
     staleTime: 5 * 60 * 1000,
   });
 }
