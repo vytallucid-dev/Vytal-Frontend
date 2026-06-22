@@ -94,8 +94,7 @@ interface JobPollResponse {
   error?: string;
 }
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const API_BASE = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`;
 
 const POLL_INTERVAL_MS = 2500;
 const JOB_TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
@@ -131,7 +130,10 @@ const BlockDealsPage = () => {
   const [result, setResult] = useState<ApiResponse | null>(null);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [logsMeta, setLogsMeta] = useState<{ total: number; pages: number } | null>(null);
+  const [logsMeta, setLogsMeta] = useState<{
+    total: number;
+    pages: number;
+  } | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);
   const [logsPage, setLogsPage] = useState(1);
@@ -140,11 +142,16 @@ const BlockDealsPage = () => {
     setLogsLoading(true);
     setLogsError(null);
     try {
-      const res = await fetch(`${API_BASE}/deals/deal-logs?page=${page}&limit=10`);
+      const res = await fetch(
+        `${API_BASE}/deals/deal-logs?page=${page}&limit=10`,
+      );
       const json: LogsResponse = await res.json();
       if (json.success && json.data) {
         setLogs(json.data.logs);
-        setLogsMeta({ total: json.data.pagination.total, pages: json.data.pagination.pages });
+        setLogsMeta({
+          total: json.data.pagination.total,
+          pages: json.data.pagination.pages,
+        });
         setLogsPage(page);
       } else {
         setLogsError("Failed to load logs.");
@@ -220,11 +227,13 @@ const BlockDealsPage = () => {
           {/* Trigger Card */}
           <div className="border rounded-xl border-border/50 bg-background/50 backdrop-blur-sm shadow-sm p-6 flex flex-col gap-6">
             <div>
-              <h2 className="font-semibold text-base mb-1">Daily Ingest Trigger</h2>
+              <h2 className="font-semibold text-base mb-1">
+                Daily Ingest Trigger
+              </h2>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Calling this trigger will fetch today&apos;s block deal data from
-                the exchange, deduplicate existing records, and insert any new
-                transactions into the database.
+                Calling this trigger will fetch today&apos;s block deal data
+                from the exchange, deduplicate existing records, and insert any
+                new transactions into the database.
               </p>
             </div>
 
@@ -304,9 +313,13 @@ const BlockDealsPage = () => {
               <div className="flex items-center gap-2.5 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
                 <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-destructive">Ingest Failed</p>
+                  <p className="text-sm font-medium text-destructive">
+                    Ingest Failed
+                  </p>
                   <p className="text-xs text-destructive/80 mt-0.5">
-                    {result?.error ?? result?.message ?? "An unexpected error occurred."}
+                    {result?.error ??
+                      result?.message ??
+                      "An unexpected error occurred."}
                   </p>
                 </div>
               </div>
@@ -389,7 +402,9 @@ const BlockDealsPage = () => {
               disabled={logsLoading}
               className="gap-1.5 text-muted-foreground hover:text-foreground"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${logsLoading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${logsLoading ? "animate-spin" : ""}`}
+              />
               Refresh
             </Button>
           </div>
@@ -411,7 +426,9 @@ const BlockDealsPage = () => {
           {!logsLoading && !logsError && logs.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-2 text-center py-12">
               <ClockIcon className="w-8 h-8 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground/50">No ingest logs found.</p>
+              <p className="text-sm text-muted-foreground/50">
+                No ingest logs found.
+              </p>
             </div>
           )}
 
@@ -436,7 +453,8 @@ const BlockDealsPage = () => {
                 ← Previous
               </Button>
               <span className="text-xs text-muted-foreground tabular-nums">
-                Page {logsPage} of {logsMeta.pages} &nbsp;·&nbsp; {logsMeta.total.toLocaleString()} total
+                Page {logsPage} of {logsMeta.pages} &nbsp;·&nbsp;{" "}
+                {logsMeta.total.toLocaleString()} total
               </span>
               <Button
                 variant="outline"
@@ -459,12 +477,35 @@ const BlockDealsPage = () => {
 };
 
 // ── Backfill Section ────────────────────────────────────────────────────────
-const jobMeta: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  pending:   { label: "Pending",   color: "text-amber-400",       icon: <ClockIcon className="w-4 h-4 text-amber-400" /> },
-  running:   { label: "Running",   color: "text-blue-400",        icon: <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> },
-  succeeded: { label: "Succeeded", color: "text-emerald-400",     icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" /> },
-  failed:    { label: "Failed",    color: "text-destructive",     icon: <XCircle className="w-4 h-4 text-destructive" /> },
-  cancelled: { label: "Cancelled", color: "text-muted-foreground",icon: <Ban className="w-4 h-4 text-muted-foreground" /> },
+const jobMeta: Record<
+  string,
+  { label: string; color: string; icon: React.ReactNode }
+> = {
+  pending: {
+    label: "Pending",
+    color: "text-amber-400",
+    icon: <ClockIcon className="w-4 h-4 text-amber-400" />,
+  },
+  running: {
+    label: "Running",
+    color: "text-blue-400",
+    icon: <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />,
+  },
+  succeeded: {
+    label: "Succeeded",
+    color: "text-emerald-400",
+    icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
+  },
+  failed: {
+    label: "Failed",
+    color: "text-destructive",
+    icon: <XCircle className="w-4 h-4 text-destructive" />,
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "text-muted-foreground",
+    icon: <Ban className="w-4 h-4 text-muted-foreground" />,
+  },
 };
 
 const BackfillSection = () => {
@@ -478,27 +519,38 @@ const BackfillSection = () => {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
   }, []);
 
-  const pollJob = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/admin/jobs/${id}`);
-      const json: JobPollResponse = await res.json();
-      if (!json.success || !json.data) return;
-      setJobData(json.data);
-      if (JOB_TERMINAL.has(json.data.status)) {
-        stopPolling();
-        setJobStatus("done");
+  const pollJob = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/jobs/${id}`);
+        const json: JobPollResponse = await res.json();
+        if (!json.success || !json.data) return;
+        setJobData(json.data);
+        if (JOB_TERMINAL.has(json.data.status)) {
+          stopPolling();
+          setJobStatus("done");
+        }
+      } catch {
+        /* keep polling on transient errors */
       }
-    } catch { /* keep polling on transient errors */ }
-  }, [stopPolling]);
+    },
+    [stopPolling],
+  );
 
-  const startPolling = useCallback((id: string) => {
-    stopPolling();
-    pollRef.current = setInterval(() => pollJob(id), POLL_INTERVAL_MS);
-    pollJob(id);
-  }, [pollJob, stopPolling]);
+  const startPolling = useCallback(
+    (id: string) => {
+      stopPolling();
+      pollRef.current = setInterval(() => pollJob(id), POLL_INTERVAL_MS);
+      pollJob(id);
+    },
+    [pollJob, stopPolling],
+  );
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
@@ -540,7 +592,9 @@ const BackfillSection = () => {
     setCancelLoading(true);
     setCancelError(null);
     try {
-      const res = await fetch(`${API_BASE}/admin/jobs/${jobId}/cancel`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/admin/jobs/${jobId}/cancel`, {
+        method: "POST",
+      });
       const json = await res.json();
       if (!json.success) setCancelError(json.error ?? "Failed to cancel job.");
     } catch {
@@ -560,7 +614,8 @@ const BackfillSection = () => {
     setDays("");
   };
 
-  const isActive = jobStatus === "polling" && jobData && !JOB_TERMINAL.has(jobData.status);
+  const isActive =
+    jobStatus === "polling" && jobData && !JOB_TERMINAL.has(jobData.status);
   const canCancel = isActive && !jobData?.cancelRequested;
   const isRunning = jobStatus === "submitting" || jobStatus === "polling";
 
@@ -576,8 +631,9 @@ const BackfillSection = () => {
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Fetch block deal records for the past N days and upsert them into the database as a background job.
-          Defaults to 365 (max limit) days if no value is provided.
+          Fetch block deal records for the past N days and upsert them into the
+          database as a background job. Defaults to 365 (max limit) days if no
+          value is provided.
         </p>
       </div>
 
@@ -586,7 +642,9 @@ const BackfillSection = () => {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">
               Days to backfill{" "}
-              <span className="text-muted-foreground/50">(optional, default: 365)</span>
+              <span className="text-muted-foreground/50">
+                (optional, default: 365)
+              </span>
             </label>
             <input
               type="number"
@@ -612,9 +670,15 @@ const BackfillSection = () => {
                 className="gap-2 bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-60"
               >
                 {isRunning ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" />{jobStatus === "submitting" ? "Submitting…" : "Processing…"}</>
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {jobStatus === "submitting" ? "Submitting…" : "Processing…"}
+                  </>
                 ) : (
-                  <><Play className="w-4 h-4" />Start Backfill</>
+                  <>
+                    <Play className="w-4 h-4" />
+                    Start Backfill
+                  </>
                 )}
               </Button>
             )}
@@ -628,7 +692,11 @@ const BackfillSection = () => {
                 onClick={handleCancel}
                 disabled={cancelLoading}
               >
-                {cancelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                {cancelLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Ban className="w-3.5 h-3.5" />
+                )}
                 Cancel Job
               </Button>
             )}
@@ -662,7 +730,8 @@ const BackfillSection = () => {
       {jobId && !jobData && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          Job <span className="font-mono text-foreground/70">{jobId}</span> — waiting for status…
+          Job <span className="font-mono text-foreground/70">{jobId}</span> —
+          waiting for status…
         </div>
       )}
     </div>
@@ -681,16 +750,24 @@ const BackfillJobPanel = ({ job }: { job: JobData }) => {
           {meta.icon}
           <div>
             <div className="flex items-center gap-2">
-              <span className={`text-sm font-semibold ${meta.color}`}>{meta.label}</span>
+              <span className={`text-sm font-semibold ${meta.color}`}>
+                {meta.label}
+              </span>
               {job.status === "running" && (
-                <span className="text-xs text-muted-foreground tabular-nums">{job.progress}%</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {job.progress}%
+                </span>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{job.id}</p>
+            <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+              {job.id}
+            </p>
           </div>
         </div>
         {job.durationMs != null && (
-          <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(job.durationMs)}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {formatDuration(job.durationMs)}
+          </span>
         )}
       </div>
 
@@ -720,45 +797,73 @@ const BackfillJobPanel = ({ job }: { job: JobData }) => {
       )}
 
       {/* Result summary */}
-      {job.result && (() => {
-        const r = job.result as Record<string, number>;
-        return (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {([
-              ["Fetched",  r.totalFetched,   undefined],
-              ["Inserted", r.totalInserted,  "emerald"],
-              ["Skipped",  r.totalSkipped,   undefined],
-              ["Duration", undefined,        undefined],
-            ] as [string, number | undefined, string | undefined][]).filter(([, v]) => v !== undefined).map(([label, value, accent]) => (
-              <div key={label} className="flex flex-col gap-0.5 rounded-lg bg-background/60 border border-border/40 px-3 py-2">
-                <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">{label}</span>
-                <span className={`text-base font-bold tabular-nums ${
-                  accent === "emerald" ? "text-emerald-400" : "text-foreground/80"
-                }`}>{(value as number).toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+      {job.result &&
+        (() => {
+          const r = job.result as Record<string, number>;
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(
+                [
+                  ["Fetched", r.totalFetched, undefined],
+                  ["Inserted", r.totalInserted, "emerald"],
+                  ["Skipped", r.totalSkipped, undefined],
+                  ["Duration", undefined, undefined],
+                ] as [string, number | undefined, string | undefined][]
+              )
+                .filter(([, v]) => v !== undefined)
+                .map(([label, value, accent]) => (
+                  <div
+                    key={label}
+                    className="flex flex-col gap-0.5 rounded-lg bg-background/60 border border-border/40 px-3 py-2"
+                  >
+                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">
+                      {label}
+                    </span>
+                    <span
+                      className={`text-base font-bold tabular-nums ${
+                        accent === "emerald"
+                          ? "text-emerald-400"
+                          : "text-foreground/80"
+                      }`}
+                    >
+                      {(value as number).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          );
+        })()}
 
       {/* Timestamps */}
       {isTerminal && (
         <div className="flex flex-wrap gap-3 pt-2 border-t border-border/40">
           {job.startedAt && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground/60">Started:</span>
-              <span className="text-[11px] text-foreground/70 tabular-nums">{formatDateTime(job.startedAt)}</span>
+              <span className="text-[10px] text-muted-foreground/60">
+                Started:
+              </span>
+              <span className="text-[11px] text-foreground/70 tabular-nums">
+                {formatDateTime(job.startedAt)}
+              </span>
             </div>
           )}
           {job.finishedAt && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground/60">Finished:</span>
-              <span className="text-[11px] text-foreground/70 tabular-nums">{formatDateTime(job.finishedAt)}</span>
+              <span className="text-[10px] text-muted-foreground/60">
+                Finished:
+              </span>
+              <span className="text-[11px] text-foreground/70 tabular-nums">
+                {formatDateTime(job.finishedAt)}
+              </span>
             </div>
           )}
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground/60">Triggered by</span>
-            <span className="text-[11px] font-medium text-foreground/70">{job.triggeredBy}</span>
+            <span className="text-[10px] text-muted-foreground/60">
+              Triggered by
+            </span>
+            <span className="text-[11px] font-medium text-foreground/70">
+              {job.triggeredBy}
+            </span>
           </div>
         </div>
       )}
@@ -777,11 +882,15 @@ const LogRow = ({ log }: { log: LogEntry }) => {
           ) : (
             <XCircle className="w-4 h-4 text-destructive shrink-0" />
           )}
-          <span className={`text-xs font-semibold capitalize ${isSuccess ? "text-emerald-400" : "text-destructive"}`}>
+          <span
+            className={`text-xs font-semibold capitalize ${isSuccess ? "text-emerald-400" : "text-destructive"}`}
+          >
             {log.status}
           </span>
           <span className="text-xs text-muted-foreground/50">·</span>
-          <span className="text-xs text-muted-foreground capitalize">{log.fetchType}</span>
+          <span className="text-xs text-muted-foreground capitalize">
+            {log.fetchType}
+          </span>
         </div>
         <span className="text-[11px] text-muted-foreground/60 shrink-0">
           {formatDateTime(log.createdAt)}
@@ -791,7 +900,11 @@ const LogRow = ({ log }: { log: LogEntry }) => {
       <div className="flex items-center gap-3 flex-wrap">
         <LogPill label="Date" value={log.fetchDate} />
         <LogPill label="Fetched" value={log.totalFetched.toLocaleString()} />
-        <LogPill label="Inserted" value={log.totalInserted.toLocaleString()} accent />
+        <LogPill
+          label="Inserted"
+          value={log.totalInserted.toLocaleString()}
+          accent
+        />
         <LogPill label="Skipped" value={log.totalSkipped.toLocaleString()} />
         <LogPill label="Duration" value={formatDuration(log.durationMs)} />
       </div>
@@ -805,10 +918,20 @@ const LogRow = ({ log }: { log: LogEntry }) => {
   );
 };
 
-const LogPill = ({ label, value, accent }: { label: string; value: string; accent?: boolean }) => (
+const LogPill = ({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) => (
   <div className="flex items-center gap-1">
     <span className="text-[10px] text-muted-foreground/60">{label}:</span>
-    <span className={`text-[11px] font-semibold tabular-nums ${accent ? "text-emerald-400" : "text-foreground/80"}`}>
+    <span
+      className={`text-[11px] font-semibold tabular-nums ${accent ? "text-emerald-400" : "text-foreground/80"}`}
+    >
       {value}
     </span>
   </div>
@@ -833,4 +956,3 @@ const StatCard = ({ icon: Icon, label, value, color, bg }: StatCardProps) => (
 );
 
 export default BlockDealsPage;
-

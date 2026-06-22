@@ -81,8 +81,7 @@ interface JobPollResponse {
   error?: string;
 }
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const API_BASE = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`;
 
 const POLL_INTERVAL_MS = 2500;
 const JOB_TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
