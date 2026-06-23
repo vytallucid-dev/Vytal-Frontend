@@ -62,6 +62,10 @@ export function OwnershipTool() {
 
   const health = healthQ.data;
   const ownView = ownQ.data ?? null;
+  // The ownership ledger is RAW data — it renders whenever its rows exist, independent of
+  // scoring. Only the score-derived layer (ownership grade chip, floor-check, score verdict)
+  // gates on a scored period.
+  const hasScoredPeriod = ownView?.hasScoredPeriod ?? false;
 
   // the Foundation floor (current period) — the only thing the floor-check needs.
   const foundation = useMemo(() => {
@@ -80,13 +84,23 @@ export function OwnershipTool() {
   const isLoading = healthQ.isLoading || ownQ.isLoading;
   const isError = healthQ.isError || ownQ.isError;
   const loaded = !isLoading && !isError;
-  // not scored when neither source has a usable ownership read
+
+  // Ledger-data presence is INDEPENDENT of scoring. The tool blanks ONLY when there is no
+  // ownership data of any kind (no holding split, pledging, insider or block). An
+  // unscored-but-has-data stock renders its ledger; the score-derived layer quiet-empties.
+  const hasLedgerData = Boolean(
+    ownView &&
+      (holdingPoints.length > 0 ||
+        ownView.pledging.length > 0 ||
+        ownView.events.insider.length > 0 ||
+        ownView.events.block.length > 0),
+  );
   const notScored =
-    loaded && symbol && (!ownView?.scored || (health && !health.scored))
+    loaded && symbol && !hasLedgerData
       ? {
+          title: `No ownership data for ${ownView?.name ?? symbol}`,
           reason:
-            health?.identity?.coverageReason ??
-            `Coverage state: ${health?.identity?.coverageState ?? "not yet scored"}`,
+            "No shareholding pattern, pledging, insider or bulk/block-deal records are on file for this stock yet — they'll appear here as the disclosure feeds report them.",
         }
       : null;
 
@@ -107,8 +121,8 @@ export function OwnershipTool() {
             ? `${symbol} · ${health.identity.sector?.displayName ?? health.identity.industryPath}`
             : symbol,
         },
-        chips: ownView ? buildOwnershipChips(ownView.current, deltas, pledge) : [],
-        promotedRead: ownView ? buildOwnershipRead(ownView.current, deltas, pledge, fc) : null,
+        chips: ownView ? buildOwnershipChips(ownView.current, deltas, pledge, hasScoredPeriod) : [],
+        promotedRead: ownView ? buildOwnershipRead(ownView.current, deltas, pledge, fc, hasScoredPeriod) : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
         renderChart: (active, setActive) =>
           holdingPoints.length >= 2 ? (

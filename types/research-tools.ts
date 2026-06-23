@@ -173,7 +173,8 @@ export interface OwnershipSeriesView {
   symbol: string;
   name: string;
   windowQuarters: number;
-  scored: boolean;
+  scored: boolean; // alias of hasScoredPeriod (a scored period exists)
+  hasScoredPeriod: boolean; // gates only the score-derived sections; raw ledger is independent
   series: OwnershipSeriesPoint[];
   pledging: PledgingPoint[];
   current: OwnershipAnatomy | null;

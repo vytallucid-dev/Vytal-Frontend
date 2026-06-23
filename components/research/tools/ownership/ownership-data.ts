@@ -173,7 +173,32 @@ export function buildOwnershipRead(
   deltas: FlowDeltas,
   pledge: PledgeState,
   fc: FloorCheck | null,
+  hasScoredPeriod = true,
 ): PromotedRead {
+  // No scored period — read the OBSERVED holding flow only. No R1 verdict (the engine
+  // hasn't run), no floor-check / ownership-grade language. An honest flow-from-holding
+  // read with a note that the score-derived layer isn't available yet.
+  if (!hasScoredPeriod) {
+    const tell = flowTellOf(deltas);
+    const head: Record<OwnershipTell, { tone: PromotedRead["tone"]; title: string }> = {
+      pledge_r1: { tone: "neutral", title: "Ownership ledger" },
+      pledge_high: { tone: "neutral", title: "Ownership ledger" },
+      accumulation: { tone: "rec", title: "Institutions accumulating." },
+      distribution: { tone: "high", title: "Institutions distributing." },
+      rotation: { tone: "ctx", title: "An orderly rotation." },
+      flat: { tone: "neutral", title: pledge.pledged ? "Steady ownership, some pledging." : "Steady ownership." },
+    };
+    const h = head[tell];
+    const pledgeTail =
+      pledge.pledged && pledge.pct != null ? ` Promoter pledging at ${pledge.pct.toFixed(0)}% of holding.` : "";
+    return {
+      tone: h.tone,
+      title: h.title,
+      body: whoMoved(deltas) + pledgeTail,
+      note: "Read from the reported holding split — this stock has no scored ownership period yet, so the ownership grade and floor-check aren't available.",
+    };
+  }
+
   // R1 pledge is the loudest read.
   if (pledge.r1) {
     return {
@@ -215,9 +240,12 @@ export function buildOwnershipChips(
   anatomy: OwnershipAnatomy | null,
   deltas: FlowDeltas,
   pledge: PledgeState,
+  hasScoredPeriod = true,
 ): ChipSpec[] {
   const chips: ChipSpec[] = [];
-  if (anatomy) {
+  // The ownership GRADE chip is score-derived — only show it with a scored period
+  // (otherwise `finalOwnership` is a synthesized 0, which would read as a fake score).
+  if (anatomy && hasScoredPeriod) {
     chips.push({ label: `Ownership ${anatomy.finalOwnership.toFixed(0)}`, dot: "var(--p-own)", color: "var(--ink2)" });
   }
   if (pledge.pledged) {

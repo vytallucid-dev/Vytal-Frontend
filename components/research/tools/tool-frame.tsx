@@ -296,7 +296,9 @@ function SingleView({
     return (
       <Panel className="flex flex-col items-center gap-3 py-14 text-center">
         <Icons.info weight="duotone" className="size-10 text-ink3" />
-        <p className="font-medium text-ink">{single.identity.name} isn’t scored yet</p>
+        <p className="font-medium text-ink">
+          {single.notScored.title ?? `${single.identity.name} isn’t scored yet`}
+        </p>
         <p className="max-w-sm text-sm text-ink3">{single.notScored.reason}</p>
       </Panel>
     );

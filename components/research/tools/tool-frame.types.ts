@@ -82,8 +82,10 @@ export interface SingleViewSlots {
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
-  /** honest "not scored" state (frame renders a calm panel). */
-  notScored?: { reason: string } | null;
+  /** honest blocking full-state (frame renders a calm panel). Default title is
+   *  "{name} isn't scored yet"; pass `title` to override (e.g. "No data for …" when a
+   *  tool blanks on data-absence rather than score-absence). */
+  notScored?: { reason: string; title?: string } | null;
   /** honest single-period "building history" state (frame renders a panel). */
   buildingHistory?: boolean;
   identity: { name: string; ticker: string; sub: string };
