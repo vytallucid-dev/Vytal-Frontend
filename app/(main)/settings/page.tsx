@@ -37,6 +37,15 @@ const dataFlows: DataFlow[] = [
     recordsToday: 2148,
   },
   {
+    href: "/settings/index-prices",
+    title: "Index Prices",
+    description: "End-of-day NSE index OHLC + valuation (ind_close_all). Display-only.",
+    icon: Icons.graph,
+    lastSync: "2h ago",
+    status: "healthy",
+    recordsToday: 143,
+  },
+  {
     href: "/settings/quarterly-results",
     title: "Quarterly Results",
     description: "Latest filings parsed into clean financial statements.",

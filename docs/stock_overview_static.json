@@ -1,0 +1,2712 @@
+{
+  "_meta": {
+    "schemaVersion": "1.1",
+    "description": "Static per-stock overview content for Vytal Stock Screener. One-time curated write, factually verified. Competitive Advantage is NOT in this file — it is a separate dynamic engine (peer rank + pattern matching from the data bank). Fields here change only on a genuine business-model shift.",
+    "fields": {
+      "industry": "Display industry label.",
+      "listedSince": "Year first listed on NSE/BSE. Verified where uncertain. null only if genuinely unknown.",
+      "coreBusiness": "What the company actually does. Specific, factual.",
+      "revenueModel": "How the company actually makes money. Specific, factual.",
+      "businessTags": "Real operating segments / business lines. NOT marketing phrases."
+    },
+    "progress": {
+      "completed_families": [
+        "banking",
+        "nbfc",
+        "life_insurance",
+        "general_insurance",
+        "non_financial"
+      ],
+      "pending_families": [],
+      "note": "Complete. All stocks in universe covered. Reflects Tata Motors demerger (Oct/Nov 2025): TATAMOTORS removed; TMPV (passenger, EV, JLR) and TMCV (commercial vehicles) added."
+    },
+    "changelog": [
+      "v1.1: Tata Motors demerger — removed TATAMOTORS; added TMPV (PV/EV/JLR) and TMCV (CV, renamed Tata Motors Ltd)."
+    ]
+  },
+  "stocks": {
+    "RELIANCE": {
+      "industry": "Oil, Gas & Conglomerate",
+      "listedSince": 1977,
+      "coreBusiness": "India's largest private-sector company, run across three core engines: oil-to-chemicals (refining and petrochemicals at Jamnagar, the world's largest refining complex), digital services through Jio (telecom and broadband), and organised retail through Reliance Retail. It also has a growing presence in new energy.",
+      "revenueModel": "The bulk of revenue still comes from refining and petrochemicals — turning crude into fuels and chemical feedstock sold to industrial and bulk buyers. Jio earns recurring subscription revenue from a very large telecom base, while Reliance Retail earns store and online sales margins across grocery, fashion and electronics.",
+      "businessTags": [
+        "Oil-to-Chemicals",
+        "Jio (Telecom)",
+        "Reliance Retail",
+        "New Energy"
+      ]
+    },
+    "LT": {
+      "industry": "Capital Goods & Engineering",
+      "listedSince": 1950,
+      "coreBusiness": "India's largest engineering, procurement and construction (EPC) company. Builds large infrastructure — metros, highways, ports, power plants, water systems — and runs sizeable defence, heavy engineering, hi-tech manufacturing, and a large IT services arm (LTIMindtree, LTTS) alongside a financial services business.",
+      "revenueModel": "Most revenue comes from executing infrastructure and engineering projects won through competitive bidding, recognised over multi-year contracts. A meaningful and higher-margin slice comes from IT services (billed to global clients) and financial services, which diversify away from the lumpy project cycle.",
+      "businessTags": [
+        "Infrastructure EPC",
+        "Defence",
+        "IT Services",
+        "Heavy Engineering",
+        "Financial Services"
+      ]
+    },
+    "HDFCBANK": {
+      "industry": "Banking",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest private-sector bank, offering the full range of banking to retail customers, small businesses and large corporates — savings and current accounts, loans (home, auto, personal, business), credit cards, and treasury operations. The 2023 merger with parent HDFC Ltd added a large home-loan book.",
+      "revenueModel": "Earns primarily on net interest income — the spread between interest charged on loans and interest paid on deposits — supplemented by fee and commission income from cards, payments, distribution of insurance and mutual funds, and transaction banking.",
+      "businessTags": [
+        "Retail Banking",
+        "Wholesale Banking",
+        "Home Loans",
+        "Credit Cards",
+        "Treasury"
+      ]
+    },
+    "MOTHERSON": {
+      "industry": "Auto Components",
+      "listedSince": 1993,
+      "coreBusiness": "One of the world's largest auto-component suppliers, making wiring harnesses, rear-view mirrors, polymer modules, bumpers and integrated interior and exterior parts for nearly every major global carmaker. Operations span dozens of countries, with manufacturing located close to customer plants worldwide.",
+      "revenueModel": "Earns by supplying parts and modules directly to global vehicle manufacturers (OEMs), typically under long-term, model-life programmes. Revenue tracks global auto production volumes; the company has steadily diversified across customers, geographies and components to reduce dependence on any single one.",
+      "businessTags": [
+        "Wiring Harnesses",
+        "Vision Systems (Mirrors)",
+        "Modules & Polymers",
+        "Global OEM Supply"
+      ]
+    },
+    "LUPIN": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 1993,
+      "coreBusiness": "A global pharmaceutical company that develops, manufactures and sells generic and branded formulations, with strong positions in the US generics market and the Indian domestic market. Notable franchises include respiratory, cardiovascular, anti-diabetic and anti-infective drugs, plus a growing complex-generics and specialty pipeline.",
+      "revenueModel": "Revenue comes from selling formulations — a large share from the US (generics and specialty) and from India (branded prescription drugs sold via a large field force), with the rest from other regulated and emerging markets plus active pharmaceutical ingredients (APIs).",
+      "businessTags": [
+        "US Generics",
+        "India Branded Formulations",
+        "Specialty & Complex Generics",
+        "APIs"
+      ]
+    },
+    "GRSE": {
+      "industry": "Defence & Shipbuilding",
+      "listedSince": 2018,
+      "coreBusiness": "A defence shipyard under the Ministry of Defence, building warships almost entirely for the Indian Navy and Indian Coast Guard — frigates, corvettes, survey vessels, patrol vessels and similar. It also has smaller engineering and marine-engine divisions. One of India's premier warship builders, with a long delivery record.",
+      "revenueModel": "Earns chiefly by executing long-duration warship construction contracts for the government, recognised over multi-year build periods (often two to five years per vessel). Revenue visibility comes from a large defence order book rather than from open-market sales.",
+      "businessTags": [
+        "Warship Building",
+        "Defence Engineering",
+        "Marine Engines"
+      ]
+    },
+    "SBILIFE": {
+      "industry": "Life Insurance",
+      "listedSince": 2017,
+      "coreBusiness": "One of India's largest private life insurers, a joint venture between State Bank of India and BNP Paribas Cardif. Sells protection (term), savings, unit-linked (ULIP) and group life products to individuals and corporates, distributed heavily through SBI's vast branch network alongside agents and other channels.",
+      "revenueModel": "Earns from insurance premiums (new business and renewals) and from investment income on the large pool of policyholder funds it manages. Bancassurance through SBI branches is the dominant, low-cost distribution engine that underpins its scale.",
+      "businessTags": [
+        "Protection & Savings",
+        "ULIPs",
+        "Group Life",
+        "Bancassurance (SBI)"
+      ]
+    },
+    "ABCAPITAL": {
+      "industry": "Diversified NBFC / Financial Services",
+      "listedSince": 2017,
+      "coreBusiness": "The financial-services holding arm of the Aditya Birla Group, operating across lending (NBFC and housing finance), asset management, life and health insurance, and a stock-broking and wealth platform. It is one of India's larger diversified, non-bank financial conglomerates.",
+      "revenueModel": "Revenue is spread across its businesses: net interest income from lending, fund-management fees from asset management, premiums from insurance, and fee income from broking and distribution. The diversified mix smooths dependence on any single financial product cycle.",
+      "businessTags": [
+        "NBFC Lending",
+        "Housing Finance",
+        "Asset Management",
+        "Insurance",
+        "Broking & Wealth"
+      ]
+    },
+    "ICICIGI": {
+      "industry": "General Insurance",
+      "listedSince": 2017,
+      "coreBusiness": "India's largest private-sector general (non-life) insurer, underwriting motor, health, fire, marine, crop and other property-and-casualty risks for retail and corporate customers. Distributes through agents, brokers, bancassurance and direct digital channels.",
+      "revenueModel": "Earns from underwriting — collecting premiums and paying claims, aiming for a profitable combined ratio — and from investment income on the float held against future claims. Motor and health are the largest premium lines.",
+      "businessTags": [
+        "Motor Insurance",
+        "Health Insurance",
+        "Commercial Lines",
+        "Crop Insurance"
+      ]
+    },
+    "SBIN": {
+      "industry": "Banking",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest bank, majority-owned by the government, with the country's biggest branch and ATM network. Serves retail, agricultural, SME and corporate customers across deposits, loans, cards and treasury, and holds stakes in large subsidiaries spanning life insurance, general insurance, cards and asset management.",
+      "revenueModel": "Core earnings come from net interest income on a vast loan and deposit base, supplemented by fee income and dividends/value from its listed subsidiaries. Its scale and low-cost deposit franchise (CASA) are central to its margins.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Agricultural Lending",
+        "Treasury",
+        "Subsidiaries (Insurance, Cards, AMC)"
+      ]
+    },
+    "ICICIBANK": {
+      "industry": "Banking",
+      "listedSince": 1997,
+      "coreBusiness": "One of India's largest private-sector banks, offering retail, business and corporate banking, cards and treasury services nationwide, with a strong digital franchise. It also owns large listed subsidiaries in life insurance, general insurance and broking.",
+      "revenueModel": "Earns mainly on net interest income across retail and corporate lending, plus fee income from cards, payments, transaction banking and distribution. Subsidiary value adds to the consolidated picture.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Credit Cards",
+        "Treasury",
+        "Subsidiaries (Insurance, Broking)"
+      ]
+    },
+    "AXISBANK": {
+      "industry": "Banking",
+      "listedSince": 1998,
+      "coreBusiness": "A large private-sector bank serving retail, corporate and SME customers with deposits, loans, cards, wealth management and treasury operations, supported by a wide branch and digital network. It holds interests in asset management, broking and other financial businesses.",
+      "revenueModel": "Net interest income from lending is the core, with growing fee income from cards, payments, distribution and corporate banking. Retail lending and cards have been a key growth and margin driver.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Credit Cards",
+        "Wealth Management",
+        "Treasury"
+      ]
+    },
+    "KOTAKBANK": {
+      "industry": "Banking",
+      "listedSince": 1995,
+      "coreBusiness": "A leading private-sector bank known for conservative, profitable lending, serving retail and corporate customers across deposits, loans, cards and treasury. The wider group spans broking, asset management, life and general insurance and investment banking.",
+      "revenueModel": "Earns on net interest income from a high-quality loan book and a strong low-cost deposit base, plus substantial fee and subsidiary income from broking, AMC and insurance.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Asset Management",
+        "Broking",
+        "Insurance"
+      ]
+    },
+    "INDUSINDBK": {
+      "industry": "Banking",
+      "listedSince": 1998,
+      "coreBusiness": "A mid-to-large private-sector bank with notable strength in vehicle and commercial-vehicle finance and microfinance, alongside standard retail and corporate banking, cards and treasury services.",
+      "revenueModel": "Net interest income from lending — with a meaningful tilt toward higher-yield vehicle and microfinance segments — supplemented by fee income from cards, distribution and transaction banking.",
+      "businessTags": [
+        "Vehicle Finance",
+        "Microfinance",
+        "Retail Banking",
+        "Corporate Banking",
+        "Treasury"
+      ]
+    },
+    "AUBANK": {
+      "industry": "Banking",
+      "listedSince": 2017,
+      "coreBusiness": "A small finance bank that grew out of a vehicle-finance NBFC, focused on retail and small-business customers in semi-urban and rural India — vehicle loans, small-business and housing loans, deposits and cards. It has been expanding toward a full-service bank model.",
+      "revenueModel": "Earns net interest income on relatively high-yield retail and small-business lending, funded by a growing deposit base, plus fee income from cards and distribution.",
+      "businessTags": [
+        "Vehicle Finance",
+        "Small-Business Loans",
+        "Retail Banking",
+        "Deposits & Cards"
+      ]
+    },
+    "IDFCFIRSTB": {
+      "industry": "Banking",
+      "listedSince": 2015,
+      "coreBusiness": "A private-sector bank formed from the merger of IDFC Bank and Capital First, with a strong retail-lending orientation — consumer, vehicle, small-business and home loans — alongside a fast-growing deposit franchise, cards and treasury.",
+      "revenueModel": "Net interest income on a retail-heavy loan book is the core, with the bank investing heavily in low-cost deposits and fee income to improve profitability over time.",
+      "businessTags": [
+        "Retail Lending",
+        "Consumer Finance",
+        "Deposits",
+        "Treasury"
+      ]
+    },
+    "FEDERALBNK": {
+      "industry": "Banking",
+      "listedSince": 1994,
+      "coreBusiness": "An old private-sector bank headquartered in Kerala with a strong presence among NRI customers, offering retail, SME and corporate banking, deposits, loans, cards and remittance services across a wide branch network.",
+      "revenueModel": "Earns net interest income on retail, SME and corporate lending, with a notable contribution from NRI deposits and remittance-related fee income.",
+      "businessTags": [
+        "Retail Banking",
+        "SME Lending",
+        "NRI & Remittances",
+        "Corporate Banking"
+      ]
+    },
+    "BANKBARODA": {
+      "industry": "Banking",
+      "listedSince": 1997,
+      "coreBusiness": "A large public-sector bank, government-majority-owned, with a wide domestic network and a significant international presence. Serves retail, agriculture, MSME and corporate customers across deposits, loans, cards and treasury.",
+      "revenueModel": "Core earnings come from net interest income on a large, diversified loan and deposit base, supplemented by fee and treasury income. Asset quality and recoveries are key swing factors for a PSU lender.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Agricultural & MSME Lending",
+        "International Banking",
+        "Treasury"
+      ]
+    },
+    "PNB": {
+      "industry": "Banking",
+      "listedSince": 2002,
+      "coreBusiness": "One of India's largest public-sector banks, government-majority-owned, with a very wide branch network concentrated in northern India. Serves retail, agriculture, MSME and corporate segments across deposits, loans and treasury.",
+      "revenueModel": "Earns net interest income on a large deposit and loan base; profitability hinges heavily on asset quality, provisioning and recoveries given its PSU lending profile.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Agricultural & MSME Lending",
+        "Treasury"
+      ]
+    },
+    "CANBK": {
+      "industry": "Banking",
+      "listedSince": 2002,
+      "coreBusiness": "A large public-sector bank, government-majority-owned, serving retail, agriculture, MSME and corporate customers nationwide across deposits, loans, cards and treasury, following its merger with Syndicate Bank.",
+      "revenueModel": "Net interest income on a broad loan and deposit base drives earnings, with fee and treasury income alongside; recoveries and credit costs strongly influence profitability.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Agricultural & MSME Lending",
+        "Treasury"
+      ]
+    },
+    "UNIONBANK": {
+      "industry": "Banking",
+      "listedSince": 2002,
+      "coreBusiness": "A large public-sector bank, government-majority-owned, expanded by the merger of Andhra Bank and Corporation Bank. Provides retail, agriculture, MSME and corporate banking across a wide national network.",
+      "revenueModel": "Earns net interest income on its loan and deposit base, supplemented by fee and treasury income; asset quality and provisioning are central to its bottom line.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Agricultural & MSME Lending",
+        "Treasury"
+      ]
+    },
+    "BANKINDIA": {
+      "industry": "Banking",
+      "listedSince": 1997,
+      "coreBusiness": "A large public-sector bank, government-majority-owned, with a long history and an international footprint, serving retail, agriculture, MSME and corporate customers across deposits, loans and treasury.",
+      "revenueModel": "Net interest income on a diversified domestic and overseas loan and deposit base drives earnings, with recoveries and credit costs as key profitability levers.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Agricultural & MSME Lending",
+        "International Banking"
+      ]
+    },
+    "INDIANB": {
+      "industry": "Banking",
+      "listedSince": 2007,
+      "coreBusiness": "A public-sector bank, government-majority-owned, strong in southern India and enlarged by its merger with Allahabad Bank. Serves retail, agriculture, MSME and corporate customers across deposits, loans and treasury.",
+      "revenueModel": "Earns net interest income on its loan and deposit base, with fee and treasury income alongside; asset quality and recoveries drive profitability.",
+      "businessTags": [
+        "Retail Banking",
+        "Corporate Banking",
+        "Agricultural & MSME Lending",
+        "Treasury"
+      ]
+    },
+    "YESBANK": {
+      "industry": "Banking",
+      "listedSince": 2005,
+      "coreBusiness": "A private-sector bank that was restructured in 2020 under an RBI-led rescue, now rebuilding its retail and SME franchise alongside corporate banking, deposits, cards and treasury operations.",
+      "revenueModel": "Net interest income on its loan and deposit book is the core, as the bank works to lower funding costs, grow retail deposits and normalise asset quality and profitability after its restructuring.",
+      "businessTags": [
+        "Retail Banking",
+        "SME Lending",
+        "Corporate Banking",
+        "Treasury"
+      ]
+    },
+    "BAJFINANCE": {
+      "industry": "NBFC (Diversified Lending)",
+      "listedSince": 1994,
+      "coreBusiness": "India's largest and most diversified non-bank lender, spanning consumer durable and lifestyle finance, personal and business loans, SME and commercial lending, and mortgages, with a very large customer base and a strong digital and point-of-sale presence.",
+      "revenueModel": "Earns net interest income on a high-volume, diversified loan book, plus fee income from cross-selling, insurance distribution and its growing digital platform. Scale, cross-sell and tight risk control drive returns.",
+      "businessTags": [
+        "Consumer Finance",
+        "Personal & Business Loans",
+        "SME Lending",
+        "Mortgages",
+        "Digital Platform"
+      ]
+    },
+    "BAJAJFINSV": {
+      "industry": "NBFC / Financial Holding",
+      "listedSince": 2008,
+      "coreBusiness": "The financial-services holding company of the Bajaj Group, with major stakes in Bajaj Finance (lending), Bajaj Allianz Life Insurance and Bajaj Allianz General Insurance, plus newer ventures in broking and asset management.",
+      "revenueModel": "Consolidated revenue flows from lending (via Bajaj Finance), insurance premiums and investment income (via the Allianz JVs), and emerging fee businesses. Value is largely driven by its underlying operating subsidiaries.",
+      "businessTags": [
+        "Lending (Bajaj Finance)",
+        "Life Insurance",
+        "General Insurance",
+        "Broking & AMC"
+      ]
+    },
+    "SHRIRAMFIN": {
+      "industry": "NBFC (Vehicle & Retail Finance)",
+      "listedSince": 1995,
+      "coreBusiness": "One of India's largest retail NBFCs, formed by consolidating the Shriram group's lending arms, with deep specialisation in commercial-vehicle and used-vehicle financing, plus small-business, two-wheeler, gold and personal loans — focused on under-banked customers.",
+      "revenueModel": "Earns net interest income on relatively high-yield vehicle and small-ticket retail loans, funded by deposits and borrowings. Its niche in used-CV finance and informal-segment borrowers underpins its spreads.",
+      "businessTags": [
+        "Commercial Vehicle Finance",
+        "Used-Vehicle Loans",
+        "Small-Business Loans",
+        "Gold & Personal Loans"
+      ]
+    },
+    "CHOLAFIN": {
+      "industry": "NBFC (Vehicle & Retail Finance)",
+      "listedSince": 1996,
+      "coreBusiness": "The lending arm of the Murugappa Group, focused on vehicle finance (its largest segment), loan-against-property and home loans, plus a growing set of newer consumer and SME lending businesses, serving customers across semi-urban and rural India.",
+      "revenueModel": "Net interest income on vehicle and mortgage-backed loans drives earnings, funded by diversified borrowings. Vehicle finance volumes and asset quality are the main swing factors.",
+      "businessTags": [
+        "Vehicle Finance",
+        "Loan Against Property",
+        "Home Loans",
+        "SME & Consumer Lending"
+      ]
+    },
+    "MUTHOOTFIN": {
+      "industry": "NBFC (Gold Loans)",
+      "listedSince": 2011,
+      "coreBusiness": "India's largest gold-loan NBFC, lending against household gold jewellery as collateral through a very wide branch network, with smaller businesses in housing finance, microfinance and other loans.",
+      "revenueModel": "Earns net interest income on gold-backed loans — short-tenure, high-yield and well-secured by collateral — funded by borrowings. Gold prices, loan volumes and branch productivity drive the business.",
+      "businessTags": [
+        "Gold Loans",
+        "Housing Finance",
+        "Microfinance"
+      ]
+    },
+    "M&MFIN": {
+      "industry": "NBFC (Vehicle & Rural Finance)",
+      "listedSince": 2000,
+      "coreBusiness": "The financing arm of the Mahindra Group, specialising in vehicle and tractor finance for rural and semi-urban customers, alongside SME lending, leasing and other retail loans — closely tied to rural incomes and the auto cycle.",
+      "revenueModel": "Net interest income on vehicle, tractor and rural loans is the core, funded by deposits and borrowings. Performance is sensitive to rural cash flows, monsoons and vehicle demand.",
+      "businessTags": [
+        "Vehicle & Tractor Finance",
+        "Rural & Semi-Urban Lending",
+        "SME Loans",
+        "Leasing"
+      ]
+    },
+    "SBICARD": {
+      "industry": "NBFC (Cards & Payments)",
+      "listedSince": 2020,
+      "coreBusiness": "India's dedicated credit-card and payments company, majority-owned by SBI, issuing and managing credit cards to retail and corporate customers and running the associated payments and rewards ecosystem.",
+      "revenueModel": "Earns interest on revolving card balances and EMI loans, plus interchange and fee income from spends, late fees and subscriptions. Card spends, balances carried and credit costs drive profitability.",
+      "businessTags": [
+        "Credit Card Issuance",
+        "Card Interest & EMI",
+        "Interchange & Fees",
+        "Payments"
+      ]
+    },
+    "LICHSGFIN": {
+      "industry": "NBFC (Housing Finance)",
+      "listedSince": 1994,
+      "coreBusiness": "One of India's largest housing-finance companies, promoted by LIC, primarily extending home loans to individuals, along with loans to developers and against property, distributed through a wide agent and branch network.",
+      "revenueModel": "Earns net interest income — the spread between home-loan yields and its cost of borrowing — on a large, mostly retail mortgage book. Spread management and asset quality drive returns.",
+      "businessTags": [
+        "Individual Home Loans",
+        "Loan Against Property",
+        "Developer Loans"
+      ]
+    },
+    "PNBHOUSING": {
+      "industry": "NBFC (Housing Finance)",
+      "listedSince": 2016,
+      "coreBusiness": "A housing-finance company promoted by Punjab National Bank, providing home loans and loans against property to individuals — with a growing focus on the affordable-housing segment — plus some developer financing.",
+      "revenueModel": "Net interest income on mortgage lending drives earnings, funded by borrowings and deposits. The mix shift toward higher-yield affordable housing is a key margin lever.",
+      "businessTags": [
+        "Home Loans",
+        "Affordable Housing",
+        "Loan Against Property",
+        "Developer Loans"
+      ]
+    },
+    "CANFINHOME": {
+      "industry": "NBFC (Housing Finance)",
+      "listedSince": 1991,
+      "coreBusiness": "A housing-finance company promoted by Canara Bank, focused on individual home loans — largely to salaried and self-employed borrowers in the mid and affordable segments — with a conservative, low-risk lending profile.",
+      "revenueModel": "Earns net interest income on a granular retail home-loan book, funded by bank borrowings and bonds. Its appeal rests on steady spreads and historically low credit costs.",
+      "businessTags": [
+        "Individual Home Loans",
+        "Affordable Housing",
+        "Loan Against Property"
+      ]
+    },
+    "AAVAS": {
+      "industry": "NBFC (Affordable Housing Finance)",
+      "listedSince": 2018,
+      "coreBusiness": "An affordable-housing finance company lending small-ticket home loans to low- and middle-income, often self-employed and informal-income, customers in semi-urban and rural India, with in-house sourcing and underwriting.",
+      "revenueModel": "Earns net interest income on higher-yield, small-ticket mortgages funded by borrowings. Reaching informal-income borrowers others avoid lets it command wider spreads, balanced against careful underwriting.",
+      "businessTags": [
+        "Affordable Home Loans",
+        "Self-Employed / Informal Segment",
+        "Loan Against Property"
+      ]
+    },
+    "FIVESTAR": {
+      "industry": "NBFC (Small-Business Finance)",
+      "listedSince": 2022,
+      "coreBusiness": "A non-deposit-taking NBFC, concentrated in South India, providing small secured business loans to micro-entrepreneurs and self-employed individuals — borrowers underserved by banks — with every loan backed by the borrower's property.",
+      "revenueModel": "Earns high-yield net interest income on small-ticket secured business loans (typically a few lakh rupees each), funded by borrowings. The under-served niche and property collateral support both wide spreads and low losses.",
+      "businessTags": [
+        "Secured Small-Business Loans",
+        "Micro-Entrepreneur Lending",
+        "Loan Against Property"
+      ]
+    },
+    "IRFC": {
+      "industry": "NBFC (Infrastructure Finance – PSU)",
+      "listedSince": 2021,
+      "coreBusiness": "The dedicated financing arm of Indian Railways, a government-owned NBFC that raises low-cost funds to finance the acquisition of rolling stock (locomotives, coaches, wagons) and railway infrastructure, leasing these assets back to the Railways.",
+      "revenueModel": "Earns a predictable, regulated margin (spread) over its cost of borrowing under a cost-plus leasing arrangement with the Ministry of Railways — a low-risk, annuity-like model tied to a sovereign counterparty.",
+      "businessTags": [
+        "Rolling Stock Financing",
+        "Railway Infrastructure",
+        "Leasing to Indian Railways"
+      ]
+    },
+    "RECLTD": {
+      "industry": "NBFC (Power & Infra Finance – PSU)",
+      "listedSince": 2008,
+      "coreBusiness": "A government-owned infrastructure-finance NBFC that lends to the power sector — generation, transmission and distribution — and, increasingly, to broader infrastructure and renewable-energy projects across India.",
+      "revenueModel": "Earns net interest income on large, long-tenure loans to power utilities and infrastructure developers (many state-owned), funded by low-cost borrowings backed by its sovereign ownership.",
+      "businessTags": [
+        "Power-Sector Lending",
+        "Transmission & Distribution Finance",
+        "Renewables & Infrastructure"
+      ]
+    },
+    "PFC": {
+      "industry": "NBFC (Power & Infra Finance – PSU)",
+      "listedSince": 2007,
+      "coreBusiness": "India's largest power-sector financier, a government-owned NBFC lending to power generation, transmission and distribution projects (and its subsidiary REC), with growing exposure to renewables and infrastructure.",
+      "revenueModel": "Earns net interest income on large, long-dated loans to the power sector, funded by low-cost borrowings supported by its sovereign backing. Asset quality of state utilities is a key risk factor.",
+      "businessTags": [
+        "Power-Sector Lending",
+        "Transmission & Distribution Finance",
+        "Renewables & Infrastructure"
+      ]
+    },
+    "JIOFIN": {
+      "industry": "NBFC / Financial Services",
+      "listedSince": 2023,
+      "coreBusiness": "The financial-services arm demerged from Reliance Industries in 2023, building a digital-first financial platform: lending through its RBI-licensed NBFC (Jio Finance), payments via Jio Payments Bank, insurance broking, and asset management and broking through its Jio BlackRock joint ventures.",
+      "revenueModel": "Still early-stage: revenue is expected to come from net interest income on digital lending, payments and transaction fees, insurance-broking commissions, and fund-management fees as the BlackRock JVs scale. It also holds treasury income on a large capital base.",
+      "businessTags": [
+        "Digital Lending (NBFC)",
+        "Payments Bank",
+        "Insurance Broking",
+        "Asset Management & Broking (Jio BlackRock)"
+      ]
+    },
+    "LTF": {
+      "industry": "NBFC (Diversified Retail Lending)",
+      "listedSince": 2011,
+      "coreBusiness": "The retail-focused NBFC of the L&T Group, lending across rural finance (farm equipment, two-wheelers, microfinance), housing and home loans, and personal and SME loans, having pivoted away from wholesale infrastructure lending toward a retail-heavy book.",
+      "revenueModel": "Earns net interest income on a diversified retail loan book, funded by borrowings. The strategic shift toward higher-yield retail segments is central to its margin and return profile.",
+      "businessTags": [
+        "Rural & Farm Finance",
+        "Two-Wheeler & Microfinance",
+        "Home Loans",
+        "Personal & SME Loans"
+      ]
+    },
+    "MOTILALOFS": {
+      "industry": "NBFC / Capital Markets",
+      "listedSince": 2007,
+      "coreBusiness": "A diversified capital-markets and financial-services group spanning retail and institutional broking, investment banking, asset and wealth management, and a lending (NBFC) arm — known for its research-led, equity-focused franchise.",
+      "revenueModel": "Revenue comes from broking commissions, fund-management and distribution fees, investment-banking income, interest on its lending book, and gains on its own large equity investments — making earnings partly market-linked.",
+      "businessTags": [
+        "Broking",
+        "Asset & Wealth Management",
+        "Investment Banking",
+        "NBFC Lending",
+        "Treasury Investments"
+      ]
+    },
+    "MFSL": {
+      "industry": "Life Insurance (Holding Company)",
+      "listedSince": 1994,
+      "coreBusiness": "A holding company whose sole operating asset is a majority (~81%) stake in Axis Max Life Insurance (formerly Max Life), one of India's largest non-bank-promoted private life insurers. The listed entity itself does not underwrite — it owns and manages the insurer.",
+      "revenueModel": "Value derives almost entirely from Axis Max Life, which earns insurance premiums and investment income on policyholder funds. As a holding company, MFSL's worth tracks the insurer's growth, embedded value and any change in its ownership stake.",
+      "businessTags": [
+        "Holding Company",
+        "Axis Max Life (Operating Insurer)",
+        "Protection & Savings",
+        "Bancassurance (Axis Bank)"
+      ]
+    },
+    "HDFCLIFE": {
+      "industry": "Life Insurance",
+      "listedSince": 2017,
+      "coreBusiness": "One of India's largest private life insurers, promoted by HDFC and originally a joint venture with abrdn (formerly Standard Life). Sells protection, savings, ULIP, annuity and group products across a broad multi-channel distribution network.",
+      "revenueModel": "Earns insurance premiums (new business and renewals) and investment income on policyholder funds. A balanced product mix and strong bancassurance plus agency distribution support steady value creation.",
+      "businessTags": [
+        "Protection & Savings",
+        "ULIPs",
+        "Annuities",
+        "Group Life",
+        "Bancassurance & Agency"
+      ]
+    },
+    "ICICIPRULI": {
+      "industry": "Life Insurance",
+      "listedSince": 2016,
+      "coreBusiness": "A large private life insurer, a joint venture between ICICI Bank and Prudential Corporation Holdings, offering protection, savings, ULIP, annuity and group products. It was the first Indian life insurer to list on the exchanges.",
+      "revenueModel": "Earns premiums and investment income on policyholder funds, with a product mix historically weighted toward ULIPs alongside a growing protection and annuity book. Distribution spans bancassurance, agency and direct channels.",
+      "businessTags": [
+        "ULIPs",
+        "Protection & Savings",
+        "Annuities",
+        "Group Life",
+        "Bancassurance & Agency"
+      ]
+    },
+    "LICI": {
+      "industry": "Life Insurance",
+      "listedSince": 2022,
+      "coreBusiness": "India's largest life insurer by far, government-majority-owned, with a dominant market share and an enormous agency force. Offers a wide range of participating, non-participating, savings, term and group products to households across the country.",
+      "revenueModel": "Earns very large premium volumes (new business and renewals) and investment income on one of the country's biggest pools of managed assets. Its scale, brand and vast agent network are the core of the franchise; product mix shift toward higher-margin non-par and protection is a key value lever.",
+      "businessTags": [
+        "Participating & Savings Products",
+        "Term & Protection",
+        "Group & Pension",
+        "Agency Distribution (Scale)"
+      ]
+    },
+    "TCS": {
+      "industry": "IT Services",
+      "listedSince": 2004,
+      "coreBusiness": "India's largest IT services company and the flagship of the Tata Group, providing software development, consulting, systems integration, cloud, and business-process services to large enterprises worldwide across banking, retail, manufacturing and other industries.",
+      "revenueModel": "Earns by billing global clients for technology services — a mix of time-and-materials and fixed-price contracts, plus long-term managed-services deals. A large share of revenue is recurring, dollar-denominated and tied to clients' IT budgets.",
+      "businessTags": [
+        "IT Services",
+        "Consulting",
+        "Cloud & Digital",
+        "BFSI Vertical",
+        "Global Delivery"
+      ]
+    },
+    "INFY": {
+      "industry": "IT Services",
+      "listedSince": 1993,
+      "coreBusiness": "One of India's largest IT services firms, offering software development, consulting, digital transformation, cloud and outsourcing services to global enterprises, with deep franchises in financial services, retail and manufacturing.",
+      "revenueModel": "Bills global clients for technology and consulting services under time-and-materials, fixed-price and managed-services contracts. Revenue is largely recurring and dollar-linked, driven by client IT spending and large deal wins.",
+      "businessTags": [
+        "IT Services",
+        "Digital Transformation",
+        "Cloud",
+        "Consulting",
+        "Global Delivery"
+      ]
+    },
+    "HCLTECH": {
+      "industry": "IT Services",
+      "listedSince": 2000,
+      "coreBusiness": "A large IT services company with particular strength in infrastructure management and engineering/R&D services, alongside applications, digital and a software-products business, serving global enterprise clients.",
+      "revenueModel": "Earns from billing global clients for IT, engineering and infrastructure services, plus licensing and support from its software products. Mix of managed services and project work, largely recurring and dollar-denominated.",
+      "businessTags": [
+        "IT & Infrastructure Services",
+        "Engineering / R&D Services",
+        "Software Products",
+        "Digital & Cloud"
+      ]
+    },
+    "WIPRO": {
+      "industry": "IT Services",
+      "listedSince": 1995,
+      "coreBusiness": "A large global IT services and consulting company providing application development, digital, cloud, infrastructure and consulting services across industries, with a sizeable consulting arm built through acquisitions.",
+      "revenueModel": "Bills enterprise clients globally for technology and consulting services under project and managed-services contracts. Revenue is largely recurring and dollar-linked, tracking client IT budgets.",
+      "businessTags": [
+        "IT Services",
+        "Consulting",
+        "Cloud & Digital",
+        "Global Delivery"
+      ]
+    },
+    "TECHM": {
+      "industry": "IT Services",
+      "listedSince": 1986,
+      "coreBusiness": "A large IT services firm of the Mahindra Group with a distinctive concentration in telecom/communications clients alongside enterprise IT, digital and engineering services.",
+      "revenueModel": "Earns by billing global clients — especially telecom operators and equipment makers — for IT, network and digital services under project and managed-services contracts, largely recurring and dollar-denominated.",
+      "businessTags": [
+        "IT Services",
+        "Telecom / Communications Vertical",
+        "Digital & Cloud",
+        "Engineering Services"
+      ]
+    },
+    "LTIM": {
+      "industry": "IT Services",
+      "listedSince": 2016,
+      "coreBusiness": "A large IT services and digital-transformation company formed by the 2022 merger of L&T Infotech and Mindtree (part of the L&T Group), serving global enterprises across banking, technology, retail and manufacturing.",
+      "revenueModel": "Bills global clients for technology, digital and consulting services under project and managed-services contracts. Revenue is largely recurring and dollar-linked.",
+      "businessTags": [
+        "IT Services",
+        "Digital Transformation",
+        "Cloud",
+        "BFSI & Hi-Tech Verticals"
+      ]
+    },
+    "MPHASIS": {
+      "industry": "IT Services",
+      "listedSince": 1998,
+      "coreBusiness": "A mid-sized IT services company with strong exposure to banking and financial services, offering application development, cloud, digital and infrastructure services to global enterprises.",
+      "revenueModel": "Earns by billing enterprise clients — heavily BFSI — for technology services under project and managed-services contracts, with a large recurring, dollar-denominated component.",
+      "businessTags": [
+        "IT Services",
+        "BFSI Vertical",
+        "Cloud & Digital",
+        "Application Services"
+      ]
+    },
+    "COFORGE": {
+      "industry": "IT Services",
+      "listedSince": 1996,
+      "coreBusiness": "A mid-sized IT services company (formerly NIIT Technologies) with focused strength in travel, banking/financial services and insurance, providing digital, cloud and product-engineering services to global clients.",
+      "revenueModel": "Bills global clients for technology services under project and managed-services contracts, with concentration in a few verticals and a large recurring, dollar-linked revenue base.",
+      "businessTags": [
+        "IT Services",
+        "Travel & BFSI Verticals",
+        "Digital & Cloud",
+        "Product Engineering"
+      ]
+    },
+    "PERSISTENT": {
+      "industry": "IT Services",
+      "listedSince": 2010,
+      "coreBusiness": "A mid-sized IT services company specialising in software product engineering and digital services, helping technology companies and enterprises build and modernise software platforms.",
+      "revenueModel": "Earns by billing global clients for product-engineering and digital services under project and managed-services contracts, largely recurring and dollar-denominated.",
+      "businessTags": [
+        "Software Product Engineering",
+        "Digital Services",
+        "Cloud",
+        "Hi-Tech Vertical"
+      ]
+    },
+    "KPITTECH": {
+      "industry": "IT Services (Automotive)",
+      "listedSince": 2019,
+      "coreBusiness": "A specialised engineering and software company focused almost entirely on the automotive industry — building embedded software, autonomous-driving, electrification and connected-vehicle systems for global carmakers and suppliers.",
+      "revenueModel": "Bills global automotive OEMs and suppliers for software and engineering services under project and long-term contracts. Revenue tracks automakers' software/R&D spend, especially on EVs and software-defined vehicles.",
+      "businessTags": [
+        "Automotive Software",
+        "Electrification & ADAS",
+        "Connected Vehicles",
+        "Engineering Services"
+      ]
+    },
+    "OFSS": {
+      "industry": "IT Products & Services",
+      "listedSince": 2002,
+      "coreBusiness": "An Oracle-majority-owned company providing banking software — notably the Flexcube/Oracle banking product suite — along with related implementation and services to financial institutions worldwide.",
+      "revenueModel": "Earns from software product licensing and recurring support/maintenance fees on its banking platforms, plus implementation and consulting services. The product/licence and support mix gives it high margins.",
+      "businessTags": [
+        "Banking Software Products",
+        "Licensing & Support",
+        "Implementation Services",
+        "BFSI"
+      ]
+    },
+    "SUNPHARMA": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 1994,
+      "coreBusiness": "India's largest pharmaceutical company, making generic and specialty medicines sold in the US, India and global markets, with a growing branded specialty franchise in areas like dermatology and ophthalmology alongside a large generics base.",
+      "revenueModel": "Earns from selling formulations — US generics and specialty, India branded prescription drugs, and other markets — plus APIs. Higher-margin specialty products are an increasing share of the mix.",
+      "businessTags": [
+        "Specialty (US)",
+        "US Generics",
+        "India Branded Formulations",
+        "Emerging Markets",
+        "APIs"
+      ]
+    },
+    "DRREDDY": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 1986,
+      "coreBusiness": "A global pharmaceutical company spanning generics, complex generics and biosimilars, with major operations in the US, India, Russia and other markets, plus an active-ingredients (API) business.",
+      "revenueModel": "Earns from selling formulations across the US (generics), India and emerging markets, plus APIs and a developing biosimilars pipeline. The US generics business is a key revenue and margin driver.",
+      "businessTags": [
+        "US Generics",
+        "Complex Generics & Biosimilars",
+        "India & Emerging Markets",
+        "APIs"
+      ]
+    },
+    "CIPLA": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 1994,
+      "coreBusiness": "A major Indian pharmaceutical company with deep strength in respiratory medicines, a large domestic branded business, a growing US generics presence and significant operations in South Africa and other emerging markets.",
+      "revenueModel": "Earns from selling formulations — India branded prescription drugs (a large, high-margin base), US generics, and emerging-market sales — plus APIs. Respiratory and the India business anchor profitability.",
+      "businessTags": [
+        "India Branded Formulations",
+        "Respiratory",
+        "US Generics",
+        "South Africa & Emerging Markets"
+      ]
+    },
+    "DIVISLAB": {
+      "industry": "Pharmaceuticals (APIs)",
+      "listedSince": 2003,
+      "coreBusiness": "One of the world's leading manufacturers of active pharmaceutical ingredients (APIs) and intermediates, plus custom synthesis for innovator drug companies. It is an ingredients/manufacturing player, not a branded-formulations seller.",
+      "revenueModel": "Earns by manufacturing and supplying APIs and intermediates in bulk to global pharma companies, and by custom-synthesising molecules for innovators under long-term relationships. Scale and process expertise drive its high margins.",
+      "businessTags": [
+        "APIs & Intermediates",
+        "Custom Synthesis",
+        "Nutraceuticals",
+        "Export-Led"
+      ]
+    },
+    "AUROPHARMA": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 1995,
+      "coreBusiness": "A large generics-focused pharmaceutical company with a very broad US generics portfolio, plus operations in Europe and other markets, an API business and a growing presence in injectables and biosimilars.",
+      "revenueModel": "Earns mainly from selling generic formulations in the US and Europe, plus APIs. High volumes across a wide product portfolio drive revenue; the US generics market is the largest contributor.",
+      "businessTags": [
+        "US Generics",
+        "Europe Formulations",
+        "Injectables",
+        "APIs",
+        "Biosimilars"
+      ]
+    },
+    "TORNTPHARM": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 1996,
+      "coreBusiness": "A pharmaceutical company with a strongly branded, India-and-Brazil-focused formulations business, concentrated in chronic therapies like cardiovascular, central nervous system and gastrointestinal medicines.",
+      "revenueModel": "Earns primarily from branded prescription formulations sold via a large field force in India and key markets such as Brazil. A chronic-therapy focus gives it sticky, high-margin, recurring prescriptions.",
+      "businessTags": [
+        "India Branded Formulations",
+        "Chronic Therapies",
+        "Brazil",
+        "Branded Generics"
+      ]
+    },
+    "ALKEM": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 2015,
+      "coreBusiness": "A leading Indian pharmaceutical company, strongest in the domestic market — particularly anti-infectives and acute therapies — with well-known brands, plus a US generics business and other markets.",
+      "revenueModel": "Earns mostly from India branded formulations sold through a large field force, supplemented by US generics. Market leadership in anti-infectives and a strong brand portfolio anchor revenue.",
+      "businessTags": [
+        "India Branded Formulations",
+        "Anti-Infectives",
+        "US Generics",
+        "Acute Therapies"
+      ]
+    },
+    "MANKIND": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 2023,
+      "coreBusiness": "A leading Indian pharmaceutical and consumer-healthcare company with a large domestic branded business and well-known consumer brands (e.g. condoms, pregnancy kits), focused on the mass and mid-market segments.",
+      "revenueModel": "Earns from India branded prescription formulations and a sizeable consumer-healthcare portfolio, sold through extensive distribution. Domestic focus, brand strength and mass-market reach drive revenue.",
+      "businessTags": [
+        "India Branded Formulations",
+        "Consumer Healthcare",
+        "Chronic & Acute Therapies",
+        "Domestic-Led"
+      ]
+    },
+    "ZYDUSLIFE": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 2000,
+      "coreBusiness": "A diversified pharmaceutical company (formerly Cadila Healthcare) spanning India branded formulations, US generics, consumer wellness products, APIs and a research-led specialty/innovation pipeline.",
+      "revenueModel": "Earns from selling formulations in India and the US (generics), a consumer-wellness business, and APIs. The US generics and India branded businesses are the main revenue drivers.",
+      "businessTags": [
+        "India Branded Formulations",
+        "US Generics",
+        "Consumer Wellness",
+        "APIs",
+        "Innovation Pipeline"
+      ]
+    },
+    "GLENMARK": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 2000,
+      "coreBusiness": "A pharmaceutical company with a branded India and emerging-markets business, a US generics presence, strength in dermatology and respiratory, and an innovation arm pursuing novel molecules.",
+      "revenueModel": "Earns from branded formulations (India and emerging markets), US generics and APIs, with periodic licensing income from its innovation pipeline. Dermatology and respiratory are key franchises.",
+      "businessTags": [
+        "India & Emerging-Market Brands",
+        "US Generics",
+        "Dermatology & Respiratory",
+        "Innovation / R&D"
+      ]
+    },
+    "IPCALAB": {
+      "industry": "Pharmaceuticals",
+      "listedSince": 1995,
+      "coreBusiness": "A pharmaceutical company with a strong India branded business, a major global franchise in antimalarial medicines, an APIs business and exports to many markets.",
+      "revenueModel": "Earns from India branded formulations, export formulations (notably antimalarials, including institutional/WHO supply) and APIs. A leading position in antimalarial APIs and formulations is distinctive.",
+      "businessTags": [
+        "India Branded Formulations",
+        "Antimalarials",
+        "APIs",
+        "Exports"
+      ]
+    },
+    "BIOCON": {
+      "industry": "Pharmaceuticals (Biologics)",
+      "listedSince": 2004,
+      "coreBusiness": "A biopharmaceutical company best known for biosimilars (via Biocon Biologics), alongside a generic-formulations and API business and a research-services arm (Syngene). A pioneer of biologics manufacturing in India.",
+      "revenueModel": "Earns from selling biosimilars in regulated markets, generic formulations and APIs, plus contract research and manufacturing fees through Syngene. Biosimilars are the strategic growth engine.",
+      "businessTags": [
+        "Biosimilars",
+        "Generic Formulations & APIs",
+        "Research Services (Syngene)",
+        "Regulated Markets"
+      ]
+    },
+    "LAURUSLABS": {
+      "industry": "Pharmaceuticals (APIs / CDMO)",
+      "listedSince": 2016,
+      "coreBusiness": "A pharmaceutical company strong in APIs — especially antiretroviral (HIV) ingredients — with a growing formulations business and an expanding contract development and manufacturing (CDMO) franchise.",
+      "revenueModel": "Earns from manufacturing and supplying APIs (a leading position in ARVs), formulations, and contract manufacturing for innovator clients. Diversification into CDMO and formulations is reshaping the mix.",
+      "businessTags": [
+        "APIs (Antiretrovirals)",
+        "Formulations",
+        "CDMO / Custom Synthesis",
+        "Export-Led"
+      ]
+    },
+    "APOLLOHOSP": {
+      "industry": "Healthcare (Hospitals)",
+      "listedSince": 1989,
+      "coreBusiness": "India's leading private hospital chain, running a large network of multi-specialty and tertiary-care hospitals, plus pharmacies and a fast-growing digital health and diagnostics business (including 24/7/HealthCo).",
+      "revenueModel": "Earns from hospital services (in-patient and out-patient treatment, surgeries, diagnostics), a large retail-pharmacy business, and digital health. Bed occupancy, case mix and pharmacy scale drive revenue.",
+      "businessTags": [
+        "Hospitals",
+        "Retail Pharmacy",
+        "Diagnostics",
+        "Digital Health"
+      ]
+    },
+    "MAXHEALTH": {
+      "industry": "Healthcare (Hospitals)",
+      "listedSince": 2020,
+      "coreBusiness": "A leading private hospital network concentrated in north India, running multi-specialty and tertiary-care hospitals under the Max brand, with a focus on high-end clinical specialties.",
+      "revenueModel": "Earns from hospital services — in-patient and out-patient care, surgeries and diagnostics. Occupancy, average revenue per bed and a premium specialty mix in key metros drive earnings.",
+      "businessTags": [
+        "Hospitals",
+        "Tertiary & Quaternary Care",
+        "North India Network"
+      ]
+    },
+    "FORTIS": {
+      "industry": "Healthcare (Hospitals)",
+      "listedSince": 2007,
+      "coreBusiness": "A pan-India private hospital chain providing multi-specialty and tertiary care, paired with a large diagnostics business (Agilus/SRL) serving patients and labs.",
+      "revenueModel": "Earns from hospital services and a diagnostics network (lab tests and pathology). Hospital occupancy and case mix, plus diagnostics volumes, drive revenue.",
+      "businessTags": [
+        "Hospitals",
+        "Diagnostics (Agilus/SRL)",
+        "Multi-Specialty Care"
+      ]
+    },
+    "LALPATHLAB": {
+      "industry": "Healthcare (Diagnostics)",
+      "listedSince": 2015,
+      "coreBusiness": "One of India's largest diagnostic-testing chains, running pathology and clinical laboratories and collection centres nationwide, serving patients, doctors and hospitals.",
+      "revenueModel": "Earns per-test fees across pathology and clinical diagnostics, driven by test volumes, mix of specialised tests, and its hub-and-spoke lab and collection-centre network.",
+      "businessTags": [
+        "Pathology & Diagnostics",
+        "Lab Network",
+        "Collection Centres",
+        "Wellness Testing"
+      ]
+    },
+    "METROPOLIS": {
+      "industry": "Healthcare (Diagnostics)",
+      "listedSince": 2019,
+      "coreBusiness": "A diagnostics company running a network of pathology laboratories and collection centres, with a focus on specialised and high-value clinical tests alongside routine pathology.",
+      "revenueModel": "Earns per-test fees, with profitability tied to test volumes, the share of specialised/esoteric tests, and the efficiency of its lab and collection network.",
+      "businessTags": [
+        "Pathology & Diagnostics",
+        "Specialised Testing",
+        "Lab Network",
+        "Collection Centres"
+      ]
+    },
+    "MARUTI": {
+      "industry": "Automobiles (Passenger Vehicles)",
+      "listedSince": 2003,
+      "coreBusiness": "India's largest passenger-car maker, majority-owned by Suzuki, producing and selling a wide range of hatchbacks, sedans and SUVs with the country's biggest sales and service network.",
+      "revenueModel": "Earns from selling vehicles to dealers, plus spare parts and services. Volumes, model mix (rising SUV share) and operating leverage on its large scale drive margins.",
+      "businessTags": [
+        "Passenger Vehicles",
+        "SUVs",
+        "Spare Parts & Service",
+        "Domestic Market Leader"
+      ]
+    },
+    "M&M": {
+      "industry": "Automobiles (Utility & Tractors)",
+      "listedSince": 1996,
+      "coreBusiness": "A leading maker of SUVs and commercial vehicles and India's largest tractor manufacturer, the flagship of the Mahindra Group, with interests spanning farm equipment, autos and a wider group of businesses.",
+      "revenueModel": "Earns from selling SUVs, commercial vehicles and tractors, plus spare parts and services. Its dominant tractor franchise and a strong SUV portfolio are the main earnings drivers.",
+      "businessTags": [
+        "SUVs",
+        "Tractors / Farm Equipment",
+        "Commercial Vehicles",
+        "Spare Parts & Service"
+      ]
+    },
+    "BAJAJ-AUTO": {
+      "industry": "Automobiles (Two & Three Wheelers)",
+      "listedSince": 2008,
+      "coreBusiness": "One of the world's largest makers of motorcycles and three-wheelers, with a strong domestic franchise and a very large export business, plus partnerships (e.g. KTM) and a growing electric-vehicle range.",
+      "revenueModel": "Earns from selling motorcycles and three-wheelers domestically and as exports, plus spare parts. A premium-bike and export tilt supports margins; exports add geographic diversification.",
+      "businessTags": [
+        "Motorcycles",
+        "Three-Wheelers",
+        "Exports",
+        "Electric Vehicles"
+      ]
+    },
+    "EICHERMOT": {
+      "industry": "Automobiles (Two Wheelers / CV)",
+      "listedSince": 1995,
+      "coreBusiness": "The maker of Royal Enfield mid-size motorcycles — a dominant, highly profitable franchise in its segment — and a partner in the VECV commercial-vehicle joint venture with Volvo.",
+      "revenueModel": "Earns mainly from selling Royal Enfield motorcycles (domestic and growing exports) and spare parts/accessories, plus its share of the VECV truck-and-bus business. Royal Enfield's pricing power drives its high margins.",
+      "businessTags": [
+        "Royal Enfield Motorcycles",
+        "Commercial Vehicles (VECV JV)",
+        "Exports",
+        "Parts & Accessories"
+      ]
+    },
+    "HEROMOTOCO": {
+      "industry": "Automobiles (Two Wheelers)",
+      "listedSince": 2002,
+      "coreBusiness": "The world's largest motorcycle and scooter maker by volume, dominant in India's mass-market commuter two-wheeler segment, with a widening premium and electric-vehicle push.",
+      "revenueModel": "Earns from selling two-wheelers (heavily mass-market commuter bikes) and spare parts, with large domestic volumes driving revenue. Premiumisation and EVs are the strategic growth levers.",
+      "businessTags": [
+        "Motorcycles & Scooters",
+        "Mass-Market Commuter",
+        "Spare Parts",
+        "Electric Vehicles"
+      ]
+    },
+    "TVSMOTOR": {
+      "industry": "Automobiles (Two & Three Wheelers)",
+      "listedSince": 1995,
+      "coreBusiness": "A leading two- and three-wheeler maker with a broad portfolio of motorcycles, scooters and mopeds, a strong export business and an early, fast-growing electric-vehicle franchise (iQube).",
+      "revenueModel": "Earns from selling two- and three-wheelers domestically and as exports, plus spare parts. A balanced portfolio, exports and EV momentum support volumes and margins.",
+      "businessTags": [
+        "Motorcycles & Scooters",
+        "Three-Wheelers",
+        "Exports",
+        "Electric Vehicles"
+      ]
+    },
+    "ASHOKLEY": {
+      "industry": "Automobiles (Commercial Vehicles)",
+      "listedSince": 1995,
+      "coreBusiness": "One of India's largest commercial-vehicle makers, strong in trucks and buses (especially medium and heavy commercial vehicles), with a growing presence in light commercial vehicles, exports and electric mobility.",
+      "revenueModel": "Earns from selling trucks and buses, plus spare parts, engines and services. Revenue is highly cyclical, tracking the freight and infrastructure cycle and government/fleet demand.",
+      "businessTags": [
+        "Trucks & Buses",
+        "Light Commercial Vehicles",
+        "Spare Parts & Engines",
+        "Exports & EVs"
+      ]
+    },
+    "BOSCHLTD": {
+      "industry": "Auto Components",
+      "listedSince": 1995,
+      "coreBusiness": "The Indian arm of the global Bosch group, supplying automotive technology — fuel-injection and powertrain systems, diesel and gasoline components, automotive electronics and aftermarket parts — plus some industrial and consumer products.",
+      "revenueModel": "Earns by supplying components and systems to vehicle makers (OEMs) and a large automotive aftermarket. Revenue tracks vehicle production and the technology shift toward electronics and electrification.",
+      "businessTags": [
+        "Powertrain & Injection Systems",
+        "Automotive Electronics",
+        "Aftermarket",
+        "Industrial Products"
+      ]
+    },
+    "BHARATFORG": {
+      "industry": "Auto Components (Forgings)",
+      "listedSince": 1995,
+      "coreBusiness": "A global metal-forming and forging company supplying critical forged and machined components to commercial-vehicle, passenger-vehicle and industrial customers worldwide, with a growing defence and aerospace business.",
+      "revenueModel": "Earns by supplying forged components to auto OEMs (especially CV) and industrial/defence customers, in India and through overseas operations. Revenue tracks global truck and industrial cycles; defence diversifies it.",
+      "businessTags": [
+        "Auto Forgings (CV & PV)",
+        "Industrial Components",
+        "Defence & Aerospace",
+        "Exports"
+      ]
+    },
+    "SONACOMS": {
+      "industry": "Auto Components (EV-focused)",
+      "listedSince": 2021,
+      "coreBusiness": "An auto-component maker specialising in precision forgings, differential gears and electric-vehicle drivetrain systems (motors and controllers), with a high and rising share of revenue from EV programmes globally.",
+      "revenueModel": "Earns by supplying driveline and EV components to global auto OEMs under model-life programmes. Its EV-heavy order book positions revenue to grow with the global shift to electric vehicles.",
+      "businessTags": [
+        "Differential Gears & Forgings",
+        "EV Drivetrain (Motors/Controllers)",
+        "Global OEM Supply",
+        "Exports"
+      ]
+    },
+    "EXIDEIND": {
+      "industry": "Auto Components (Batteries)",
+      "listedSince": 1995,
+      "coreBusiness": "India's leading lead-acid battery maker, supplying automotive and industrial batteries to vehicle makers and the replacement market, and investing in lithium-ion battery manufacturing for the EV transition.",
+      "revenueModel": "Earns from selling batteries to auto OEMs and, importantly, the higher-margin replacement (aftermarket) segment, plus industrial batteries. Lithium-ion is the strategic bet for future EV demand.",
+      "businessTags": [
+        "Automotive Batteries",
+        "Replacement Market",
+        "Industrial Batteries",
+        "Lithium-Ion (EV)"
+      ]
+    },
+    "APOLLOTYRE": {
+      "industry": "Auto Components (Tyres)",
+      "listedSince": 1995,
+      "coreBusiness": "A leading tyre manufacturer supplying commercial-vehicle, passenger-vehicle and two-wheeler tyres in India and Europe (under the Apollo and Vredestein brands), to both OEMs and the replacement market.",
+      "revenueModel": "Earns from selling tyres to vehicle makers (OEM) and the larger, higher-margin replacement market, in India and Europe. Raw-material (rubber/crude) costs and the replacement mix drive margins.",
+      "businessTags": [
+        "Tyres (CV/PV/2W)",
+        "Replacement Market",
+        "Europe (Vredestein)",
+        "OEM Supply"
+      ]
+    },
+    "BALKRISIND": {
+      "industry": "Auto Components (Tyres)",
+      "listedSince": 1995,
+      "coreBusiness": "A specialist maker of off-highway tyres (agricultural, industrial, construction and mining) sold largely as exports to global replacement markets — a focused niche rather than mainstream car/truck tyres.",
+      "revenueModel": "Earns from selling off-highway tyres, predominantly exported to Europe and other markets via the replacement channel. A cost-competitive niche position supports strong margins.",
+      "businessTags": [
+        "Off-Highway Tyres (Agri/Industrial)",
+        "Export-Led",
+        "Replacement Market"
+      ]
+    },
+    "MRF": {
+      "industry": "Auto Components (Tyres)",
+      "listedSince": 1993,
+      "coreBusiness": "India's largest and most premium tyre maker, supplying tyres across two-wheelers, passenger and commercial vehicles and off-highway segments to OEMs and the replacement market, with a strong brand.",
+      "revenueModel": "Earns from selling tyres to OEMs and the replacement market across vehicle categories. Brand strength and pricing discipline support margins; rubber/crude input costs are the main swing factor.",
+      "businessTags": [
+        "Tyres (All Segments)",
+        "Replacement Market",
+        "Premium Brand",
+        "OEM Supply"
+      ]
+    },
+    "TIINDIA": {
+      "industry": "Auto Components / Engineering",
+      "listedSince": 2017,
+      "coreBusiness": "A Murugappa Group engineering company (Tube Investments) making precision steel tubes, automotive and bicycle components and engineering products, and an investment platform that has expanded into new areas including electric mobility.",
+      "revenueModel": "Earns from selling engineering products — precision tubes, auto components, chains and metal-formed parts — to auto and industrial customers, plus newer ventures. Diversified industrial demand drives revenue.",
+      "businessTags": [
+        "Precision Steel Tubes",
+        "Auto Components",
+        "Engineering Products",
+        "New Mobility Ventures"
+      ]
+    },
+    "HINDUNILVR": {
+      "industry": "FMCG",
+      "listedSince": 1956,
+      "coreBusiness": "India's largest fast-moving consumer goods company, the local arm of Unilever, making and selling home care, beauty and personal care, and foods and refreshment products under a wide stable of leading brands.",
+      "revenueModel": "Earns from high-volume sales of branded consumer products through a vast distribution network. Brand strength, premiumisation and reach drive revenue; raw-material costs and rural demand are key margin factors.",
+      "businessTags": [
+        "Home Care",
+        "Beauty & Personal Care",
+        "Foods & Refreshment",
+        "Mass Distribution"
+      ]
+    },
+    "ITC": {
+      "industry": "FMCG / Diversified",
+      "listedSince": 1970,
+      "coreBusiness": "A diversified conglomerate whose largest profit pool is cigarettes, alongside a big and growing branded-foods and personal-care FMCG business, plus paperboards/packaging, agri-business and hotels.",
+      "revenueModel": "Earns from cigarettes (high-margin, the main profit engine), branded FMCG products, paper and packaging, agri-commodity trading, and hotels. The non-cigarette FMCG and hotels businesses are growth and diversification levers.",
+      "businessTags": [
+        "Cigarettes",
+        "Branded Foods & Personal Care",
+        "Paperboards & Packaging",
+        "Agri-Business",
+        "Hotels"
+      ]
+    },
+    "NESTLEIND": {
+      "industry": "FMCG (Foods)",
+      "listedSince": 1968,
+      "coreBusiness": "The Indian arm of Nestlé, making and selling branded foods and beverages — noodles (Maggi), dairy and nutrition, chocolates and confectionery, and coffee — with some of the country's most recognised food brands.",
+      "revenueModel": "Earns from high-volume sales of branded packaged foods and beverages through wide distribution. Strong brands, pricing power and premiumisation support margins; commodity input costs are the key variable.",
+      "businessTags": [
+        "Packaged Foods (Maggi)",
+        "Dairy & Nutrition",
+        "Chocolates & Confectionery",
+        "Beverages (Coffee)"
+      ]
+    },
+    "BRITANNIA": {
+      "industry": "FMCG (Foods)",
+      "listedSince": 1998,
+      "coreBusiness": "A leading branded-foods company best known for biscuits, with a growing presence in bakery, dairy and other packaged-food adjacencies, marketed under well-established brands.",
+      "revenueModel": "Earns from high-volume sales of branded biscuits and packaged foods through extensive distribution. Brand leadership in biscuits, premiumisation and distribution depth drive revenue and margins.",
+      "businessTags": [
+        "Biscuits",
+        "Bakery & Cakes",
+        "Dairy",
+        "Mass Distribution"
+      ]
+    },
+    "DABUR": {
+      "industry": "FMCG (Ayurveda/Consumer)",
+      "listedSince": 1994,
+      "coreBusiness": "A consumer-goods company rooted in Ayurveda and natural products, spanning health supplements, oral and hair care, home and personal care, and packaged foods/juices, with iconic brands like Dabur and Réal.",
+      "revenueModel": "Earns from branded consumer-product sales (health, personal care, foods) across India and international markets through wide distribution. Its natural/Ayurveda positioning differentiates the portfolio.",
+      "businessTags": [
+        "Health Supplements",
+        "Hair & Oral Care",
+        "Home & Personal Care",
+        "Foods & Beverages (Réal)"
+      ]
+    },
+    "MARICO": {
+      "industry": "FMCG (Personal Care/Foods)",
+      "listedSince": 1996,
+      "coreBusiness": "A consumer-goods company strong in hair oils (Parachute, Nihar), edible oils (Saffola) and a growing foods and premium-personal-care portfolio, with a meaningful international business.",
+      "revenueModel": "Earns from branded sales of hair and edible oils and newer foods/personal-care products, in India and abroad. Leadership in coconut and value-added hair oils anchors revenue; copra/oil costs drive margins.",
+      "businessTags": [
+        "Hair Oils (Parachute)",
+        "Edible Oils (Saffola)",
+        "Foods",
+        "International"
+      ]
+    },
+    "GODREJCP": {
+      "industry": "FMCG (Home/Personal Care)",
+      "listedSince": 2001,
+      "coreBusiness": "A consumer-goods company strong in household insecticides (Goodknight, HIT), soaps and personal care, and hair colour, with large operations in India and emerging markets across Africa, Latin America and Indonesia.",
+      "revenueModel": "Earns from branded sales of home-care and personal-care products in India and international markets. Category leadership (especially insecticides) and emerging-market reach drive revenue.",
+      "businessTags": [
+        "Household Insecticides",
+        "Soaps & Personal Care",
+        "Hair Colour",
+        "Emerging Markets"
+      ]
+    },
+    "COLPAL": {
+      "industry": "FMCG (Oral Care)",
+      "listedSince": 1996,
+      "coreBusiness": "The Indian arm of Colgate-Palmolive, the market leader in oral care — toothpaste and toothbrushes — with a smaller personal-care presence.",
+      "revenueModel": "Earns from high-volume branded oral-care sales through extensive distribution. Dominant market share in toothpaste, brand strength and reach drive its high, stable margins.",
+      "businessTags": [
+        "Oral Care (Toothpaste)",
+        "Toothbrushes",
+        "Personal Care",
+        "Mass Distribution"
+      ]
+    },
+    "EMAMILTD": {
+      "industry": "FMCG (Personal Care)",
+      "listedSince": 2005,
+      "coreBusiness": "A consumer-goods company with a portfolio of well-known niche brands — Navratna cooling oil, BoroPlus, Zandu, Fair and Handsome, Kesh King — spanning personal care, healthcare and Ayurveda.",
+      "revenueModel": "Earns from branded sales of personal-care and healthcare products through wide distribution, with leadership in several niche categories. Seasonal products (e.g. cooling oils, balms) add some seasonality.",
+      "businessTags": [
+        "Personal Care (Navratna, BoroPlus)",
+        "Ayurveda & Healthcare (Zandu)",
+        "Niche Brand Leadership"
+      ]
+    },
+    "TATACONSUM": {
+      "industry": "FMCG (Foods & Beverages)",
+      "listedSince": 1998,
+      "coreBusiness": "The Tata Group's consumer-products company, strong in branded tea and coffee (Tata Tea, Tetley), salt and pulses/staples (Tata Salt, Tata Sampann), packaged water, and newer growth foods/beverages.",
+      "revenueModel": "Earns from branded beverage and food sales in India and internationally, through wide distribution. Leadership in tea and salt anchors revenue; the growth-foods portfolio is the expansion lever.",
+      "businessTags": [
+        "Tea & Coffee",
+        "Salt & Staples",
+        "Packaged Water",
+        "Growth Foods"
+      ]
+    },
+    "VBL": {
+      "industry": "FMCG (Beverages)",
+      "listedSince": 2016,
+      "coreBusiness": "The largest bottler of PepsiCo beverages outside the US, producing and distributing carbonated soft drinks, juices and packaged water across India and several international territories.",
+      "revenueModel": "Earns from manufacturing, distributing and selling PepsiCo-branded beverages across its franchise territories. Volume growth, route expansion and seasonality (summer-heavy) drive revenue.",
+      "businessTags": [
+        "PepsiCo Bottling",
+        "Carbonated Drinks",
+        "Juices & Water",
+        "International Territories"
+      ]
+    },
+    "UNITDSPR": {
+      "industry": "Beverages (Alcohol)",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest spirits company (a Diageo subsidiary), making and selling whisky, rum, vodka and other branded spirits, with a strategy tilted toward premiumisation of its portfolio.",
+      "revenueModel": "Earns from selling branded spirits through state-regulated distribution channels. Premiumisation (higher-margin prestige brands) and volume drive revenue, within a heavily taxed and regulated market.",
+      "businessTags": [
+        "Branded Spirits (Whisky)",
+        "Premiumisation",
+        "Diageo Portfolio"
+      ]
+    },
+    "PATANJALI": {
+      "industry": "FMCG (Foods)",
+      "listedSince": 1991,
+      "coreBusiness": "A packaged-foods company (formerly Ruchi Soya), now the Patanjali group's listed foods arm, focused on edible oils and a growing branded foods and FMCG portfolio (including Nutrela and Patanjali-branded products).",
+      "revenueModel": "Earns from selling edible oils (a large, lower-margin commodity-linked business) and branded foods/FMCG products. The shift toward higher-margin branded foods is the strategic lever.",
+      "businessTags": [
+        "Edible Oils",
+        "Branded Foods",
+        "Nutraceuticals (Nutrela)",
+        "FMCG"
+      ]
+    },
+    "TATASTEEL": {
+      "industry": "Metals & Mining (Steel)",
+      "listedSince": 1992,
+      "coreBusiness": "One of India's largest steelmakers and a global steel producer, with large integrated operations in India and significant capacity in Europe (UK and Netherlands), serving construction, automotive and industrial customers.",
+      "revenueModel": "Earns from selling steel products; profitability swings with global steel prices, raw-material (iron ore, coking coal) costs and demand cycles. India operations are the more profitable, captive-ore-backed base.",
+      "businessTags": [
+        "Steel (India)",
+        "Steel (Europe)",
+        "Mining (Iron Ore)",
+        "Long & Flat Products"
+      ]
+    },
+    "JSWSTEEL": {
+      "industry": "Metals & Mining (Steel)",
+      "listedSince": 1995,
+      "coreBusiness": "One of India's largest and most efficient steelmakers, with large integrated plants and an aggressive capacity-expansion strategy, serving automotive, construction and industrial markets in India and abroad.",
+      "revenueModel": "Earns from selling steel products domestically and as exports; profitability tracks steel prices, raw-material costs and capacity utilisation. Scale and cost efficiency are its competitive levers.",
+      "businessTags": [
+        "Steel (Flat & Long)",
+        "Capacity Expansion",
+        "Exports",
+        "Value-Added Products"
+      ]
+    },
+    "JINDALSTEL": {
+      "industry": "Metals & Mining (Steel)",
+      "listedSince": 1993,
+      "coreBusiness": "A major steel producer (Jindal Steel & Power) making a range of steel products, with captive raw-material assets and an emphasis on long products and plates, plus associated mining and power operations.",
+      "revenueModel": "Earns from selling steel products; margins are driven by steel prices, captive raw-material advantage and capacity utilisation. Backward integration into mining supports cost competitiveness.",
+      "businessTags": [
+        "Steel (Long Products & Plates)",
+        "Captive Mining",
+        "Power",
+        "Capacity Expansion"
+      ]
+    },
+    "SAIL": {
+      "industry": "Metals & Mining (Steel – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "A government-owned integrated steel producer (Steel Authority of India) operating several large steel plants, with captive iron-ore mines, supplying flat and long steel products to construction, railways and industry.",
+      "revenueModel": "Earns from selling steel products; profitability swings sharply with steel prices and demand, supported by captive iron ore but weighed by a high fixed-cost, PSU operating structure.",
+      "businessTags": [
+        "Integrated Steel (PSU)",
+        "Captive Iron Ore",
+        "Flat & Long Products",
+        "Railways & Infra Supply"
+      ]
+    },
+    "HINDALCO": {
+      "industry": "Metals & Mining (Aluminium)",
+      "listedSince": 1995,
+      "coreBusiness": "An Aditya Birla Group metals major producing aluminium and copper in India, and the world's largest aluminium-rolled-products and recycling business through its US subsidiary Novelis.",
+      "revenueModel": "Earns from selling aluminium, copper and — via Novelis — value-added rolled and recycled aluminium products globally. Novelis's stable, conversion-margin business balances the more cyclical India commodity operations.",
+      "businessTags": [
+        "Aluminium (India)",
+        "Copper",
+        "Novelis (Rolled Products)",
+        "Recycling"
+      ]
+    },
+    "VEDL": {
+      "industry": "Metals & Mining (Diversified)",
+      "listedSince": 1995,
+      "coreBusiness": "A diversified natural-resources company with operations across zinc, aluminium, copper, iron ore, oil and gas, and power — one of India's largest private resources groups.",
+      "revenueModel": "Earns from selling metals, minerals and oil/gas; profitability is highly commodity-price-linked across its diversified resource portfolio. Zinc and aluminium are large profit contributors.",
+      "businessTags": [
+        "Zinc",
+        "Aluminium",
+        "Oil & Gas",
+        "Iron Ore & Copper",
+        "Power"
+      ]
+    },
+    "HINDZINC": {
+      "industry": "Metals & Mining (Zinc)",
+      "listedSince": 1991,
+      "coreBusiness": "India's dominant integrated zinc producer (and a major silver and lead producer), with large captive mines — a low-cost global player majority-owned by Vedanta.",
+      "revenueModel": "Earns from selling zinc, lead and silver; profitability is driven by metal prices and its position as one of the world's lowest-cost zinc producers, backed by captive ore.",
+      "businessTags": [
+        "Zinc & Lead",
+        "Silver",
+        "Captive Mining",
+        "Low-Cost Producer"
+      ]
+    },
+    "NATIONALUM": {
+      "industry": "Metals & Mining (Aluminium – PSU)",
+      "listedSince": 1992,
+      "coreBusiness": "A government-owned integrated aluminium and alumina producer (National Aluminium Company) with captive bauxite mines and a large alumina-refining and smelting operation, plus power generation.",
+      "revenueModel": "Earns from selling alumina and aluminium; profitability tracks global alumina/aluminium prices, supported by captive bauxite and power that make it a relatively low-cost producer.",
+      "businessTags": [
+        "Alumina & Aluminium",
+        "Captive Bauxite",
+        "Power",
+        "Export-Linked Pricing"
+      ]
+    },
+    "NMDC": {
+      "industry": "Metals & Mining (Iron Ore – PSU)",
+      "listedSince": 2008,
+      "coreBusiness": "India's largest iron-ore producer, a government-owned miner extracting and selling iron ore to domestic steelmakers, with expanding mining and some downstream/steel interests.",
+      "revenueModel": "Earns from selling iron ore at prices linked to domestic and global benchmarks; volumes, ore prices and royalty/levy structures drive profitability. Low extraction cost supports strong margins.",
+      "businessTags": [
+        "Iron Ore Mining (PSU)",
+        "Domestic Steel Supply",
+        "Pricing-Linked Margins"
+      ]
+    },
+    "COALINDIA": {
+      "industry": "Metals & Mining (Coal – PSU)",
+      "listedSince": 2010,
+      "coreBusiness": "The government-owned near-monopoly coal producer in India, mining and supplying thermal coal primarily to power utilities, plus other industrial customers, through its many subsidiaries.",
+      "revenueModel": "Earns from selling coal under a mix of long-term fuel-supply agreements (to power producers) and e-auctions at higher prices. Volumes, the FSA-versus-e-auction mix and pricing drive earnings; its dominance underpins stability.",
+      "businessTags": [
+        "Thermal Coal Mining (PSU)",
+        "Fuel Supply to Power",
+        "E-Auction Sales",
+        "Near-Monopoly"
+      ]
+    },
+    "APLAPOLLO": {
+      "industry": "Metals (Steel Tubes)",
+      "listedSince": 2010,
+      "coreBusiness": "India's largest maker of structural steel tubes and pipes, used in construction, infrastructure and industrial applications, with a wide product range and a strong branded distribution network.",
+      "revenueModel": "Earns from selling steel tubes and pipes; volumes, product mix (rising share of value-added/heavy structural tubes) and brand-led distribution drive revenue, with steel prices as the key input variable.",
+      "businessTags": [
+        "Structural Steel Tubes",
+        "Value-Added Products",
+        "Construction & Infra",
+        "Branded Distribution"
+      ]
+    },
+    "ABB": {
+      "industry": "Capital Goods (Electrical)",
+      "listedSince": 1992,
+      "coreBusiness": "The Indian arm of the global ABB group, making electrification and automation products and systems — motors, drives, switchgear, robotics and process automation — for industrial, utility and infrastructure customers.",
+      "revenueModel": "Earns from selling electrical and automation equipment and systems to industry and utilities, plus services. Revenue tracks industrial capex and automation demand; a rising services and order-book mix supports margins.",
+      "businessTags": [
+        "Electrification Products",
+        "Industrial Automation",
+        "Motion (Motors & Drives)",
+        "Robotics"
+      ]
+    },
+    "SIEMENS": {
+      "industry": "Capital Goods (Electrical/Industrial)",
+      "listedSince": 1995,
+      "coreBusiness": "The Indian arm of Siemens, supplying products and systems for power transmission and distribution, industrial automation, digital industries, mobility (rail) and smart infrastructure.",
+      "revenueModel": "Earns from selling electrical, automation and infrastructure equipment and projects to industry, utilities and government, plus services. Revenue tracks infrastructure and industrial capex cycles.",
+      "businessTags": [
+        "Power T&D",
+        "Industrial Automation",
+        "Mobility (Rail)",
+        "Smart Infrastructure"
+      ]
+    },
+    "CUMMINSIND": {
+      "industry": "Capital Goods (Engines)",
+      "listedSince": 1995,
+      "coreBusiness": "The Indian arm of Cummins, making diesel and gas engines, gensets and power-generation equipment for industrial, commercial and infrastructure use, plus distribution and after-market parts and service.",
+      "revenueModel": "Earns from selling engines and power-generation equipment to OEMs and end-users, plus a large, higher-margin spare-parts and service business and exports. Industrial and power-backup demand drive revenue.",
+      "businessTags": [
+        "Engines & Gensets",
+        "Power Generation",
+        "Distribution & Service",
+        "Exports"
+      ]
+    },
+    "THERMAX": {
+      "industry": "Capital Goods (Energy/Environment)",
+      "listedSince": 1995,
+      "coreBusiness": "An energy and environment engineering company making boilers, heaters, cooling and chilling systems, air-pollution-control and water/waste-treatment equipment, plus chemicals — increasingly oriented toward clean energy.",
+      "revenueModel": "Earns from selling energy and environment equipment and EPC projects to industrial customers, plus services and chemicals. Revenue tracks industrial capex and the clean-energy/decarbonisation cycle.",
+      "businessTags": [
+        "Boilers & Heaters",
+        "Pollution Control & Water",
+        "Clean Energy",
+        "Specialty Chemicals"
+      ]
+    },
+    "BHEL": {
+      "industry": "Capital Goods (Power Equipment – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "A government-owned heavy-engineering company (Bharat Heavy Electricals), India's largest maker of power-generation equipment — boilers, turbines and generators for thermal plants — plus industrial and transmission equipment.",
+      "revenueModel": "Earns from executing large, long-cycle power and industrial equipment projects won through tenders, recognised over multi-year contracts. Revenue tracks the thermal-power and industrial capex cycle.",
+      "businessTags": [
+        "Thermal Power Equipment",
+        "Industrial Systems",
+        "Transmission Equipment",
+        "EPC / Projects"
+      ]
+    },
+    "CGPOWER": {
+      "industry": "Capital Goods (Electrical)",
+      "listedSince": 1947,
+      "coreBusiness": "An electrical-equipment maker (CG Power & Industrial Solutions) producing motors, transformers, switchgear and power/industrial systems, now part of the Murugappa/Tube Investments group, and expanding into electronics/semiconductors.",
+      "revenueModel": "Earns from selling power and industrial electrical equipment to utilities and industry, plus services and exports. Revenue tracks industrial and grid capex; new electronics ventures are a growth lever.",
+      "businessTags": [
+        "Motors & Drives",
+        "Transformers & Switchgear",
+        "Power Systems",
+        "Electronics / Semiconductors"
+      ]
+    },
+    "APARINDS": {
+      "industry": "Capital Goods (Electrical)",
+      "listedSince": 1995,
+      "coreBusiness": "A maker of conductors (for power transmission), transformer and specialty oils, and power/telecom cables — a supplier to the electricity transmission and distribution value chain, with a large export business.",
+      "revenueModel": "Earns from selling conductors, oils and cables to utilities, transformer makers and industry, in India and as exports. Revenue tracks transmission/grid capex and oil-and-cable demand.",
+      "businessTags": [
+        "Conductors",
+        "Transformer & Specialty Oils",
+        "Power & Telecom Cables",
+        "Exports"
+      ]
+    },
+    "HONAUT": {
+      "industry": "Capital Goods (Automation)",
+      "listedSince": 2003,
+      "coreBusiness": "The Indian arm of Honeywell, providing industrial automation and process-control systems, building-management and safety solutions, sensing and software to industrial, energy and building customers.",
+      "revenueModel": "Earns from selling automation hardware, software and projects to industry and infrastructure, plus services. Revenue tracks industrial automation and digitalisation capex.",
+      "businessTags": [
+        "Process Automation",
+        "Building Solutions",
+        "Sensing & Safety",
+        "Industrial Software"
+      ]
+    },
+    "GVT&D": {
+      "industry": "Capital Goods (Power T&D)",
+      "listedSince": 2016,
+      "coreBusiness": "A power transmission and distribution equipment company (GE Vernova T&D India, formerly GE T&D India / Alstom T&D), making grid equipment — transformers, switchgear, substations and grid-automation systems for utilities.",
+      "revenueModel": "Earns from selling grid equipment and executing substation/transmission projects for utilities and industry, plus services. Revenue tracks transmission and grid-modernisation capex.",
+      "businessTags": [
+        "Grid Equipment (Transformers/Switchgear)",
+        "Substations",
+        "Grid Automation",
+        "Power T&D Projects"
+      ]
+    },
+    "POWERINDIA": {
+      "industry": "Capital Goods (Power T&D)",
+      "listedSince": 2021,
+      "coreBusiness": "A power-technology company (Hitachi Energy India, formerly ABB Power Products) providing grid equipment and solutions — transformers, high-voltage products, HVDC systems and grid automation — for utilities and industry, with a leadership position in HVDC in India.",
+      "revenueModel": "Earns from selling grid and power-technology equipment and executing transmission/HVDC projects for utilities and industry, plus services and exports. Revenue tracks grid, renewables-integration and HVDC capex.",
+      "businessTags": [
+        "Transformers & HV Products",
+        "HVDC Systems",
+        "Grid Automation",
+        "Grid Integration"
+      ]
+    },
+    "ULTRACEMCO": {
+      "industry": "Cement",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest cement producer (Aditya Birla Group), making grey cement, white cement and building products through a nationwide network of integrated and grinding plants.",
+      "revenueModel": "Earns from selling cement; profitability is driven by realisations (price per tonne), capacity utilisation, fuel/energy costs and freight. Scale and pan-India reach are its core advantages.",
+      "businessTags": [
+        "Grey Cement",
+        "White Cement & Putty",
+        "Building Products",
+        "Pan-India Scale"
+      ]
+    },
+    "AMBUJACEM": {
+      "industry": "Cement",
+      "listedSince": 1993,
+      "coreBusiness": "A large cement producer, part of the Adani Group, making and selling cement across India through integrated and grinding units, with a sizeable presence alongside its associate ACC.",
+      "revenueModel": "Earns from selling cement; profitability tracks realisations, capacity utilisation, fuel costs and logistics. Adani-group synergies (power, logistics) are a cost lever.",
+      "businessTags": [
+        "Grey Cement",
+        "Building Materials",
+        "Adani Group",
+        "Logistics Synergies"
+      ]
+    },
+    "ACC": {
+      "industry": "Cement",
+      "listedSince": 1993,
+      "coreBusiness": "One of India's oldest and largest cement makers, part of the Adani Group, producing cement and ready-mix concrete through a wide network of plants.",
+      "revenueModel": "Earns from selling cement and ready-mix concrete; profitability is driven by realisations, utilisation, fuel costs and freight, with group-level cost synergies.",
+      "businessTags": [
+        "Grey Cement",
+        "Ready-Mix Concrete",
+        "Adani Group",
+        "Building Materials"
+      ]
+    },
+    "SHREECEM": {
+      "industry": "Cement",
+      "listedSince": 1985,
+      "coreBusiness": "A large, cost-efficient cement producer with a strong base in north and east India, known for low-cost operations and a sizeable captive power capacity alongside cement manufacturing.",
+      "revenueModel": "Earns from selling cement; its low operating cost (energy efficiency, captive power) is the core advantage. Profitability tracks realisations, utilisation and fuel costs.",
+      "businessTags": [
+        "Grey Cement",
+        "Low-Cost Operations",
+        "Captive Power",
+        "North & East India"
+      ]
+    },
+    "DALBHARAT": {
+      "industry": "Cement",
+      "listedSince": 2018,
+      "coreBusiness": "A large cement producer (Dalmia Bharat) with strong positions in south and east India, making cement with a notable focus on blended, lower-carbon products.",
+      "revenueModel": "Earns from selling cement; profitability tracks realisations, utilisation, fuel costs and freight. Regional strength in the south and east and a green-cement tilt are differentiators.",
+      "businessTags": [
+        "Grey Cement",
+        "Blended / Green Cement",
+        "South & East India"
+      ]
+    },
+    "JKCEMENT": {
+      "industry": "Cement",
+      "listedSince": 2006,
+      "coreBusiness": "A cement producer with a leading position in white cement and wall putty alongside its grey-cement business, serving construction and decorative/finishing applications.",
+      "revenueModel": "Earns from selling grey cement (volume base) and higher-margin white cement and putty (a differentiated, branded niche). The white-cement franchise supports premium margins.",
+      "businessTags": [
+        "Grey Cement",
+        "White Cement & Putty",
+        "Wall Care Products"
+      ]
+    },
+    "RAMCOCEM": {
+      "industry": "Cement",
+      "listedSince": 1995,
+      "coreBusiness": "A south-India-focused cement producer (The Ramco Cements) making cement and building products, with a strong regional brand and presence across southern and eastern markets.",
+      "revenueModel": "Earns from selling cement; profitability tracks south-India realisations, utilisation and fuel costs. Regional brand strength is its core advantage.",
+      "businessTags": [
+        "Grey Cement",
+        "Building Products",
+        "South India Focus"
+      ]
+    },
+    "GRASIM": {
+      "industry": "Diversified (VSF / Chemicals / Holding)",
+      "listedSince": 1995,
+      "coreBusiness": "An Aditya Birla Group flagship spanning viscose staple fibre and filament, chemicals (chlor-alkali), a new paints business (Birla Opus), and — as a holding company — controlling stakes in UltraTech Cement and Aditya Birla Capital.",
+      "revenueModel": "Earns from selling fibre and chemicals and from its growing paints venture, plus value from its large stakes in UltraTech and ABCapital. The cement stake is the dominant value driver beneath the operating businesses.",
+      "businessTags": [
+        "Viscose Fibre",
+        "Chemicals (Chlor-Alkali)",
+        "Paints (Birla Opus)",
+        "Holding (UltraTech, ABCapital)"
+      ]
+    },
+    "NTPC": {
+      "industry": "Power (Generation – PSU)",
+      "listedSince": 2004,
+      "coreBusiness": "India's largest power generator, government-owned, operating a huge fleet of thermal plants plus growing hydro and renewable capacity, selling electricity mainly to state distribution utilities.",
+      "revenueModel": "Earns a regulated return on its power-generation assets under long-term power-purchase agreements (a largely cost-plus, assured-return model), with growth from capacity additions including renewables.",
+      "businessTags": [
+        "Thermal Generation",
+        "Renewables (NTPC Green)",
+        "Hydro",
+        "Regulated Returns (PPAs)"
+      ]
+    },
+    "POWERGRID": {
+      "industry": "Power (Transmission – PSU)",
+      "listedSince": 2007,
+      "coreBusiness": "India's dominant electricity-transmission utility, government-owned, building and operating the high-voltage inter-state transmission grid that moves power across the country.",
+      "revenueModel": "Earns a regulated return on its transmission assets (a stable, annuity-like, cost-plus model), with growth from new transmission projects — increasingly to evacuate renewable power.",
+      "businessTags": [
+        "Inter-State Transmission",
+        "Regulated Returns",
+        "Grid Infrastructure",
+        "Renewables Evacuation"
+      ]
+    },
+    "TATAPOWER": {
+      "industry": "Power (Integrated)",
+      "listedSince": 1995,
+      "coreBusiness": "An integrated power company (Tata Group) spanning generation (thermal, hydro and a large and growing renewables arm), transmission, and electricity distribution, plus solar EPC and EV-charging.",
+      "revenueModel": "Earns from regulated distribution and transmission, power generation (regulated and merchant), and a growing renewables and solar-solutions business. The shift toward renewables and distribution is the strategic driver.",
+      "businessTags": [
+        "Generation (Thermal & Renewables)",
+        "Distribution",
+        "Transmission",
+        "Solar EPC & EV Charging"
+      ]
+    },
+    "TORNTPOWER": {
+      "industry": "Power (Integrated)",
+      "listedSince": 2006,
+      "coreBusiness": "An integrated power utility generating electricity (gas, coal and renewables) and distributing it in licensed areas (notably in Gujarat and other cities), with a growing renewables portfolio.",
+      "revenueModel": "Earns from regulated electricity distribution in its licensed areas and from power generation (regulated and merchant), plus renewables. Distribution licences provide a stable, annuity-like base.",
+      "businessTags": [
+        "Power Distribution (Licensed)",
+        "Generation (Gas/Coal/Renewables)",
+        "Renewables Expansion"
+      ]
+    },
+    "JSWENERGY": {
+      "industry": "Power (Generation)",
+      "listedSince": 2010,
+      "coreBusiness": "A power-generation company (JSW Group) with thermal and hydro capacity and a large, fast-growing renewables and energy-storage pipeline, selling power under long-term contracts and on the merchant market.",
+      "revenueModel": "Earns from selling power under PPAs and on the merchant market; growth is led by an aggressive renewables and storage build-out. Plant availability, tariffs and capacity additions drive revenue.",
+      "businessTags": [
+        "Thermal & Hydro Generation",
+        "Renewables & Storage",
+        "PPAs & Merchant Power"
+      ]
+    },
+    "NHPC": {
+      "industry": "Power (Hydro – PSU)",
+      "listedSince": 2009,
+      "coreBusiness": "India's largest hydropower generator, government-owned, operating large hydroelectric plants and expanding into solar and other renewables, selling power to state utilities.",
+      "revenueModel": "Earns a regulated return on its hydro (and new renewable) generation assets under long-term agreements — a stable, cost-plus model — with growth from new project commissioning.",
+      "businessTags": [
+        "Hydropower Generation (PSU)",
+        "Renewables Expansion",
+        "Regulated Returns (PPAs)"
+      ]
+    },
+    "CESC": {
+      "industry": "Power (Distribution)",
+      "listedSince": 1995,
+      "coreBusiness": "An integrated power utility (RP-Sanjiv Goenka Group) that generates and, distinctively, distributes electricity to Kolkata and other licensed areas, with some generation and distribution franchises beyond its home base.",
+      "revenueModel": "Earns mainly from regulated electricity distribution in its licensed areas (a stable, annuity-like base) plus power generation. Distribution licences anchor predictable revenue.",
+      "businessTags": [
+        "Power Distribution (Kolkata)",
+        "Generation",
+        "Distribution Franchises"
+      ]
+    },
+    "ADANIPOWER": {
+      "industry": "Power (Generation)",
+      "listedSince": 2009,
+      "coreBusiness": "India's largest private thermal-power generator (Adani Group), operating a large fleet of coal-fired plants and selling electricity to state utilities and on the merchant market, with capacity expansion underway.",
+      "revenueModel": "Earns from selling power under long-term PPAs and on the merchant market; profitability tracks plant availability, tariffs, fuel costs and capacity additions.",
+      "businessTags": [
+        "Thermal Generation",
+        "PPAs & Merchant Power",
+        "Capacity Expansion",
+        "Adani Group"
+      ]
+    },
+    "ADANIGREEN": {
+      "industry": "Power (Renewables)",
+      "listedSince": 2018,
+      "coreBusiness": "One of India's largest renewable-energy companies (Adani Group), developing, owning and operating large solar and wind power plants, with an aggressive capacity-growth target.",
+      "revenueModel": "Earns from selling renewable power under long-term PPAs (stable, contracted cash flows). Revenue grows with new capacity commissioning; the business is capital-intensive and leverage-sensitive.",
+      "businessTags": [
+        "Solar Power",
+        "Wind Power",
+        "Long-Term PPAs",
+        "Capacity Build-Out"
+      ]
+    },
+    "ADANIENSOL": {
+      "industry": "Power (Transmission & Distribution)",
+      "listedSince": 2023,
+      "coreBusiness": "The Adani Group's power transmission and distribution company (Adani Energy Solutions), building and operating transmission lines, distributing electricity (notably in Mumbai), and running a smart-metering business.",
+      "revenueModel": "Earns regulated, annuity-like returns from transmission assets and electricity distribution, plus a growing smart-metering business. Stable, contracted cash flows with growth from new projects.",
+      "businessTags": [
+        "Power Transmission",
+        "Distribution (Mumbai)",
+        "Smart Metering",
+        "Regulated Returns"
+      ]
+    },
+    "SUZLON": {
+      "industry": "Renewables (Wind Equipment)",
+      "listedSince": 2005,
+      "coreBusiness": "A wind-energy company that designs, makes and installs wind turbines and provides operations-and-maintenance services for wind farms across India — one of the country's largest wind-turbine makers.",
+      "revenueModel": "Earns from selling and installing wind turbines (project-linked, cyclical) and from a recurring, higher-margin operations-and-maintenance services business across its large installed fleet.",
+      "businessTags": [
+        "Wind Turbines",
+        "O&M Services",
+        "Wind Farm EPC",
+        "Renewables"
+      ]
+    },
+    "INOXWIND": {
+      "industry": "Renewables (Wind Equipment)",
+      "listedSince": 2015,
+      "coreBusiness": "A wind-energy company making wind-turbine generators and providing EPC and operations-and-maintenance services for wind projects, supplying developers and independent power producers.",
+      "revenueModel": "Earns from selling and installing wind turbines (project-linked) plus recurring O&M services. Revenue tracks the wind-installation cycle and its order book.",
+      "businessTags": [
+        "Wind Turbines",
+        "EPC",
+        "O&M Services",
+        "Renewables"
+      ]
+    },
+    "ONGC": {
+      "industry": "Oil & Gas (Upstream – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest oil-and-gas exploration and production company, government-owned, extracting crude oil and natural gas from domestic and overseas fields, and owning the refiner HPCL plus downstream interests.",
+      "revenueModel": "Earns from selling crude oil and natural gas; profitability is highly sensitive to global oil and gas prices and production volumes. Downstream (HPCL) adds an integrated dimension.",
+      "businessTags": [
+        "Crude Oil E&P",
+        "Natural Gas",
+        "Overseas Assets (OVL)",
+        "Downstream (HPCL)"
+      ]
+    },
+    "OIL": {
+      "industry": "Oil & Gas (Upstream – PSU)",
+      "listedSince": 2009,
+      "coreBusiness": "A government-owned oil-and-gas exploration and production company (Oil India), extracting crude oil and natural gas mainly from northeastern India, with transportation and overseas interests.",
+      "revenueModel": "Earns from selling crude oil and natural gas; profitability tracks global oil/gas prices and production. Pipeline-transportation and overseas assets add smaller revenue streams.",
+      "businessTags": [
+        "Crude Oil E&P",
+        "Natural Gas",
+        "Pipeline Transportation",
+        "Overseas Assets"
+      ]
+    },
+    "IOC": {
+      "industry": "Oil & Gas (Downstream – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest oil refining and fuel-marketing company, government-owned (Indian Oil), operating refineries, pipelines and a vast retail fuel network, plus petrochemicals and growing gas and green-energy interests.",
+      "revenueModel": "Earns from refining crude into fuels and marketing them through its retail network; profitability is driven by refining margins (GRMs) and marketing margins, both volatile and partly policy-influenced.",
+      "businessTags": [
+        "Refining",
+        "Fuel Marketing",
+        "Pipelines",
+        "Petrochemicals & Gas"
+      ]
+    },
+    "BPCL": {
+      "industry": "Oil & Gas (Downstream – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "A government-owned oil refining and fuel-marketing company (Bharat Petroleum), operating refineries and a large retail fuel network, with petrochemicals, gas and upstream interests.",
+      "revenueModel": "Earns from refining and marketing petroleum products; profitability tracks refining margins and marketing margins, which are volatile and partly policy-sensitive.",
+      "businessTags": [
+        "Refining",
+        "Fuel Marketing",
+        "Petrochemicals",
+        "Gas & Upstream"
+      ]
+    },
+    "HINDPETRO": {
+      "industry": "Oil & Gas (Downstream – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "A government-owned oil refining and fuel-marketing company (Hindustan Petroleum, an ONGC subsidiary), operating refineries and a large retail network, with expanding petrochemicals capacity.",
+      "revenueModel": "Earns from refining and marketing petroleum products; profitability is driven by volatile refining and marketing margins, with petrochemicals as a growth lever.",
+      "businessTags": [
+        "Refining",
+        "Fuel Marketing",
+        "Petrochemicals",
+        "Retail Network"
+      ]
+    },
+    "GAIL": {
+      "industry": "Oil & Gas (Gas Utility – PSU)",
+      "listedSince": 1997,
+      "coreBusiness": "India's largest natural-gas transmission and marketing company, government-owned, operating the country's main gas-pipeline network, trading gas, and running petrochemicals and LPG businesses.",
+      "revenueModel": "Earns regulated tariffs on gas transmission (a stable base), margins on gas marketing/trading, and petrochemical sales. The transmission network provides annuity-like cash flows; trading and petchem add cyclicality.",
+      "businessTags": [
+        "Gas Transmission",
+        "Gas Marketing & Trading",
+        "Petrochemicals",
+        "LPG"
+      ]
+    },
+    "PETRONET": {
+      "industry": "Oil & Gas (LNG Infrastructure)",
+      "listedSince": 2004,
+      "coreBusiness": "India's largest liquefied-natural-gas (LNG) importer, operating LNG regasification terminals (notably Dahej) that receive imported LNG and turn it back into gas for the domestic market.",
+      "revenueModel": "Earns regasification charges on LNG processed through its terminals — a largely volume-and-tariff-driven, infrastructure-like model. Terminal utilisation and capacity additions drive revenue.",
+      "businessTags": [
+        "LNG Regasification",
+        "Import Terminals",
+        "Tariff-Based Income",
+        "Gas Infrastructure"
+      ]
+    },
+    "ATGL": {
+      "industry": "Oil & Gas (City Gas Distribution)",
+      "listedSince": 2018,
+      "coreBusiness": "A city-gas distribution company (Adani Total Gas, a JV with TotalEnergies) supplying piped natural gas to homes and industry and compressed natural gas (CNG) to vehicles across its licensed geographies, plus an e-mobility/biogas push.",
+      "revenueModel": "Earns from selling piped and compressed natural gas to households, industry and vehicles in its licensed areas — a volume-and-margin business with regulatory protection in early years. Network expansion drives growth.",
+      "businessTags": [
+        "Piped Natural Gas (PNG)",
+        "CNG (Vehicles)",
+        "City Gas Distribution",
+        "E-Mobility & Biogas"
+      ]
+    },
+    "ASIANPAINT": {
+      "industry": "Paints",
+      "listedSince": 1991,
+      "coreBusiness": "India's largest paints company, making and selling decorative and industrial paints and coatings, with a growing home-décor and waterproofing business and a vast dealer network.",
+      "revenueModel": "Earns from selling paints and coatings, overwhelmingly through the decorative (repainting) market via an extensive dealer and tinting-machine network. Brand strength and distribution drive its strong margins.",
+      "businessTags": [
+        "Decorative Paints",
+        "Industrial Coatings",
+        "Home Décor & Waterproofing",
+        "Dealer Network"
+      ]
+    },
+    "BERGEPAINT": {
+      "industry": "Paints",
+      "listedSince": 1995,
+      "coreBusiness": "India's second-largest paints company (Berger Paints), making decorative and industrial/protective coatings, with a strong presence in eastern India and a wide dealer network.",
+      "revenueModel": "Earns from selling decorative and industrial paints through its dealer network. Decorative repainting demand, brand and distribution drive revenue; input (crude-linked) costs affect margins.",
+      "businessTags": [
+        "Decorative Paints",
+        "Protective & Industrial Coatings",
+        "Dealer Network",
+        "East India Strength"
+      ]
+    },
+    "KANSAINER": {
+      "industry": "Paints",
+      "listedSince": 1995,
+      "coreBusiness": "A paints company (Kansai Nerolac) with a particularly strong position in automotive and industrial coatings alongside a decorative-paints business, backed by its Japanese parent Kansai Paint.",
+      "revenueModel": "Earns from selling decorative paints (dealer-led) and a large industrial/automotive coatings business (OEM-linked). The auto-coatings franchise differentiates it; auto and construction demand drive revenue.",
+      "businessTags": [
+        "Automotive Coatings",
+        "Industrial Coatings",
+        "Decorative Paints",
+        "OEM Supply"
+      ]
+    },
+    "PIDILITIND": {
+      "industry": "Chemicals (Adhesives)",
+      "listedSince": 1993,
+      "coreBusiness": "India's dominant adhesives and sealants company, maker of Fevicol and a wide range of construction chemicals, sealants, art materials and other consumer/industrial adhesive products.",
+      "revenueModel": "Earns from selling branded adhesives and construction chemicals through a vast distribution network. Near-monopoly brand strength in adhesives gives it pricing power and high margins.",
+      "businessTags": [
+        "Adhesives (Fevicol)",
+        "Construction Chemicals",
+        "Sealants",
+        "Consumer & Art Products"
+      ]
+    },
+    "SRF": {
+      "industry": "Chemicals (Specialty/Diversified)",
+      "listedSince": 1996,
+      "coreBusiness": "A diversified chemicals and materials company strong in fluorochemicals and specialty (agro/pharma) chemicals, plus packaging films and technical textiles — with specialty chemicals as the strategic growth engine.",
+      "revenueModel": "Earns from selling specialty and fluorochemicals (the high-margin, high-growth core), packaging films and technical textiles, much of it exported. Specialty-chemical contracts with global innovators drive growth.",
+      "businessTags": [
+        "Specialty Chemicals",
+        "Fluorochemicals",
+        "Packaging Films",
+        "Technical Textiles"
+      ]
+    },
+    "DEEPAKNTR": {
+      "industry": "Chemicals",
+      "listedSince": 1993,
+      "coreBusiness": "A chemicals company (Deepak Nitrite) making basic and specialty chemicals, including a large phenol-and-acetone business, plus performance and fine chemicals serving multiple industries.",
+      "revenueModel": "Earns from selling basic, specialty and performance chemicals to industrial customers, with import-substitution in phenol/acetone a key driver. Revenue tracks chemical-demand cycles and spreads.",
+      "businessTags": [
+        "Phenol & Acetone",
+        "Specialty Chemicals",
+        "Performance Products",
+        "Import Substitution"
+      ]
+    },
+    "AARTIIND": {
+      "industry": "Chemicals (Specialty)",
+      "listedSince": 1995,
+      "coreBusiness": "A specialty-chemicals company (Aarti Industries) making benzene-based and other specialty/intermediate chemicals used in pharma, agrochemicals, dyes, polymers and other industries, with a large export business.",
+      "revenueModel": "Earns from selling specialty chemicals and intermediates to global and domestic customers, including long-term supply contracts. Revenue tracks chemical-demand cycles, spreads and contract ramp-ups.",
+      "businessTags": [
+        "Specialty Chemicals",
+        "Benzene Derivatives",
+        "Long-Term Contracts",
+        "Exports"
+      ]
+    },
+    "PIIND": {
+      "industry": "Chemicals (Agrochemicals/CSM)",
+      "listedSince": 2004,
+      "coreBusiness": "A company (PI Industries) specialising in custom synthesis and manufacturing (CSM) of agrochemicals for global innovators, plus a domestic branded agro-inputs business and a pharma-CDMO push.",
+      "revenueModel": "Earns largely from contract manufacturing of patented agrochemical molecules for global innovators (a sticky, high-margin export business), plus domestic branded agri-input sales. CSM order book drives growth.",
+      "businessTags": [
+        "Agrochemical CSM (Exports)",
+        "Domestic Agri-Inputs",
+        "Custom Synthesis",
+        "Pharma CDMO (Emerging)"
+      ]
+    },
+    "COROMANDEL": {
+      "industry": "Chemicals (Fertilisers)",
+      "listedSince": 1995,
+      "coreBusiness": "A leading fertiliser and crop-protection company (Murugappa Group), making phosphatic fertilisers (notably DAP/complexes), pesticides and specialty nutrients for Indian farmers.",
+      "revenueModel": "Earns from selling fertilisers (volume-and-subsidy-linked) and higher-margin crop-protection and specialty-nutrient products. Subsidy policy, raw-material costs and the monsoon/agri cycle drive revenue.",
+      "businessTags": [
+        "Phosphatic Fertilisers",
+        "Crop Protection",
+        "Specialty Nutrients",
+        "Agri-Inputs"
+      ]
+    },
+    "UPL": {
+      "industry": "Chemicals (Agrochemicals)",
+      "listedSince": 1995,
+      "coreBusiness": "A global agrochemicals company, one of the world's largest makers of generic crop-protection products (herbicides, fungicides, insecticides) and seeds, selling across many countries.",
+      "revenueModel": "Earns from selling off-patent crop-protection products and seeds worldwide. Revenue tracks global agrochemical demand, pricing and the agri cycle; scale and a broad geographic footprint are key.",
+      "businessTags": [
+        "Crop Protection (Generics)",
+        "Seeds",
+        "Global Distribution",
+        "Specialty Agri-Solutions"
+      ]
+    },
+    "TATACHEM": {
+      "industry": "Chemicals (Soda Ash)",
+      "listedSince": 1995,
+      "coreBusiness": "A chemicals company (Tata Chemicals) and one of the world's largest soda-ash producers, with operations in India, the US, the UK and Kenya, plus specialty chemicals and salt.",
+      "revenueModel": "Earns mainly from selling soda ash and other basic chemicals globally, plus specialty products and salt. Revenue tracks soda-ash prices and demand (glass, detergents, solar); global capacity gives scale.",
+      "businessTags": [
+        "Soda Ash",
+        "Basic Chemicals",
+        "Specialty Products",
+        "Salt"
+      ]
+    },
+    "SOLARINDS": {
+      "industry": "Chemicals (Explosives/Defence)",
+      "listedSince": 2006,
+      "coreBusiness": "The world's largest industrial-explosives maker by some measures (Solar Industries), supplying explosives and initiating systems to mining and infrastructure, with a fast-growing defence (ammunition, propellants) business.",
+      "revenueModel": "Earns from selling industrial explosives and accessories to mining/infrastructure customers (including Coal India), plus a rapidly growing, higher-margin defence order book. Mining demand and defence orders drive revenue.",
+      "businessTags": [
+        "Industrial Explosives",
+        "Initiating Systems",
+        "Defence (Ammunition)",
+        "Exports"
+      ]
+    },
+    "BHARTIARTL": {
+      "industry": "Telecom",
+      "listedSince": 2002,
+      "coreBusiness": "India's second-largest telecom operator (Bharti Airtel), providing mobile, broadband and enterprise connectivity in India, plus a large Africa business and digital-services and data-centre adjacencies.",
+      "revenueModel": "Earns recurring subscription and usage revenue from mobile and broadband customers in India and Africa, plus enterprise/connectivity services. ARPU (revenue per user), subscriber growth and data usage drive revenue.",
+      "businessTags": [
+        "Mobile Services",
+        "Broadband & Home",
+        "Africa Operations",
+        "Enterprise & Digital"
+      ]
+    },
+    "IDEA": {
+      "industry": "Telecom",
+      "listedSince": 2007,
+      "coreBusiness": "A telecom operator (Vodafone Idea) providing mobile and broadband services in India, the financially weakest of the three large private operators, working to fund network investment and stabilise its subscriber base.",
+      "revenueModel": "Earns recurring mobile subscription and usage revenue; ARPU and subscriber retention are critical. The business is heavily leveraged and dependent on funding and government dues relief.",
+      "businessTags": [
+        "Mobile Services",
+        "Broadband",
+        "Subscriber Retention Focus"
+      ]
+    },
+    "INDUSTOWER": {
+      "industry": "Telecom (Infrastructure)",
+      "listedSince": 2007,
+      "coreBusiness": "India's largest telecom-tower company (Indus Towers), owning and operating passive infrastructure (towers) that it leases to mobile operators for hosting their network equipment.",
+      "revenueModel": "Earns recurring rental income from mobile operators that lease space on its towers — a stable, annuity-like model. Tenancy (operators per tower), tower count and collections drive revenue.",
+      "businessTags": [
+        "Telecom Towers",
+        "Passive Infrastructure Leasing",
+        "Recurring Rentals"
+      ]
+    },
+    "TATACOMM": {
+      "industry": "Telecom (Enterprise/Data)",
+      "listedSince": 2002,
+      "coreBusiness": "A global enterprise-connectivity and digital-infrastructure company (Tata Communications) providing international and domestic data networks, cloud, collaboration and IoT/digital services to businesses worldwide.",
+      "revenueModel": "Earns recurring revenue from enterprise data and connectivity services and a growing digital-platforms portfolio. The shift from legacy voice toward higher-margin data and digital services drives the mix.",
+      "businessTags": [
+        "Enterprise Connectivity",
+        "Data Networks",
+        "Cloud & Collaboration",
+        "Digital Platforms"
+      ]
+    },
+    "TITAN": {
+      "industry": "Consumer (Jewellery/Lifestyle)",
+      "listedSince": 1987,
+      "coreBusiness": "A Tata Group consumer-lifestyle company best known for jewellery (Tanishq), plus watches, eyewear and other lifestyle products — jewellery being by far the largest business.",
+      "revenueModel": "Earns mainly from selling branded jewellery through its retail network, plus watches and eyewear. Brand trust, store expansion and the organised-market shift in jewellery drive revenue; gold prices affect the mix.",
+      "businessTags": [
+        "Jewellery (Tanishq)",
+        "Watches & Wearables",
+        "Eyewear",
+        "Retail Expansion"
+      ]
+    },
+    "TRENT": {
+      "industry": "Retail (Apparel)",
+      "listedSince": 1995,
+      "coreBusiness": "A Tata Group fashion-and-lifestyle retailer operating the fast-growing Westside and Zudio store chains, plus other formats — a leader in value and mid-market apparel retail.",
+      "revenueModel": "Earns from selling apparel and lifestyle products through its own-brand store network. Aggressive store rollout (especially Zudio), strong same-store growth and a private-label model drive revenue and margins.",
+      "businessTags": [
+        "Fashion Retail (Westside)",
+        "Value Fashion (Zudio)",
+        "Private Labels",
+        "Store Expansion"
+      ]
+    },
+    "DMART": {
+      "industry": "Retail (Grocery)",
+      "listedSince": 2017,
+      "coreBusiness": "India's most efficient value grocery and general-merchandise retailer (Avenue Supermarts, operating DMart), running large-format everyday-low-price stores concentrated in west and south India.",
+      "revenueModel": "Earns retail margins on high-volume sales of groceries, household goods and apparel, with an everyday-low-price, cost-leadership model. Store productivity, owned real estate and tight costs drive its strong returns.",
+      "businessTags": [
+        "Value Grocery Retail",
+        "General Merchandise",
+        "Everyday Low Prices",
+        "Owned Stores"
+      ]
+    },
+    "VMART": {
+      "industry": "Retail (Apparel)",
+      "listedSince": 2013,
+      "coreBusiness": "A value-fashion and general-merchandise retailer (V-Mart) focused on small-town and semi-urban India in the north and east, serving price-sensitive, aspirational customers.",
+      "revenueModel": "Earns retail margins on value apparel and general merchandise through its store network in tier-2/3/4 towns. Store expansion, same-store growth and a value positioning drive revenue.",
+      "businessTags": [
+        "Value Fashion Retail",
+        "Tier 2/3/4 Towns",
+        "General Merchandise",
+        "Store Expansion"
+      ]
+    },
+    "PAGEIND": {
+      "industry": "Consumer (Innerwear/Apparel)",
+      "listedSince": 2007,
+      "coreBusiness": "The exclusive Indian licensee and maker of Jockey innerwear and leisurewear (and Speedo swimwear), a leader in the branded innerwear market with a strong distribution network.",
+      "revenueModel": "Earns from selling branded innerwear and leisurewear through wide distribution and exclusive stores. Brand strength (Jockey), category leadership and distribution depth drive revenue and high margins.",
+      "businessTags": [
+        "Innerwear (Jockey)",
+        "Leisurewear",
+        "Swimwear (Speedo)",
+        "Branded Distribution"
+      ]
+    },
+    "DLF": {
+      "industry": "Real Estate",
+      "listedSince": 2007,
+      "coreBusiness": "India's largest real-estate developer (DLF), building and selling residential projects (especially premium homes in the Delhi-NCR region) and owning a large portfolio of leased commercial offices and retail through its rental arm.",
+      "revenueModel": "Earns from selling residential developments (lumpy, project-linked) and from recurring rental income on its commercial office and retail portfolio. The annuity rental business adds stability to development cash flows.",
+      "businessTags": [
+        "Residential Development",
+        "Commercial Leasing (Offices)",
+        "Retail Malls",
+        "Delhi-NCR Focus"
+      ]
+    },
+    "LODHA": {
+      "industry": "Real Estate",
+      "listedSince": 2021,
+      "coreBusiness": "A large residential real-estate developer (Macrotech Developers, Lodha brand) focused on the Mumbai region and Pune, across affordable, mid-market and premium housing, with a growing logistics/industrial-parks arm.",
+      "revenueModel": "Earns mainly from selling residential developments (project-linked), with a growing annuity stream from logistics and commercial assets. Pre-sales (bookings), execution pace and the housing cycle drive revenue.",
+      "businessTags": [
+        "Residential Development",
+        "Mumbai & Pune Focus",
+        "Logistics & Industrial Parks"
+      ]
+    },
+    "GODREJPROP": {
+      "industry": "Real Estate",
+      "listedSince": 2010,
+      "coreBusiness": "A leading residential real-estate developer (Godrej Properties) operating across major Indian cities, often through joint-development and asset-light partnerships, leveraging the Godrej brand.",
+      "revenueModel": "Earns from selling residential developments (project-linked); a capital-efficient, joint-development model drives expansion. Pre-sales, project launches and the housing cycle drive revenue.",
+      "businessTags": [
+        "Residential Development",
+        "Joint-Development Model",
+        "Pan-India Presence",
+        "Godrej Brand"
+      ]
+    },
+    "OBEROIRLTY": {
+      "industry": "Real Estate",
+      "listedSince": 2010,
+      "coreBusiness": "A premium Mumbai-focused real-estate developer (Oberoi Realty) building high-end residential projects and owning commercial offices, malls and a hotel — a developer plus an annuity-asset owner.",
+      "revenueModel": "Earns from selling premium residential developments and from recurring rental income on its commercial and retail assets (plus hospitality). The annuity portfolio balances lumpy residential cash flows.",
+      "businessTags": [
+        "Premium Residential",
+        "Commercial Leasing",
+        "Retail Malls",
+        "Mumbai Focus"
+      ]
+    },
+    "PRESTIGE": {
+      "industry": "Real Estate",
+      "listedSince": 2010,
+      "coreBusiness": "A diversified real-estate developer (Prestige Estates) strong in south India (especially Bengaluru), spanning residential, commercial offices, retail and hospitality, with a growing annuity portfolio.",
+      "revenueModel": "Earns from selling residential developments (project-linked) and from recurring rental income on commercial, retail and hospitality assets. Pre-sales and the build-out of annuity assets drive revenue.",
+      "businessTags": [
+        "Residential Development",
+        "Commercial & Retail Leasing",
+        "Hospitality",
+        "South India Focus"
+      ]
+    },
+    "PHOENIXLTD": {
+      "industry": "Real Estate (Retail-Led)",
+      "listedSince": 2007,
+      "coreBusiness": "India's largest retail-mall developer and operator (Phoenix Mills), owning and running flagship shopping malls, with associated commercial offices, hospitality and some residential.",
+      "revenueModel": "Earns recurring rental income (often linked to tenant sales) from its malls — a stable, consumption-linked annuity model — plus offices, hospitality and residential. Mall footfalls and consumption drive revenue.",
+      "businessTags": [
+        "Retail Malls",
+        "Rental Income (Consumption-Linked)",
+        "Commercial Offices",
+        "Hospitality"
+      ]
+    },
+    "BRIGADE": {
+      "industry": "Real Estate",
+      "listedSince": 2007,
+      "coreBusiness": "A south-India-focused real-estate developer (Brigade Enterprises), strong in Bengaluru, across residential, commercial offices, retail and hospitality.",
+      "revenueModel": "Earns from selling residential developments (project-linked) and recurring rental income from commercial, retail and hospitality assets. Pre-sales and annuity-asset growth drive revenue.",
+      "businessTags": [
+        "Residential Development",
+        "Commercial Leasing",
+        "Hospitality & Retail",
+        "Bengaluru Focus"
+      ]
+    },
+    "ADANIPORTS": {
+      "industry": "Infrastructure (Ports/Logistics)",
+      "listedSince": 2007,
+      "coreBusiness": "India's largest private port operator (Adani Ports & SEZ), owning and operating a network of ports and terminals along India's coast, plus logistics, rail and SEZ businesses.",
+      "revenueModel": "Earns from cargo-handling charges at its ports and from logistics services — a volume-and-tariff-driven model. Cargo throughput, port mix and integrated logistics drive revenue; trade volumes are the key variable.",
+      "businessTags": [
+        "Port Operations",
+        "Cargo Handling",
+        "Logistics & Rail",
+        "SEZ"
+      ]
+    },
+    "GMRAIRPORT": {
+      "industry": "Infrastructure (Airports)",
+      "listedSince": 2006,
+      "coreBusiness": "An airport developer and operator (GMR Airports) running major Indian airports including Delhi and Hyderabad, plus overseas airport interests — earning from both aeronautical and commercial (retail, real estate) airport activities.",
+      "revenueModel": "Earns regulated aeronautical charges (per passenger/aircraft) and higher-margin non-aeronautical income (retail, F&B, advertising, land monetisation) at its airports. Passenger traffic is the core driver.",
+      "businessTags": [
+        "Airport Operations (Delhi/Hyderabad)",
+        "Aeronautical Charges",
+        "Retail & Commercial (Non-Aero)",
+        "Land Monetisation"
+      ]
+    },
+    "CONCOR": {
+      "industry": "Logistics (Rail – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "A government-owned container logistics company (Container Corporation of India) operating rail-based container transport and a network of inland container depots and terminals across the country.",
+      "revenueModel": "Earns from rail freight on containers and from terminal/handling and warehousing services — a volume-and-tariff model tied to EXIM and domestic trade. Container volumes and the rail-versus-road mix drive revenue.",
+      "businessTags": [
+        "Rail Container Logistics",
+        "Inland Container Depots",
+        "EXIM & Domestic Cargo",
+        "Terminals"
+      ]
+    },
+    "BLUEDART": {
+      "industry": "Logistics (Express)",
+      "listedSince": 1994,
+      "coreBusiness": "India's leading premium express-logistics and parcel-delivery company (Blue Dart, part of DHL), offering time-definite air and ground express delivery for documents and parcels, including e-commerce.",
+      "revenueModel": "Earns per-shipment charges on express deliveries, with a premium positioning. Shipment volumes (including e-commerce), yields and its dedicated air network drive revenue.",
+      "businessTags": [
+        "Express Delivery",
+        "Air & Ground Logistics",
+        "E-Commerce Logistics",
+        "Premium Positioning"
+      ]
+    },
+    "DELHIVERY": {
+      "industry": "Logistics (E-Commerce)",
+      "listedSince": 2022,
+      "coreBusiness": "A technology-led third-party logistics company (Delhivery) providing parcel express, partial-truckload freight, warehousing and supply-chain services — a major logistics backbone for Indian e-commerce.",
+      "revenueModel": "Earns from shipping and supply-chain services charged to e-commerce and enterprise clients. Volume scale, network density and a technology-driven cost structure drive revenue and the path to profitability.",
+      "businessTags": [
+        "Parcel Express",
+        "Freight (PTL)",
+        "Warehousing & Supply Chain",
+        "E-Commerce Logistics"
+      ]
+    },
+    "INDIGO": {
+      "industry": "Aviation",
+      "listedSince": 2015,
+      "coreBusiness": "India's largest airline (IndiGo, operated by InterGlobe Aviation), a low-cost carrier with a dominant domestic market share and a fast-growing international network, operating a large, mostly single-type fleet.",
+      "revenueModel": "Earns from passenger ticket sales plus ancillary revenue (baggage, seats, food) and cargo. A low-cost model — high aircraft utilisation, single fleet type, lean costs — drives its competitive position; fuel and currency are key variables.",
+      "businessTags": [
+        "Low-Cost Airline",
+        "Domestic Market Leader",
+        "International Expansion",
+        "Ancillary Revenue"
+      ]
+    },
+    "INDHOTEL": {
+      "industry": "Hospitality",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest hospitality company (Indian Hotels Company, Tata Group), operating hotels and resorts under the Taj, SeleQtions, Vivanta and Ginger brands, plus newer businesses like Qmin and Ama Stays.",
+      "revenueModel": "Earns from room revenue, food and beverage, and management fees on operated hotels. Occupancy, average room rates (ARR) and an asset-light management-contract push drive revenue; tourism cycles matter.",
+      "businessTags": [
+        "Luxury Hotels (Taj)",
+        "Mid-Market & Budget (Ginger)",
+        "Management Contracts",
+        "F&B & New Businesses"
+      ]
+    },
+    "IRCTC": {
+      "industry": "Travel/Services (PSU)",
+      "listedSince": 2019,
+      "coreBusiness": "A government-owned company (Indian Railway Catering and Tourism Corporation) with a near-monopoly on online railway-ticket booking, plus railway catering, packaged drinking water (Rail Neer) and tourism services.",
+      "revenueModel": "Earns convenience fees on online train-ticket bookings (high-margin, near-monopoly), plus catering, Rail Neer water sales and tourism packages. Ticketing volumes and the convenience fee drive profitability.",
+      "businessTags": [
+        "Online Rail Ticketing",
+        "Catering",
+        "Packaged Water (Rail Neer)",
+        "Tourism"
+      ]
+    },
+    "RVNL": {
+      "industry": "Infrastructure (Rail EPC – PSU)",
+      "listedSince": 2019,
+      "coreBusiness": "A government-owned rail-infrastructure company (Rail Vikas Nigam) that executes railway projects — new lines, electrification, doubling, bridges and related works — largely on behalf of Indian Railways.",
+      "revenueModel": "Earns by executing railway-infrastructure projects (project-linked, recognised over time), historically on a cost-plus/margin basis for the Railways, now also bidding competitively. The railway capex cycle drives its order book and revenue.",
+      "businessTags": [
+        "Rail Infrastructure EPC",
+        "Electrification & Doubling",
+        "Project Execution",
+        "Indian Railways"
+      ]
+    },
+    "HAL": {
+      "industry": "Defence (Aerospace – PSU)",
+      "listedSince": 2018,
+      "coreBusiness": "India's largest defence-aerospace company (Hindustan Aeronautics), government-owned, designing, building and maintaining military aircraft, helicopters, engines and avionics, mainly for the Indian armed forces.",
+      "revenueModel": "Earns from manufacturing aircraft/helicopters and from a large, recurring repair-overhaul-and-spares (services) business for the defence forces. A big order book and indigenisation drive long-term revenue.",
+      "businessTags": [
+        "Military Aircraft & Helicopters",
+        "Engines & Avionics",
+        "Repair & Overhaul (Services)",
+        "Defence (Indigenisation)"
+      ]
+    },
+    "BEL": {
+      "industry": "Defence (Electronics – PSU)",
+      "listedSince": 1995,
+      "coreBusiness": "A government-owned defence-electronics company (Bharat Electronics) making radars, communication, electronic-warfare, missile-electronics and other systems mainly for the Indian armed forces, plus some non-defence electronics.",
+      "revenueModel": "Earns from manufacturing defence-electronics systems under government orders (project-linked) plus services and spares. A large defence order book and the indigenisation push drive revenue.",
+      "businessTags": [
+        "Defence Electronics",
+        "Radars & Communication",
+        "Electronic Warfare",
+        "Indigenisation"
+      ]
+    },
+    "BDL": {
+      "industry": "Defence (Missiles – PSU)",
+      "listedSince": 2018,
+      "coreBusiness": "A government-owned defence company (Bharat Dynamics) that manufactures missiles, guided weapons, torpedoes and related defence systems, primarily for the Indian armed forces.",
+      "revenueModel": "Earns from manufacturing missiles and guided-weapon systems under defence-ministry orders (project-linked), plus services. The defence order book, indigenisation and export potential drive revenue.",
+      "businessTags": [
+        "Missiles & Guided Weapons",
+        "Torpedoes",
+        "Defence Systems",
+        "Indigenisation & Exports"
+      ]
+    },
+    "MAZDOCK": {
+      "industry": "Defence (Shipbuilding – PSU)",
+      "listedSince": 2020,
+      "coreBusiness": "A government-owned defence shipyard (Mazagon Dock Shipbuilders) that builds warships and submarines for the Indian Navy — one of India's premier naval shipbuilders, notably for submarines and destroyers.",
+      "revenueModel": "Earns by executing long-duration warship and submarine construction contracts for the Navy, recognised over multi-year build periods. A large defence order book gives revenue visibility.",
+      "businessTags": [
+        "Warship Building",
+        "Submarines",
+        "Naval Defence",
+        "Government Orders"
+      ]
+    },
+    "COCHINSHIP": {
+      "industry": "Defence/Shipbuilding (PSU)",
+      "listedSince": 2017,
+      "coreBusiness": "A government-owned shipyard (Cochin Shipyard) that builds and repairs ships — including defence vessels (notably India's indigenous aircraft carrier) and commercial ships — with a large ship-repair business.",
+      "revenueModel": "Earns from shipbuilding contracts (defence and commercial, project-linked over multi-year periods) and a recurring ship-repair business. The defence order book and repair demand drive revenue.",
+      "businessTags": [
+        "Shipbuilding (Defence & Commercial)",
+        "Ship Repair",
+        "Naval Vessels",
+        "Government Orders"
+      ]
+    },
+    "DATAPATTNS": {
+      "industry": "Defence (Electronics)",
+      "listedSince": 2021,
+      "coreBusiness": "A defence-and-aerospace electronics company (Data Patterns) that designs and makes electronic systems and sub-systems — radars, avionics, electronic warfare and test systems — with strong in-house design capability.",
+      "revenueModel": "Earns from designing and manufacturing defence-electronics systems under government and OEM orders (project-linked), plus services. Vertical integration and in-house IP support high margins; the defence order book drives growth.",
+      "businessTags": [
+        "Defence Electronics",
+        "Radars & Avionics",
+        "Electronic Warfare",
+        "In-House Design / IP"
+      ]
+    },
+    "HAVELLS": {
+      "industry": "Consumer Electricals",
+      "listedSince": 1993,
+      "coreBusiness": "A leading electrical and consumer-durables company (Havells) making cables and wires, switchgear, lighting, fans and a range of consumer appliances (including the Lloyd brand in ACs and white goods).",
+      "revenueModel": "Earns from selling electrical products and consumer durables through a wide branded distribution network. Brand strength, premiumisation and category expansion (e.g. Lloyd) drive revenue.",
+      "businessTags": [
+        "Cables & Wires",
+        "Switchgear & Lighting",
+        "Fans & Appliances",
+        "Consumer Durables (Lloyd)"
+      ]
+    },
+    "POLYCAB": {
+      "industry": "Consumer Electricals (Cables)",
+      "listedSince": 2019,
+      "coreBusiness": "India's largest wires-and-cables maker (Polycab), supplying electrical wires and cables for construction, infrastructure and industry, plus a growing fast-moving electrical goods (fans, lighting, switches) business.",
+      "revenueModel": "Earns mainly from selling wires and cables to construction, infrastructure and industrial buyers, plus branded consumer electrical goods. Volumes, copper/aluminium costs and the FMEG growth push drive revenue.",
+      "businessTags": [
+        "Wires & Cables",
+        "FMEG (Fans/Lighting/Switches)",
+        "Construction & Infra Supply",
+        "EPC (Smaller)"
+      ]
+    },
+    "KEI": {
+      "industry": "Consumer Electricals (Cables)",
+      "listedSince": 2007,
+      "coreBusiness": "A wires-and-cables maker (KEI Industries) producing house wires, power and specialty cables (including high-voltage and EHV cables) for retail, institutional and EPC customers, plus a cable-EPC business.",
+      "revenueModel": "Earns from selling wires and cables across retail and institutional channels and from cable-EPC projects. Volume growth, the retail/branded mix and metal costs drive revenue and margins.",
+      "businessTags": [
+        "House Wires",
+        "Power & EHV Cables",
+        "Cable EPC",
+        "Retail & Institutional"
+      ]
+    },
+    "CROMPTON": {
+      "industry": "Consumer Electricals",
+      "listedSince": 2016,
+      "coreBusiness": "A consumer-electricals company (Crompton Greaves Consumer Electricals) making fans, pumps, lighting and small home appliances, with leadership in fans and residential pumps, plus the Butterfly kitchen-appliance brand.",
+      "revenueModel": "Earns from selling branded consumer electricals through wide distribution. Category leadership (fans, pumps), premiumisation and the appliances push drive revenue.",
+      "businessTags": [
+        "Fans",
+        "Pumps",
+        "Lighting & Appliances",
+        "Kitchen (Butterfly)"
+      ]
+    },
+    "VOLTAS": {
+      "industry": "Consumer Durables (Cooling)",
+      "listedSince": 1995,
+      "coreBusiness": "A Tata Group cooling and engineering company (Voltas), the leading air-conditioner brand in India, with a room-AC and consumer-durables business (including the Voltas Beko JV) plus an electro-mechanical (HVAC) projects business.",
+      "revenueModel": "Earns from selling air conditioners and consumer durables (branded, seasonal, summer-heavy) and from executing electro-mechanical/HVAC projects. AC market leadership and project execution drive revenue.",
+      "businessTags": [
+        "Air Conditioners",
+        "Consumer Durables (Voltas Beko)",
+        "Electro-Mechanical Projects (HVAC)",
+        "Cooling Products"
+      ]
+    },
+    "BLUESTARCO": {
+      "industry": "Consumer Durables (Cooling)",
+      "listedSince": 1995,
+      "coreBusiness": "An air-conditioning and commercial-refrigeration company (Blue Star) making room ACs and a large central-air-conditioning and cooling-products/projects business for commercial and industrial customers.",
+      "revenueModel": "Earns from selling room ACs (branded, seasonal) and from commercial AC/refrigeration products and projects. The mix of consumer cooling and B2B projects, plus market-share gains, drives revenue.",
+      "businessTags": [
+        "Room Air Conditioners",
+        "Commercial Refrigeration",
+        "Central AC & Projects",
+        "Cooling Products"
+      ]
+    },
+    "WHIRLPOOL": {
+      "industry": "Consumer Durables (White Goods)",
+      "listedSince": 1995,
+      "coreBusiness": "The Indian arm of Whirlpool, making and selling home appliances — refrigerators, washing machines, air conditioners and microwaves — a major white-goods brand in India.",
+      "revenueModel": "Earns from selling branded home appliances through wide distribution. Volumes, product mix and brand positioning drive revenue; demand is partly seasonal and discretionary.",
+      "businessTags": [
+        "Refrigerators",
+        "Washing Machines",
+        "Air Conditioners",
+        "Home Appliances"
+      ]
+    },
+    "DIXON": {
+      "industry": "Electronics Manufacturing (EMS)",
+      "listedSince": 2017,
+      "coreBusiness": "India's largest electronics contract manufacturer (Dixon Technologies), making mobile phones, TVs, home appliances, lighting and other electronics for brands on an outsourced basis, benefiting from import-substitution and PLI incentives.",
+      "revenueModel": "Earns manufacturing margins (and government PLI incentives) on electronics built for brand customers — a high-volume, thin-margin contract-manufacturing model. Scale, customer additions and backward integration drive revenue.",
+      "businessTags": [
+        "Electronics Contract Manufacturing",
+        "Mobiles & TVs",
+        "Appliances & Lighting",
+        "PLI / Import Substitution"
+      ]
+    },
+    "KAYNES": {
+      "industry": "Electronics Manufacturing (EMS)",
+      "listedSince": 2022,
+      "coreBusiness": "An end-to-end electronics manufacturing services (EMS) company (Kaynes Technology) building electronic systems for automotive, industrial, aerospace/defence, medical and other sectors, and expanding into semiconductor assembly/OSAT.",
+      "revenueModel": "Earns manufacturing margins on electronics built for diverse industrial and OEM customers, with a higher-mix, higher-margin profile than consumer EMS. Order book, sector diversity and the semiconductor push drive revenue.",
+      "businessTags": [
+        "Electronics Manufacturing (EMS)",
+        "Industrial & Automotive Electronics",
+        "Aerospace & Medical",
+        "Semiconductors / OSAT"
+      ]
+    },
+    "BSE": {
+      "industry": "Capital Markets (Exchange)",
+      "listedSince": 2017,
+      "coreBusiness": "One of India's two main stock exchanges (BSE Ltd), providing trading platforms for equities, derivatives, mutual funds and other instruments, plus listing, clearing and market-data services.",
+      "revenueModel": "Earns transaction charges on trading (notably a fast-growing equity-derivatives business), listing fees, market-data sales and other services. Trading volumes — especially in derivatives — drive revenue.",
+      "businessTags": [
+        "Stock Exchange",
+        "Derivatives Trading",
+        "Listing Fees",
+        "Market Data & Services"
+      ]
+    },
+    "MCX": {
+      "industry": "Capital Markets (Exchange)",
+      "listedSince": 2012,
+      "coreBusiness": "India's largest commodity-derivatives exchange (Multi Commodity Exchange), providing a platform for trading futures and options in commodities like gold, silver, crude oil and base metals.",
+      "revenueModel": "Earns transaction fees on commodity-derivatives trading, plus membership and data fees. Trading volumes (tied to commodity-price volatility and participation) and the options franchise drive revenue.",
+      "businessTags": [
+        "Commodity Derivatives Exchange",
+        "Transaction Fees",
+        "Options & Futures",
+        "Market Data"
+      ]
+    },
+    "ANGELONE": {
+      "industry": "Capital Markets (Broking)",
+      "listedSince": 2020,
+      "coreBusiness": "A leading digital-first retail stockbroker (Angel One) offering app-based trading and investing in equities, derivatives, mutual funds and more, with a large and growing retail client base, plus newer lending and wealth products.",
+      "revenueModel": "Earns brokerage and transaction fees (heavily from derivatives trading), interest on client funding (margin), and distribution fees. Active-client growth and trading volumes drive revenue; regulation on derivatives is a key variable.",
+      "businessTags": [
+        "Discount Broking",
+        "Derivatives Trading",
+        "Margin Funding",
+        "Mutual Funds & Wealth"
+      ]
+    },
+    "HDFCAMC": {
+      "industry": "Asset Management",
+      "listedSince": 2018,
+      "coreBusiness": "One of India's largest mutual-fund managers (HDFC Asset Management), managing equity, debt and other funds for retail and institutional investors, backed by the HDFC brand and distribution.",
+      "revenueModel": "Earns management fees calculated as a percentage of assets under management (AUM) — a scalable, annuity-like model. AUM growth, the equity-versus-debt mix (equity earns higher fees) and markets drive revenue.",
+      "businessTags": [
+        "Mutual Funds",
+        "AUM-Based Fees",
+        "Equity & Debt Funds",
+        "Retail Distribution"
+      ]
+    },
+    "NAM-INDIA": {
+      "industry": "Asset Management",
+      "listedSince": 2017,
+      "coreBusiness": "A large mutual-fund manager (Nippon Life India Asset Management) running equity, debt, ETF and other funds for retail and institutional investors, with a notably strong ETF and retail franchise.",
+      "revenueModel": "Earns AUM-based management fees; AUM growth, the product mix (equity and ETFs) and market levels drive revenue — a scalable, annuity-like model.",
+      "businessTags": [
+        "Mutual Funds",
+        "ETFs",
+        "AUM-Based Fees",
+        "Retail & Institutional"
+      ]
+    },
+    "UTIAMC": {
+      "industry": "Asset Management",
+      "listedSince": 2020,
+      "coreBusiness": "One of India's oldest mutual-fund managers (UTI Asset Management), running equity, debt and other funds plus managing retirement and institutional mandates (including a large PMS/retirement-fund business).",
+      "revenueModel": "Earns AUM-based management fees across mutual funds and institutional/retirement mandates. AUM growth, product mix and market levels drive revenue.",
+      "businessTags": [
+        "Mutual Funds",
+        "Retirement & Institutional Mandates",
+        "AUM-Based Fees",
+        "Debt & Equity"
+      ]
+    },
+    "NUVAMA": {
+      "industry": "Capital Markets (Wealth)",
+      "listedSince": 2023,
+      "coreBusiness": "A wealth-management and capital-markets firm (Nuvama Wealth Management, formerly Edelweiss Wealth) serving high-net-worth and affluent clients with wealth management, asset management, and institutional/investment-banking services.",
+      "revenueModel": "Earns fees and commissions from wealth management (advisory and distribution), asset management (AUM-based) and capital-markets/broking services. Client assets, transaction activity and HNI growth drive revenue.",
+      "businessTags": [
+        "Wealth Management (HNI)",
+        "Asset Management",
+        "Capital Markets & Broking",
+        "Investment Banking"
+      ]
+    },
+    "NAUKRI": {
+      "industry": "Internet (Classifieds)",
+      "listedSince": 2006,
+      "coreBusiness": "India's leading internet-classifieds company (Info Edge), owner of the dominant job portal Naukri.com, plus 99acres (real estate), Jeevansathi (matrimony) and Shiksha (education) — and a major early investor in startups like Zomato and PolicyBazaar.",
+      "revenueModel": "Earns recurring subscription and listing fees from recruiters and advertisers across its portals (Naukri being the profit engine), plus value from its large startup-investment portfolio. Recruitment-market health drives the core business.",
+      "businessTags": [
+        "Recruitment (Naukri)",
+        "Real Estate (99acres)",
+        "Matrimony & Education",
+        "Startup Investments"
+      ]
+    },
+    "POLICYBZR": {
+      "industry": "Fintech (Insurance Marketplace)",
+      "listedSince": 2021,
+      "coreBusiness": "India's largest online insurance and lending marketplace (PB Fintech), running Policybazaar (comparing and selling insurance policies) and Paisabazaar (comparing credit products), connecting consumers with insurers and lenders.",
+      "revenueModel": "Earns commissions from insurers on policies sold and fees from lenders on credit products, plus advisory and platform services. Premium volumes, new-business growth and a shift toward profitability drive revenue.",
+      "businessTags": [
+        "Insurance Marketplace (Policybazaar)",
+        "Credit Marketplace (Paisabazaar)",
+        "Commissions",
+        "Online Distribution"
+      ]
+    },
+    "PAYTM": {
+      "industry": "Fintech (Payments)",
+      "listedSince": 2021,
+      "coreBusiness": "A digital-payments and financial-services company (One97 Communications, Paytm) offering consumer and merchant payments (QR, soundbox, wallet), plus distribution of loans, and merchant commerce/financial services.",
+      "revenueModel": "Earns from payment-processing margins and device subscriptions (e.g. soundboxes), commissions on distributed loans and financial products, and merchant services. Payment volumes (GMV), merchant base and loan distribution drive revenue.",
+      "businessTags": [
+        "Consumer & Merchant Payments",
+        "Payment Devices (Soundbox)",
+        "Loan Distribution",
+        "Merchant Commerce"
+      ]
+    },
+    "NYKAA": {
+      "industry": "E-Commerce (Beauty/Fashion)",
+      "listedSince": 2021,
+      "coreBusiness": "A consumer-internet retailer (FSN E-Commerce, Nykaa) selling beauty and personal-care products online and through stores, plus a fashion vertical and its own private-label brands.",
+      "revenueModel": "Earns retail margins on beauty and fashion sales (online and offline), boosted by higher-margin private labels, plus advertising/marketplace income. Beauty (the profitable core) and private-label growth drive revenue.",
+      "businessTags": [
+        "Beauty & Personal Care E-Commerce",
+        "Fashion",
+        "Private Labels",
+        "Omnichannel (Stores)"
+      ]
+    },
+    "SWIGGY": {
+      "industry": "Internet (Food/Quick Commerce)",
+      "listedSince": 2024,
+      "coreBusiness": "A consumer-internet company (Swiggy) running a major food-delivery platform and the Instamart quick-commerce (grocery) business, plus dining-out and logistics services.",
+      "revenueModel": "Earns commissions and delivery/platform fees from restaurants and customers on food delivery, retail margins and fees on quick-commerce grocery, plus advertising. Order volumes and the path to quick-commerce profitability drive revenue.",
+      "businessTags": [
+        "Food Delivery",
+        "Quick Commerce (Instamart)",
+        "Dining-Out",
+        "Logistics"
+      ]
+    },
+    "ETERNAL": {
+      "industry": "Internet (Food/Quick Commerce)",
+      "listedSince": 2021,
+      "coreBusiness": "A consumer-internet company (Eternal, formerly Zomato) that is the parent of food-delivery platform Zomato, quick-commerce business Blinkit (now larger than food delivery), B2B food-supplies arm Hyperpure, and events platform District.",
+      "revenueModel": "Earns commissions and delivery/platform fees on food delivery, retail margins and fees on Blinkit's quick-commerce grocery, plus B2B supplies and events. Blinkit's growth and quick-commerce economics increasingly drive the business.",
+      "businessTags": [
+        "Food Delivery (Zomato)",
+        "Quick Commerce (Blinkit)",
+        "B2B Supplies (Hyperpure)",
+        "Events (District)"
+      ]
+    },
+    "NAZARA": {
+      "industry": "Internet (Gaming)",
+      "listedSince": 2021,
+      "coreBusiness": "A diversified gaming and interactive-entertainment company (Nazara Technologies) spanning mobile games, gamified learning, esports and ad-tech, built largely through acquisitions of gaming studios and platforms.",
+      "revenueModel": "Earns from in-game purchases and subscriptions, esports and gamified-learning fees, and gaming ad-tech. A portfolio/acquisition-led model; user engagement and monetisation across its properties drive revenue.",
+      "businessTags": [
+        "Mobile Gaming",
+        "Esports",
+        "Gamified Learning",
+        "Gaming Ad-Tech"
+      ]
+    },
+    "BAJAJHLDNG": {
+      "industry": "Holding / Investment Company",
+      "listedSince": 1994,
+      "coreBusiness": "An investment holding company of the Bajaj Group (Bajaj Holdings & Investment) whose value comes mainly from large stakes in Bajaj Auto and Bajaj Finserv, plus a portfolio of other investments. It is not an operating business in its own right.",
+      "revenueModel": "Earns dividend income from its holdings and gains on its investment portfolio. Its market value tracks the worth of its underlying stakes (chiefly Bajaj Auto and Bajaj Finserv), typically at a holding-company discount.",
+      "businessTags": [
+        "Holding Company",
+        "Stake in Bajaj Auto",
+        "Stake in Bajaj Finserv",
+        "Investment Portfolio"
+      ]
+    },
+    "SUPREMEIND": {
+      "industry": "Plastics / Building Materials",
+      "listedSince": 1995,
+      "coreBusiness": "India's largest plastic-products company (Supreme Industries), making plastic piping systems (its biggest business), packaging products, industrial and moulded products, and consumer plastics for construction, agriculture and industry.",
+      "revenueModel": "Earns from selling plastic products — led by PVC/CPVC piping for plumbing, agriculture and infrastructure — through a wide distribution network. Volumes, value-added mix and polymer (crude-linked) input costs drive revenue and margins.",
+      "businessTags": [
+        "Plastic Piping Systems",
+        "Packaging Products",
+        "Industrial & Moulded Products",
+        "Consumer Plastics"
+      ]
+    },
+    "WAAREEENER": {
+      "industry": "Renewables (Solar Manufacturing)",
+      "listedSince": 2024,
+      "coreBusiness": "India's largest maker of solar photovoltaic (PV) modules (Waaree Energies), with the country's biggest module capacity and a large export business, now vertically integrating backward into solar cells, wafers and ingots, plus inverters and storage.",
+      "revenueModel": "Earns from selling solar modules to domestic developers and a large export market (notably the US), plus EPC and other solar products. Capacity expansion, backward integration (improving margins) and the global solar build-out drive revenue.",
+      "businessTags": [
+        "Solar PV Modules",
+        "Cell & Wafer Manufacturing",
+        "Exports (US)",
+        "Inverters & Storage"
+      ]
+    },
+    "PREMIERENE": {
+      "industry": "Renewables (Solar Manufacturing)",
+      "listedSince": 2024,
+      "coreBusiness": "An integrated solar-energy manufacturer (Premier Energies), one of India's largest makers of solar cells and modules, with a relatively strong position in solar-cell manufacturing alongside modules, serving domestic and export markets.",
+      "revenueModel": "Earns from selling solar cells and modules to developers and other manufacturers, in India and as exports, plus EPC and O&M. Its solar-cell capacity (scarcer than module capacity in India) supports margins; capacity additions drive growth.",
+      "businessTags": [
+        "Solar Cells",
+        "Solar PV Modules",
+        "Integrated Manufacturing",
+        "Exports & EPC"
+      ]
+    },
+    "TMPV": {
+      "industry": "Automobiles (Passenger & Luxury)",
+      "listedSince": 1998,
+      "coreBusiness": "The passenger-vehicle arm of the Tata Group, created in the 2025 demerger of Tata Motors. It makes passenger cars and SUVs and electric vehicles in India and owns the global luxury carmaker Jaguar Land Rover. (It carries the original Tata Motors listing history; the ticker changed to TMPV in October 2025.)",
+      "revenueModel": "Earns from selling passenger and electric vehicles in India and luxury cars worldwide through Jaguar Land Rover, plus spare parts. JLR is by far the largest revenue contributor; the India PV/EV business and the JLR cycle are the key drivers.",
+      "businessTags": [
+        "Passenger Vehicles (India)",
+        "Electric Vehicles (TPEM)",
+        "Jaguar Land Rover",
+        "Spare Parts"
+      ]
+    },
+    "TMCV": {
+      "industry": "Automobiles (Commercial Vehicles)",
+      "listedSince": 2025,
+      "coreBusiness": "India's largest commercial-vehicle maker (renamed Tata Motors Ltd), created as a standalone listed company in the 2025 demerger of Tata Motors. It makes trucks, buses and small commercial/goods vehicles across the light-to-heavy range, plus related services and an emerging CV electrification push.",
+      "revenueModel": "Earns from selling commercial vehicles — from small cargo carriers to medium and heavy trucks and buses — plus spare parts and services. Revenue is cyclical, tracking the freight, logistics, infrastructure and replacement-demand cycle; it holds the leading domestic CV market share.",
+      "businessTags": [
+        "Trucks & Buses",
+        "Small Commercial Vehicles",
+        "Spare Parts & Service",
+        "CV Electrification"
+      ]
+    }
+  }
+}
