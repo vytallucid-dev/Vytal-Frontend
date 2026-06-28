@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Reveal } from "@/components/ui/reveal";
 import { Icons } from "@/lib/icons";
 import {
@@ -8,6 +9,7 @@ import {
   PILLAR_META,
   Panel,
 } from "@/components/stock-detail/health/shared";
+import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
 import type { UniverseHealthView } from "@/types/universe-view";
 import {
   attentionReads,
@@ -29,18 +31,38 @@ function Distribution({ view }: { view: UniverseHealthView }) {
   const dist = view.aggregate!.bandDistribution;
   const counts = LABEL_BAND_ORDER.map((b) => dist[b]);
   const max = Math.max(...counts, 1);
+  const total = counts.reduce((s, n) => s + n, 0) || 1;
   const CAP = 12;
   const COL_H = 118;
   const GAP = 3;
   const cellH = Math.floor((COL_H - (CAP - 1) * GAP) / CAP);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(chartRef);
   return (
-    <div className="min-w-[280px] flex-[1.15]">
+    <div ref={chartRef} className="relative min-w-[280px] flex-[1.15]">
+      <ChartTooltip tip={tip} />
       <div className="flex items-end gap-1.5 overflow-hidden" style={{ height: COL_H }}>
         {LABEL_BAND_ORDER.map((band, i) => {
           const n = counts[i];
           const shown = max > CAP ? Math.max(n > 0 ? 1 : 0, Math.round((n / max) * CAP)) : n;
           return (
-            <div key={band} className="flex h-full flex-1 flex-col items-center justify-end">
+            <div
+              key={band}
+              className="flex h-full flex-1 cursor-default flex-col items-center justify-end"
+              onMouseMove={(e) =>
+                show(
+                  e,
+                  <TipBody
+                    title={BAND_META[band].label}
+                    rows={[
+                      { label: "Names", value: String(n) },
+                      { label: "Share", value: `${((n / total) * 100).toFixed(0)}%` },
+                    ]}
+                  />,
+                )
+              }
+              onMouseLeave={hide}
+            >
               <div className="flex flex-col-reverse items-center" style={{ gap: GAP }}>
                 {Array.from({ length: shown }).map((_, k) => (
                   <span
@@ -200,7 +222,7 @@ function PillarMix({ view }: { view: UniverseHealthView }) {
         {rows.map((r) => {
           const meta = PILLAR_META[r.key];
           return (
-            <div key={r.key}>
+            <div key={r.key} title={`${meta.label}: median ${Math.round(r.value)}${r.isSoft ? " · soft spot" : ""}`}>
               <div className="mb-1.5 flex justify-between text-[12px]">
                 <span className="flex items-center gap-1.5">
                   <span className="size-[7px] rounded-[2px]" style={{ background: meta.cssVar }} />
@@ -251,12 +273,42 @@ function MoverSpark({ from, to }: { from: number; to: number }) {
   );
 }
 
-function MoverRow({ symbol, from, to, delta }: { symbol: string; from: number; to: number; delta: number }) {
+function MoverRow({
+  symbol,
+  from,
+  to,
+  delta,
+  onShow,
+  onHide,
+}: {
+  symbol: string;
+  from: number;
+  to: number;
+  delta: number;
+  onShow: (e: { clientX: number; clientY: number }, content: React.ReactNode) => void;
+  onHide: () => void;
+}) {
   const up = delta > 0;
   const toBand = compositeBand(to);
   const crossed = compositeBand(from) !== toBand;
   return (
-    <div className="flex items-center gap-3 rounded-lg px-1 py-1.5 transition-colors hover:bg-surface-2">
+    <div
+      className="flex cursor-default items-center gap-3 rounded-lg px-1 py-1.5 transition-colors hover:bg-surface-2"
+      onMouseMove={(e) =>
+        onShow(
+          e,
+          <TipBody
+            title={symbol}
+            rows={[
+              { label: "Composite", value: `${Math.round(from)} → ${Math.round(to)}` },
+              { label: "Change", value: `${up ? "+" : ""}${Math.round(delta)}` },
+              { label: "Band", value: `${crossed ? (up ? "↑ " : "↓ ") : ""}${BAND_META[toBand].label}` },
+            ]}
+          />,
+        )
+      }
+      onMouseLeave={onHide}
+    >
       <span className="num w-[88px] shrink-0 text-[12.5px]">{symbol}</span>
       <MoverSpark from={from} to={to} />
       <span
@@ -277,20 +329,23 @@ function MoverRow({ symbol, from, to, delta }: { symbol: string; from: number; t
 function Movers({ view }: { view: UniverseHealthView }) {
   const risers = view.movers.risers.slice(0, 4);
   const slippers = view.movers.slippers.slice(0, 4);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(chartRef);
   return (
     <Panel className="col-span-12 md:col-span-6 lg:col-span-5">
       <div className="mb-3 flex items-center justify-between">
         <span className="eyebrow">Biggest health movers</span>
         <span className="num text-[11px] text-ink3">QoQ · {view.aggregate!.priorPeriodKey} → {view.periodKey}</span>
       </div>
-      <div className="flex flex-col gap-0.5">
+      <div ref={chartRef} className="relative flex flex-col gap-0.5">
+        <ChartTooltip tip={tip} />
         <div className="pl-1 text-[10px] uppercase tracking-[0.1em] text-ink3">Firming</div>
         {risers.map((m) => (
-          <MoverRow key={m.symbol} symbol={m.symbol} from={m.priorComposite} to={m.composite} delta={m.delta} />
+          <MoverRow key={m.symbol} symbol={m.symbol} from={m.priorComposite} to={m.composite} delta={m.delta} onShow={show} onHide={hide} />
         ))}
         <div className="mt-2 pl-1 text-[10px] uppercase tracking-[0.1em] text-ink3">Slipping</div>
         {slippers.map((m) => (
-          <MoverRow key={m.symbol} symbol={m.symbol} from={m.priorComposite} to={m.composite} delta={m.delta} />
+          <MoverRow key={m.symbol} symbol={m.symbol} from={m.priorComposite} to={m.composite} delta={m.delta} onShow={show} onHide={hide} />
         ))}
       </div>
     </Panel>
@@ -304,14 +359,34 @@ function Exposure({ view }: { view: UniverseHealthView }) {
   const weakest = [...secs].sort((a, b) => a.median - b.median)[0];
   const heatColor = (h: string) =>
     h === "hot" ? "var(--c-fragile)" : h === "warm" ? "var(--c-below)" : "var(--p-own)";
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(chartRef);
   return (
     <Panel className="col-span-12 lg:col-span-3">
       <div className="mb-3 flex items-center justify-between">
         <span className="eyebrow">Where the weight sits</span>
       </div>
-      <div className="flex flex-col gap-2.5">
+      <div ref={chartRef} className="relative flex flex-col gap-2.5">
+        <ChartTooltip tip={tip} />
         {secs.map((s) => (
-          <div key={s.key} className="flex items-center gap-2.5 text-[12px]">
+          <div
+            key={s.key}
+            className="flex cursor-default items-center gap-2.5 text-[12px]"
+            onMouseMove={(e) =>
+              show(
+                e,
+                <TipBody
+                  title={s.displayName}
+                  rows={[
+                    { label: "Names", value: String(s.count) },
+                    { label: "Median", value: String(Math.round(s.median)) },
+                    { label: "Heat", value: s.heat },
+                  ]}
+                />,
+              )
+            }
+            onMouseLeave={hide}
+          >
             <span className="flex w-[88px] shrink-0 items-center gap-1.5 truncate">
               <span className="size-[7px] shrink-0 rounded-full" style={{ background: heatColor(s.heat) }} />
               <span className="truncate">{s.displayName}</span>

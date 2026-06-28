@@ -1,13 +1,12 @@
 "use client";
 
 import Activity from "@/components/stock-detail/activity";
-import CalendarComponent from "@/components/stock-detail/calendar";
+import Events from "@/components/stock-detail/events";
 import Fundamentals from "@/components/stock-detail/fundamentals";
 import HealthScore from "@/components/stock-detail/health";
 import News from "@/components/stock-detail/news";
 import Overview from "@/components/stock-detail/overview";
 import Technical from "@/components/stock-detail/technical";
-import Valuation from "@/components/stock-detail/valuation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -214,11 +213,10 @@ const StockDetailPage = () => {
               { id: "overview", label: "Overview" },
               { id: "health", label: "Health Score" },
               { id: "fundamentals", label: "Fundamentals" },
-              { id: "valuation", label: "Valuation" },
               { id: "technical", label: "Technical" },
               { id: "activity", label: "Activity" },
               { id: "events", label: "Events" },
-              { id: "news", label: "News" },
+              { id: "news", label: "Disclosures" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -242,15 +240,14 @@ const StockDetailPage = () => {
       </div>
 
       {/* TAB CONTENT */}
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        {activeTab === "overview" && <Overview stock={stock} />}
+      <div className="mx-auto max-w-7xl px-6 py-8 pt-0">
+        {activeTab === "overview" && <Overview symbol={symbol} />}
         {activeTab === "health" && <HealthScore />}
         {activeTab === "fundamentals" && <Fundamentals />}
-        {activeTab === "valuation" && <Valuation />}
         {activeTab === "technical" && <Technical />}
         {activeTab === "activity" && <Activity />}
-        {activeTab === "events" && <CalendarComponent />}
-        {activeTab === "news" && <News />}
+        {activeTab === "events" && <Events />}
+        {activeTab === "news" && <News symbol={symbol} />}
       </div>
     </div>
   );

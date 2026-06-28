@@ -213,7 +213,7 @@ function ThresholdWatchSection({ atRisk, approaching }: { atRisk: EdgeWatcher[];
 // ── side summary ───────────────────────────────────────────────────────────────
 function DistroRow({ label, n, max, color }: { label: string; n: number; max: number; color: string }) {
   return (
-    <div className="flex items-center gap-2.5 text-[12px]">
+    <div className="flex items-center gap-2.5 text-[12px]" title={`${label}: ${n} member-instance${n === 1 ? "" : "s"}`}>
       <span className="w-[120px] shrink-0 text-ink2">{label}</span>
       <span className="h-[7px] flex-1 overflow-hidden rounded-[4px] bg-surface-3">
         <span className="block h-full rounded-[4px]" style={{ width: `${max ? (n / max) * 100 : 0}%`, background: color }} />

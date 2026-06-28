@@ -14,6 +14,7 @@ import { AnatomySection } from "./anatomy-section";
 import { TrajectorySection } from "./trajectory-section";
 import { FindingsSection } from "./findings-section";
 import { RawFloorSection } from "./raw-floor-section";
+import { WhereNext } from "../where-next";
 
 export default function HealthScore() {
   const params = useParams();
@@ -93,6 +94,10 @@ export default function HealthScore() {
 
       <Reveal>
         <RawFloorSection pillars={pillars} />
+      </Reveal>
+
+      <Reveal>
+        <WhereNext symbol={identity.symbol} exclude={["health"]} />
       </Reveal>
     </div>
   );

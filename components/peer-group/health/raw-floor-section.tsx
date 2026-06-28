@@ -87,7 +87,7 @@ export function RawFloorSection({
 
   return (
     <section>
-      <SectionEyebrow label="The underlying record" pill="every number behind the scores" />
+      <SectionEyebrow label="The underlying record" icon={Icons.stack} accent="var(--p-own)" pill="every number behind the scores" />
       <div className="overflow-hidden rounded-xl border border-line bg-surface-1">
         <button
           type="button"

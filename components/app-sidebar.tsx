@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -61,9 +62,15 @@ const groups: NavGroup[] = [
 ];
 
 export function AppSidebar() {
-  const { state, toggleSidebar, isMobile } = useSidebar();
+  const { state, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
   const collapsed = !isMobile && state === "collapsed";
+
+  // On mobile the sidebar is an overlay Sheet — close it whenever the route changes
+  // so tapping a nav item navigates AND dismisses the sheet (instead of staying open).
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   const isActive = (url: string) =>
     url === "/dashboard" ? pathname === url : pathname.startsWith(url);

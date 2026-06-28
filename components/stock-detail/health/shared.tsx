@@ -9,7 +9,17 @@
 import { motion, useInView } from "framer-motion";
 import { useRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { type Icon } from "@/lib/icons";
 import type { LabelBand, PillarKey, MetricBand } from "@/types/health";
+
+/** A faint tinted-surface style from any accent colour (icon chips, pills, accents). */
+export function tint(accent: string, fill = 14, border = 30): CSSProperties {
+  return {
+    color: accent,
+    background: `color-mix(in oklch, ${accent} ${fill}%, transparent)`,
+    borderColor: `color-mix(in oklch, ${accent} ${border}%, transparent)`,
+  };
+}
 
 // ── band identity (composite condition scale) ─────────────────────────────────
 export const LABEL_BAND_ORDER: LabelBand[] = [
@@ -72,14 +82,34 @@ export function humanizeKey(key: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// ── section eyebrow (label · hairline · optional pill) ─────────────────────────
-export function SectionEyebrow({ label, pill }: { label: string; pill?: string }) {
+// ── section eyebrow (coloured icon/accent · label · tinted hairline · optional pill) ──
+// Colour is now part of the universal section rhythm: an `icon` renders a tinted icon
+// chip; without one a small accent bar still carries the colour, and the hairline picks
+// up a faint tint — so every tab's section headers read with life, not flat grey.
+export function SectionEyebrow({
+  label,
+  pill,
+  icon: Glyph,
+  accent = "var(--p-found)",
+}: {
+  label: string;
+  pill?: string;
+  icon?: Icon;
+  accent?: string;
+}) {
   return (
-    <div className="mb-4 mt-8 flex items-center gap-3">
+    <div className="mb-4 mt-8 flex items-center gap-2.5">
+      {Glyph ? (
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border" style={tint(accent)}>
+          <Glyph weight="duotone" className="h-4 w-4" />
+        </span>
+      ) : (
+        <span className="h-3.5 w-[3px] shrink-0 rounded-full" style={{ background: accent }} />
+      )}
       <span className="eyebrow shrink-0">{label}</span>
-      <span className="h-px flex-1 bg-line" />
+      <span className="h-px flex-1" style={{ background: `color-mix(in oklch, ${accent} 20%, var(--line))` }} />
       {pill && (
-        <span className="num shrink-0 rounded-full border border-line2 bg-surface-2 px-2.5 py-1 text-[11px] tracking-normal text-ink2">
+        <span className="num shrink-0 rounded-full border px-2.5 py-1 text-[11px] tracking-normal" style={tint(accent, 10, 26)}>
           {pill}
         </span>
       )}
@@ -128,6 +158,51 @@ export function PillarGauge({
       </span>
     </div>
   );
+}
+
+/** A tiny inline sparkline — ONLY drawn when ≥ 3 real points exist (returns null otherwise),
+ *  so a blank or misleading 2-point line can never render. Nulls in the series are skipped
+ *  (the line spans gaps), but their slot still occupies its time position so spacing is honest.
+ *  Shared by the Fundamentals tab and the Overview tab's §5 metric cards. */
+export const SPARK_MIN_POINTS = 3;
+export function MiniSpark({
+  points,
+  color,
+  width = 80,
+  height = 26,
+}: {
+  points: (number | null)[];
+  color: string;
+  width?: number;
+  height?: number;
+}) {
+  const real = points.filter((p): p is number => p != null);
+  if (real.length < SPARK_MIN_POINTS) return null; // never a blank / 2-point spark
+  const min = Math.min(...real);
+  const max = Math.max(...real);
+  const span = max - min || 1;
+  const n = points.length;
+  const denom = n > 1 ? n - 1 : 1;
+  const pad = 2;
+  const usableH = height - pad * 2;
+  const coords = points
+    .map((p, i) =>
+      p == null ? null : { x: (i / denom) * width, y: pad + (usableH - ((p - min) / span) * usableH) },
+    )
+    .filter((c): c is { x: number; y: number } => c != null);
+  const d = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
+  const last = coords[coords.length - 1];
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
+      <path d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />
+      {last && <circle cx={last.x} cy={last.y} r={1.9} fill={color} />}
+    </svg>
+  );
+}
+
+/** Pull a single ratio's series out of a per-year history (oldest→newest), for a MiniSpark. */
+export function sparkSeries<T>(history: T[], pick: (row: T) => number | null): (number | null)[] {
+  return history.map(pick);
 }
 
 /** Generic panel matching the prototype `.card` (surface · hairline · 16px radius). */

@@ -78,7 +78,7 @@ export function ProspectsSection({ members }: { members: PeerGroupMemberView[] }
 
   return (
     <section>
-      <SectionEyebrow label="Where to look" pill="funnels into each stock's page" />
+      <SectionEyebrow label="Where to look" icon={Icons.target} accent="var(--p-own)" pill="funnels into each stock's page" />
       <Reveal>
         <div className="grid gap-3.5 lg:grid-cols-2">
           <Column

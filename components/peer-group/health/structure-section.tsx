@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef, type ReactNode } from "react";
 import { Reveal } from "@/components/ui/reveal";
 import { Icons } from "@/lib/icons";
 import { SectionEyebrow, Panel } from "@/components/stock-detail/health/shared";
+import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 import { pathologyRead } from "./lib";
 import { prepareCensus, accentVars, type PreparedCensus } from "@/lib/findings";
 import type { PeerGroupMover, PathologyCensusItem } from "@/types/peer-group";
@@ -28,16 +30,40 @@ function MoverSpark({ from, to }: { from: number; to: number }) {
   );
 }
 
-function MoverRow({ mv, dir }: { mv: PeerGroupMover; dir: "up" | "down" }) {
+function MoverRow({
+  mv,
+  dir,
+  onShow,
+  onHide,
+}: {
+  mv: PeerGroupMover;
+  dir: "up" | "down";
+  onShow: (e: { clientX: number; clientY: number }, content: ReactNode) => void;
+  onHide: () => void;
+}) {
   const recovering = dir === "up" && mv.composite < 62;
   return (
     <div
-      className="flex items-center gap-3 rounded-[10px] border px-2.5 py-2"
+      className="flex cursor-default items-center gap-3 rounded-[10px] border px-2.5 py-2"
       style={
         recovering
           ? { background: "color-mix(in srgb, var(--c-healthy) 12%, transparent)", borderColor: "color-mix(in srgb, var(--c-healthy) 40%, transparent)" }
           : { background: "var(--surface2)", borderColor: "var(--line)" }
       }
+      onMouseMove={(e) =>
+        onShow(
+          e,
+          <TipBody
+            title={mv.symbol}
+            rows={[
+              { label: "Composite", value: `${Math.round(mv.priorComposite)} → ${Math.round(mv.composite)}` },
+              { label: "Change", value: `${dir === "up" ? "+" : ""}${mv.delta.toFixed(1)}` },
+              { label: "Period", value: `${mv.fromPeriod} → ${mv.toPeriod}` },
+            ]}
+          />,
+        )
+      }
+      onMouseLeave={onHide}
     >
       <span className="num flex-1 text-[13px] font-medium text-ink">{mv.symbol}</span>
       {recovering && (
@@ -69,8 +95,11 @@ function MoversColumn({
   dir: "up" | "down";
   rows: PeerGroupMover[];
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(containerRef);
   return (
-    <div className="flex flex-col gap-2.5">
+    <div ref={containerRef} className="relative flex flex-col gap-2.5">
+      <ChartTooltip tip={tip} />
       <div
         className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em]"
         style={{ color: dir === "up" ? "var(--c-healthy)" : "var(--c-below)" }}
@@ -79,7 +108,7 @@ function MoversColumn({
         {title}
       </div>
       {rows.length ? (
-        rows.map((mv) => <MoverRow key={mv.symbol} mv={mv} dir={dir} />)
+        rows.map((mv) => <MoverRow key={mv.symbol} mv={mv} dir={dir} onShow={show} onHide={hide} />)
       ) : (
         <p className="text-[11.5px] text-ink3">None this period.</p>
       )}
@@ -162,7 +191,7 @@ export function StructureSection({
   const census = prepareCensus(pathology);
   return (
     <section>
-      <SectionEyebrow label="What's moving inside it" />
+      <SectionEyebrow label="What's moving inside it" icon={Icons.pulse} accent="var(--p-mom)" />
       <div className="grid gap-3.5 lg:grid-cols-2">
         <Reveal>
           <Panel>

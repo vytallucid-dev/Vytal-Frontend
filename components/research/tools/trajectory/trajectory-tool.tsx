@@ -124,7 +124,7 @@ export function TrajectoryTool() {
       symbol={symbol}
       window={window}
       onWindowChange={setWindow}
-      onSelectSymbol={(s) => router.push(`/research/trajectory?symbol=${s}`)}
+      onSelectSymbol={(s) => router.push(`/research/trajectory?symbol=${encodeURIComponent(s)}`)}
       onHome={() => router.push("/research/trajectory")}
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}

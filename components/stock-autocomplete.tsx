@@ -126,7 +126,7 @@ export function StockAutocomplete({
       onStockSelect(stock);
     } else {
       // Only navigate to stock screener if no custom handler is provided
-      router.push(`/research/stock-screener/${stock.symbol}`);
+      router.push(`/research/stock-screener/${encodeURIComponent(stock.symbol)}`);
     }
   };
 

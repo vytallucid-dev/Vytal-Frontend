@@ -141,7 +141,7 @@ export function OwnershipTool() {
       symbol={symbol}
       window={window}
       onWindowChange={setWindow}
-      onSelectSymbol={(s) => router.push(`/research/ownership?symbol=${s}`)}
+      onSelectSymbol={(s) => router.push(`/research/ownership?symbol=${encodeURIComponent(s)}`)}
       onHome={() => router.push("/research/ownership")}
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}

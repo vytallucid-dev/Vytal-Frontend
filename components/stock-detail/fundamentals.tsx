@@ -49,6 +49,7 @@ import type {
   BankingPayload,
   BankingQuarter,
   BankingAnnual,
+  BankingCasa,
   BkRatioHistoryPoint,
   NbfcPayload,
   NbfcQuarter,
@@ -61,7 +62,9 @@ import type {
   GeneralInsuranceQuarter,
   GeneralInsuranceAnnual,
 } from "@/types/fundamentals";
-import { SectionEyebrow, Panel, shortPeriod } from "./health/shared";
+import { SectionEyebrow, Panel, shortPeriod, MiniSpark, sparkSeries } from "./health/shared";
+import { WhereNext } from "./where-next";
+import { casaTier, casaContextLabel } from "@/lib/casa-display";
 
 // ════════════════════════════════════════════════════════════════════════════
 // formatters — every number wears .num at the render site
@@ -149,50 +152,8 @@ function EmptyNote({ children }: { children: React.ReactNode }) {
   return <p className="py-8 text-center text-[12px] text-ink3">{children}</p>;
 }
 
-/** A tiny inline sparkline — ONLY drawn when ≥ 3 real points exist (returns null otherwise),
- *  so a blank or misleading 2-point line can never render. Nulls in the series are skipped
- *  (the line spans gaps), but their slot still occupies its time position so spacing is honest.
- *  Used beside headline-ratio cards for the families with real multi-year coverage. */
-const SPARK_MIN_POINTS = 3;
-function MiniSpark({
-  points,
-  color,
-  width = 80,
-  height = 26,
-}: {
-  points: (number | null)[];
-  color: string;
-  width?: number;
-  height?: number;
-}) {
-  const real = points.filter((p): p is number => p != null);
-  if (real.length < SPARK_MIN_POINTS) return null; // never a blank / 2-point spark
-  const min = Math.min(...real);
-  const max = Math.max(...real);
-  const span = max - min || 1;
-  const n = points.length;
-  const denom = n > 1 ? n - 1 : 1;
-  const pad = 2;
-  const usableH = height - pad * 2;
-  const coords = points
-    .map((p, i) =>
-      p == null ? null : { x: (i / denom) * width, y: pad + (usableH - ((p - min) / span) * usableH) },
-    )
-    .filter((c): c is { x: number; y: number } => c != null);
-  const d = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
-  const last = coords[coords.length - 1];
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
-      <path d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />
-      {last && <circle cx={last.x} cy={last.y} r={1.9} fill={color} />}
-    </svg>
-  );
-}
-
-/** Pull a single ratio's series out of a per-year history (oldest→newest), for a MiniSpark. */
-function sparkSeries<T>(history: T[], pick: (row: T) => number | null): (number | null)[] {
-  return history.map(pick);
-}
+// MiniSpark + sparkSeries now live in ./health/shared (shared with the Overview tab's
+// §5 metric cards) — same ≥3-real-point self-gate, imported above.
 
 // ════════════════════════════════════════════════════════════════════════════
 // §1 — Quarterly performance (the spine): revenue + profit + margins, basis toggle
@@ -248,7 +209,7 @@ function QuarterlySpine({
 
   return (
     <section>
-      <SectionEyebrow label="Quarterly performance" pill={`${quarters.length} quarters · ${view.basis}`} />
+      <SectionEyebrow label="Quarterly performance" icon={Icons.chartBar} accent="var(--p-found)" pill={`${quarters.length} quarters · ${view.basis}`} />
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12px] text-ink2">
@@ -377,7 +338,7 @@ function MarginTrend({ quarters }: { quarters: QuarterPoint[] }) {
 
   return (
     <section>
-      <SectionEyebrow label="Margin trend" pill="operating · net" />
+      <SectionEyebrow label="Margin trend" icon={Icons.chartLine} accent="var(--p-mom)" pill="operating · net" />
       <Panel>
         {enough ? (
           <>
@@ -460,7 +421,7 @@ function ProfitabilityReturns({
   // a derived latest-year figure with no history series, so it carries no spark.
   return (
     <section>
-      <SectionEyebrow label="Profitability & returns" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Profitability & returns" icon={Icons.coins} accent="var(--p-own)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       {annual ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ReturnCard label="Return on equity" value={fmtPct(annual.roe, 1)} hint="Net profit ÷ shareholder equity" spark={sparkSeries(history, (r) => r.roe)} sparkColor="var(--p-own)" />
@@ -493,7 +454,7 @@ function GrowthSection({ annual, quarters }: { annual: AnnualSnapshot | null; qu
 
   return (
     <section>
-      <SectionEyebrow label="Growth" pill="year-over-year" />
+      <SectionEyebrow label="Growth" icon={Icons.trendUp} accent="var(--c-healthy)" pill="year-over-year" />
       <Panel>
         <div className="grid gap-3 sm:grid-cols-3">
           {items.map((it) => {
@@ -530,7 +491,7 @@ function GrowthSection({ annual, quarters }: { annual: AnnualSnapshot | null; qu
 function LeverageLiquidity({ annual }: { annual: AnnualSnapshot | null }) {
   return (
     <section>
-      <SectionEyebrow label="Leverage & liquidity" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Leverage & liquidity" icon={Icons.scales} accent="var(--p-mkt)" pill={annual ? annual.fiscalYear : "annual"} />
       {annual ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Stat label="Debt / equity" value={fmtRatio(annual.debtToEquity)} sub="lower is less geared" />
@@ -567,7 +528,7 @@ function CashFlowSection({ annual }: { annual: AnnualSnapshot | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Cash flow" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Cash flow" icon={Icons.coins} accent="var(--p-own)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {hasAny ? (
           <div className="grid gap-5 lg:grid-cols-2">
@@ -639,7 +600,7 @@ function CashConversionSection({ points }: { points: CashConversionPoint[] }) {
 
   return (
     <section>
-      <SectionEyebrow label="Cash conversion" pill="operating cash vs net profit" />
+      <SectionEyebrow label="Cash conversion" icon={Icons.refresh} accent="var(--p-own)" pill="operating cash vs net profit" />
       <Panel>
         {enough ? (
           <>
@@ -701,7 +662,7 @@ function BalanceSheetSnapshot({ annual }: { annual: AnnualSnapshot | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Balance-sheet snapshot" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Balance-sheet snapshot" icon={Icons.stack} accent="var(--p-found)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {annual && hasAny ? (
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -740,7 +701,7 @@ function DupontSection({ annual }: { annual: AnnualSnapshot | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="DuPont decomposition" pill="what drives ROE" />
+      <SectionEyebrow label="DuPont decomposition" icon={Icons.graph} accent="var(--p-mom)" pill="what drives ROE" />
       <Panel>
         {hasLegs ? (
           <>
@@ -778,7 +739,7 @@ function YieldsSection({ yields }: { yields: YieldsBlock | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Yields" pill="business characteristic" />
+      <SectionEyebrow label="Yields" icon={Icons.spark} accent="var(--p-mkt)" pill="business characteristic" />
       <Panel>
         {yields && !noMcap ? (
           <>
@@ -812,7 +773,7 @@ function YieldsSection({ yields }: { yields: YieldsBlock | null }) {
 function AiSummarySlot() {
   return (
     <section>
-      <SectionEyebrow label="Fundamentals narrative" pill="preview" />
+      <SectionEyebrow label="Fundamentals narrative" icon={Icons.brain} accent="var(--p-mom)" pill="preview" />
       <div className="rounded-2xl border border-dashed border-line2 bg-surface-1/60 p-5">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-p-mom/30 bg-p-mom/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-p-mom">
@@ -856,39 +817,10 @@ function NotesFooter({ notes }: { notes: string[] }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Where-to-look-next nav
+// Where-to-look-next nav — the shared, colourful WhereNext (one source across tabs)
 // ════════════════════════════════════════════════════════════════════════════
-const NAV_CARDS: { tab: string; icon: Icon; title: string; desc: string }[] = [
-  { tab: "health", icon: Icons.health, title: "The health score", desc: "How these figures grade across four pillars" },
-  { tab: "activity", icon: Icons.building, title: "Who owns it", desc: "Shareholding, pledging & insider activity" },
-  { tab: "news", icon: Icons.news, title: "Latest developments", desc: "Announcements, disclosures & coverage" },
-];
-
 function WhatsNextNav({ symbol }: { symbol: string }) {
-  return (
-    <section>
-      <SectionEyebrow label="Where to look next" />
-      <div className="grid gap-3.5 md:grid-cols-3">
-        {NAV_CARDS.map(({ tab, icon: Glyph, title, desc }) => (
-          <Link
-            key={tab}
-            href={`/research/stock-screener/${symbol}?tab=${tab}`}
-            className="lift group rounded-2xl border border-line bg-surface-1 p-5 transition-colors hover:border-line2"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-surface-3 text-ink2 transition-colors group-hover:bg-p-own/10 group-hover:text-p-own">
-              <Glyph weight="fill" className="h-5 w-5" />
-            </span>
-            <h3 className="mt-3 text-[14px] font-semibold text-ink">{title}</h3>
-            <p className="mt-1 text-[12px] text-ink3">{desc}</p>
-            <span className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-ink2 transition-colors group-hover:text-ink">
-              Open {tab} tab
-              <Icons.arrowRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
+  return <WhereNext symbol={symbol} exclude={["fundamentals"]} />;
 }
 
 // ████████████████████████████████████████████████████████████████████████████
@@ -932,7 +864,7 @@ function BankingSpine({
 
   return (
     <section>
-      <SectionEyebrow label="Quarterly earnings" pill={`${quarters.length} quarters · ${view.basis}`} />
+      <SectionEyebrow label="Quarterly earnings" icon={Icons.chartBar} accent="var(--p-found)" pill={`${quarters.length} quarters · ${view.basis}`} />
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12px] text-ink2">
@@ -1056,7 +988,7 @@ function AssetQuality({ quarters }: { quarters: BankingQuarter[] }) {
 
   return (
     <section>
-      <SectionEyebrow label="Asset quality" pill="gross & net NPA · PCR" />
+      <SectionEyebrow label="Asset quality" icon={Icons.shield} accent="var(--p-own)" pill="gross & net NPA · PCR" />
       <Panel>
         {enoughTrend ? (
           <>
@@ -1168,7 +1100,7 @@ function CapitalAdequacy({ quarters, annual }: { quarters: BankingQuarter[]; ann
 
   return (
     <section>
-      <SectionEyebrow label="Capital adequacy" pill={asOf ? `as of ${asOf}` : "capital"} />
+      <SectionEyebrow label="Capital adequacy" icon={Icons.shield} accent="var(--p-found)" pill={asOf ? `as of ${asOf}` : "capital"} />
       <Panel>
         {hasAny ? (
           <>
@@ -1198,7 +1130,7 @@ function CapitalAdequacy({ quarters, annual }: { quarters: BankingQuarter[]; ann
 function ProfitabilityEfficiency({ annual, history }: { annual: BankingAnnual | null; history: BkRatioHistoryPoint[] }) {
   return (
     <section>
-      <SectionEyebrow label="Profitability & efficiency" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Profitability & efficiency" icon={Icons.coins} accent="var(--p-own)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       {annual ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <ReturnCard label="Return on equity" value={fmtPct(annual.roe, 1)} hint="Net profit ÷ shareholder equity" spark={sparkSeries(history, (r) => r.roe)} sparkColor="var(--p-own)" />
@@ -1227,7 +1159,7 @@ function BankingEfficiencyTrend({ quarters }: { quarters: BankingQuarter[] }) {
 
   return (
     <section>
-      <SectionEyebrow label="Quarterly efficiency" pill="cost-to-income" />
+      <SectionEyebrow label="Quarterly efficiency" icon={Icons.spark} accent="var(--p-mom)" pill="cost-to-income" />
       <Panel>
         {enough ? (
           <>
@@ -1276,7 +1208,7 @@ function BankingEarningsMix({ annual }: { annual: BankingAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Earnings mix" pill={annual ? `interest income · ${annual.fiscalYear}` : "interest income"} />
+      <SectionEyebrow label="Earnings mix" icon={Icons.chartBar} accent="var(--p-mkt)" pill={annual ? `interest income · ${annual.fiscalYear}` : "interest income"} />
       <Panel>
         {hasMix ? (
           <>
@@ -1316,8 +1248,37 @@ function BankingEarningsMix({ annual }: { annual: BankingAnnual | null }) {
   );
 }
 
-// ── §5 Franchise — deposits / advances / CD ratio + franchise growth ────────────
-function Franchise({ annual }: { annual: BankingAnnual | null }) {
+// ── CASA cell — low-cost deposit share, quarterly + tiered for HONEST display (§0). ──
+// CASA is a deposit-mix metric (current + savings as a share of deposits) → it lives in
+// the franchise group. NEVER a bare value: the quarter rides alongside, and the tier drives
+// the wording. A non-current `quarter` is shown plainly ("as of FY26/Q4") — NOT alarmed;
+// only `legacy` gets a soft-stale accent; `none` is honest-empty.
+function CasaStat({ casa }: { casa?: BankingCasa }) {
+  // casa may be absent (older backend) → c is null → tier "empty" → honest-empty, no crash.
+  const c = casa?.current ?? null;
+  const tier = casaTier(c);
+  const ctx = casaContextLabel(c); // "FY26/Q4" for a real quarter, "legacy value" for legacy
+  const empty = tier === "empty";
+  const legacy = tier === "legacy";
+  const sub = empty
+    ? "not entered yet"
+    : legacy
+      ? "legacy value · not a current quarter"
+      : `as of ${ctx}`;
+
+  return (
+    <div className="rounded-xl border border-line bg-surface-2 p-3.5">
+      <div className="text-[11px] text-ink3">CASA ratio</div>
+      <div className={cn("num mt-1 text-[18px] font-semibold", empty ? "text-ink3" : "text-ink")}>
+        {empty ? DASH : fmtPct(c?.value, 1)}
+      </div>
+      <div className={cn("num mt-0.5 text-[11px]", legacy ? "text-ctx" : "text-ink3")}>{sub}</div>
+    </div>
+  );
+}
+
+// ── §5 Franchise — deposits / advances / CD ratio + CASA + franchise growth ─────
+function Franchise({ annual, casa }: { annual: BankingAnnual | null; casa?: BankingCasa }) {
   const growth: { label: string; v: number | null }[] = [
     { label: "Deposit YoY", v: annual?.depositGrowthYoy ?? null },
     { label: "Advances YoY", v: annual?.advanceGrowthYoy ?? null },
@@ -1329,14 +1290,15 @@ function Franchise({ annual }: { annual: BankingAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Franchise" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Franchise" icon={Icons.building} accent="var(--p-found)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {hasFranchise ? (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label="Deposits" value={fmtCr(annual!.deposits)} sub="customer funding base" />
               <Stat label="Advances" value={fmtCr(annual!.advances)} sub="loans extended" />
               <Stat label="Credit-deposit ratio" value={fmtPct(annual!.creditDepositRatio, 1)} sub="advances ÷ deposits" />
+              <CasaStat casa={casa} />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-4">
               {growth.map((g) => {
@@ -1354,6 +1316,62 @@ function Franchise({ annual }: { annual: BankingAnnual | null }) {
           </>
         ) : (
           <EmptyNote>No annual franchise figures reported yet for this basis.</EmptyNote>
+        )}
+      </Panel>
+    </section>
+  );
+}
+
+// ── §5b CASA history — the quarter-by-quarter path of the low-cost deposit share. ──
+// X-axis = the entered quarter LABEL (periodEnd is always null per the backend contract).
+// A factual record of the path — never a "improving/deteriorating" verdict, no projection.
+// Sparse-honest: 0 points → honest-empty; 1 point → the single reading (never a broken line).
+function CasaHistory({ casa }: { casa?: BankingCasa }) {
+  // casa/series may be absent (older backend) → empty data → honest "no history", no crash.
+  const data = (casa?.series ?? []).map((p) => ({ quarter: p.quarter, casa: p.value }));
+  const n = data.length;
+  const latest = data[n - 1] ?? null;
+
+  return (
+    <section>
+      <SectionEyebrow label="CASA history" icon={Icons.chartLine} accent="var(--p-mkt)" pill="low-cost deposit share" />
+      <Panel>
+        {n >= 2 ? (
+          <>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={data} margin={{ top: 8, right: 10, bottom: 0, left: -12 }}>
+                <CartesianGrid strokeDasharray="2 5" stroke="var(--line)" vertical={false} />
+                <XAxis dataKey="quarter" tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} width={40} unit="%" domain={["auto", "auto"]} />
+                <Tooltip {...TOOLTIP_STYLE} formatter={(v: number) => [`${v.toFixed(2)}%`, "CASA"]} />
+                <Line
+                  type="monotone"
+                  dataKey="casa"
+                  name="casa"
+                  stroke="var(--p-mkt)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "var(--p-mkt)" }}
+                  activeDot={{ r: 5 }}
+                  isAnimationActive
+                  animationDuration={900}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="mt-3 text-[11.5px] italic text-ink3">
+              Current-and-savings accounts as a share of deposits, quarter by quarter — a factual record of the path,
+              not a trend judgment.
+            </p>
+          </>
+        ) : n === 1 && latest ? (
+          <div className="py-6 text-center">
+            <div className="num text-[28px] font-semibold text-ink">{fmtPct(latest.casa, 1)}</div>
+            <div className="num mt-1 text-[12px] text-ink3">{latest.quarter}</div>
+            <p className="mx-auto mt-3 max-w-[34em] text-[11.5px] italic text-ink3">
+              One quarter on record — the history chart fills in as more quarters are entered.
+            </p>
+          </div>
+        ) : (
+          <EmptyNote>No CASA history recorded yet.</EmptyNote>
         )}
       </Panel>
     </section>
@@ -1380,7 +1398,7 @@ function BankBalanceSheet({ annual }: { annual: BankingAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Balance-sheet snapshot" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Balance-sheet snapshot" icon={Icons.stack} accent="var(--p-found)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {annual && hasAny ? (
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -1413,7 +1431,7 @@ function BankCashFlow({ annual }: { annual: BankingAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Cash flow" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Cash flow" icon={Icons.coins} accent="var(--p-own)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {present.length > 0 ? (
           <div className="space-y-3">
@@ -1448,7 +1466,7 @@ function BankCashFlow({ annual }: { annual: BankingAnnual | null }) {
 function BankAiSummarySlot() {
   return (
     <section>
-      <SectionEyebrow label="Fundamentals narrative" pill="preview" />
+      <SectionEyebrow label="Fundamentals narrative" icon={Icons.brain} accent="var(--p-mom)" pill="preview" />
       <div className="rounded-2xl border border-dashed border-line2 bg-surface-1/60 p-5">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-p-mom/30 bg-p-mom/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-p-mom">
@@ -1494,7 +1512,10 @@ function BankingTab({ bk, view, onBasis, symbol }: { bk: BankingPayload; view: F
         <BankingEarningsMix annual={bk.annual} />
       </Reveal>
       <Reveal>
-        <Franchise annual={bk.annual} />
+        <Franchise annual={bk.annual} casa={bk.casa} />
+      </Reveal>
+      <Reveal>
+        <CasaHistory casa={bk.casa} />
       </Reveal>
       <Reveal>
         <BankBalanceSheet annual={bk.annual} />
@@ -1544,7 +1565,7 @@ function NbfcSpine({
 
   return (
     <section>
-      <SectionEyebrow label="Quarterly earnings" pill={`${quarters.length} quarters · ${view.basis}`} />
+      <SectionEyebrow label="Quarterly earnings" icon={Icons.chartBar} accent="var(--p-found)" pill={`${quarters.length} quarters · ${view.basis}`} />
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12px] text-ink2">
@@ -1664,7 +1685,7 @@ function NbfcCreditCost({ quarters, annual }: { quarters: NbfcQuarter[]; annual:
 
   return (
     <section>
-      <SectionEyebrow label="Credit cost" pill="the lending risk lens" />
+      <SectionEyebrow label="Credit cost" icon={Icons.shield} accent="var(--p-mkt)" pill="the lending risk lens" />
       <Panel>
         <div className="grid gap-5 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -1705,7 +1726,7 @@ function NbfcCreditCost({ quarters, annual }: { quarters: NbfcQuarter[]; annual:
 function NbfcProfitability({ annual }: { annual: NbfcAnnual | null }) {
   return (
     <section>
-      <SectionEyebrow label="Profitability & spread" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Profitability & spread" icon={Icons.coins} accent="var(--p-own)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       {annual ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ReturnCard label="Return on equity" value={fmtPct(annual.roe, 1)} hint="Net profit ÷ shareholder equity" />
@@ -1742,7 +1763,7 @@ function NbfcLeverageFunding({ annual }: { annual: NbfcAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Leverage & funding" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Leverage & funding" icon={Icons.scales} accent="var(--p-mkt)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {annual ? (
           <>
@@ -1787,7 +1808,7 @@ function NbfcFranchise({ annual }: { annual: NbfcAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Franchise & AUM" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Franchise & AUM" icon={Icons.building} accent="var(--p-found)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {hasFranchise ? (
           <>
@@ -1836,7 +1857,7 @@ function NbfcBalanceSheet({ annual }: { annual: NbfcAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Balance-sheet snapshot" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Balance-sheet snapshot" icon={Icons.stack} accent="var(--p-found)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       <Panel>
         {annual && hasAny ? (
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -1873,7 +1894,7 @@ function NbfcCashFlow({ annual }: { annual: NbfcAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Cash flow" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Cash flow" icon={Icons.coins} accent="var(--p-own)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {present.length > 0 ? (
           <>
@@ -1914,7 +1935,7 @@ function NbfcCashFlow({ annual }: { annual: NbfcAnnual | null }) {
 function NbfcAiSummarySlot() {
   return (
     <section>
-      <SectionEyebrow label="Fundamentals narrative" pill="preview" />
+      <SectionEyebrow label="Fundamentals narrative" icon={Icons.brain} accent="var(--p-mom)" pill="preview" />
       <div className="rounded-2xl border border-dashed border-line2 bg-surface-1/60 p-5">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-p-mom/30 bg-p-mom/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-p-mom">
@@ -2008,7 +2029,7 @@ function LiSpine({
 
   return (
     <section>
-      <SectionEyebrow label="Premium & earnings" pill={`${quarters.length} quarters · ${view.basis}`} />
+      <SectionEyebrow label="Premium & earnings" icon={Icons.coins} accent="var(--p-own)" pill={`${quarters.length} quarters · ${view.basis}`} />
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12px] text-ink2">
@@ -2098,7 +2119,7 @@ function Persistency({ annual, notes }: { annual: LifeInsuranceAnnual | null; no
 
   return (
     <section>
-      <SectionEyebrow label="Persistency" pill={annual ? `annual · ${annual.fiscalYear}` : "policy retention"} />
+      <SectionEyebrow label="Persistency" icon={Icons.pulse} accent="var(--p-mom)" pill={annual ? `annual · ${annual.fiscalYear}` : "policy retention"} />
       <Panel>
         {hasAny ? (
           <>
@@ -2150,7 +2171,7 @@ function LiSolvencyNewBusiness({
 
   return (
     <section>
-      <SectionEyebrow label="Solvency & new business" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Solvency & new business" icon={Icons.shield} accent="var(--p-found)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {annual ? (
           <>
@@ -2190,7 +2211,7 @@ function LiProfitability({ annual }: { annual: LifeInsuranceAnnual | null }) {
   ];
   return (
     <section>
-      <SectionEyebrow label="Profitability & growth" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Profitability & growth" icon={Icons.trendUp} accent="var(--c-healthy)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       {annual ? (
         <div className="grid gap-3 sm:grid-cols-3">
           <ReturnCard label="Return on equity" value={fmtPct(annual.roe, 1)} hint="Net profit ÷ shareholder equity" />
@@ -2234,7 +2255,7 @@ function LiBalanceSheet({ annual }: { annual: LifeInsuranceAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Balance-sheet snapshot" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Balance-sheet snapshot" icon={Icons.stack} accent="var(--p-found)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       <Panel>
         {annual && hasAny ? (
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -2278,7 +2299,7 @@ function LiPremiumMix({ annual }: { annual: LifeInsuranceAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Premium mix" pill={annual ? `annual · ${annual.fiscalYear}` : "premium composition"} />
+      <SectionEyebrow label="Premium mix" icon={Icons.chartBar} accent="var(--p-mkt)" pill={annual ? `annual · ${annual.fiscalYear}` : "premium composition"} />
       <Panel>
         {hasMix ? (
           <>
@@ -2328,7 +2349,7 @@ function LiQuarterlyDisclosures({ quarters, notes }: { quarters: LifeInsuranceQu
 
   return (
     <section>
-      <SectionEyebrow label="Quarterly solvency & persistency" pill="intra-year" />
+      <SectionEyebrow label="Quarterly solvency & persistency" icon={Icons.shield} accent="var(--p-own)" pill="intra-year" />
       <Panel>
         {anySolvency || anyPersistency ? (
           <>
@@ -2387,7 +2408,7 @@ function LiQuarterlyDisclosures({ quarters, notes }: { quarters: LifeInsuranceQu
 function LiAiSummarySlot() {
   return (
     <section>
-      <SectionEyebrow label="Fundamentals narrative" pill="preview" />
+      <SectionEyebrow label="Fundamentals narrative" icon={Icons.brain} accent="var(--p-mom)" pill="preview" />
       <div className="rounded-2xl border border-dashed border-line2 bg-surface-1/60 p-5">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-p-mom/30 bg-p-mom/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-p-mom">
@@ -2469,7 +2490,7 @@ function GiSpine({
 
   return (
     <section>
-      <SectionEyebrow label="Premium & earnings" pill={`${quarters.length} quarters · ${view.basis}`} />
+      <SectionEyebrow label="Premium & earnings" icon={Icons.coins} accent="var(--p-own)" pill={`${quarters.length} quarters · ${view.basis}`} />
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12px] text-ink2">
@@ -2541,7 +2562,7 @@ function GiUnderwriting({ annual }: { annual: GeneralInsuranceAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Underwriting performance" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Underwriting performance" icon={Icons.target} accent="var(--p-own)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {annual ? (
           <>
@@ -2611,7 +2632,7 @@ function GiQuarterlyRatios({ quarters }: { quarters: GeneralInsuranceQuarter[] }
 
   return (
     <section>
-      <SectionEyebrow label="Quarterly underwriting ratios" pill="combined-ratio decomposition" />
+      <SectionEyebrow label="Quarterly underwriting ratios" icon={Icons.scales} accent="var(--p-mom)" pill="combined-ratio decomposition" />
       <Panel>
         {anyRatio ? (
           <>
@@ -2672,7 +2693,7 @@ function GiSolvencyRetention({ annual }: { annual: GeneralInsuranceAnnual | null
 
   return (
     <section>
-      <SectionEyebrow label="Solvency & retention" pill={annual ? annual.fiscalYear : "annual"} />
+      <SectionEyebrow label="Solvency & retention" icon={Icons.shield} accent="var(--p-found)" pill={annual ? annual.fiscalYear : "annual"} />
       <Panel>
         {annual ? (
           <>
@@ -2708,7 +2729,7 @@ function GiProfitability({ annual }: { annual: GeneralInsuranceAnnual | null }) 
   ];
   return (
     <section>
-      <SectionEyebrow label="Profitability & growth" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Profitability & growth" icon={Icons.trendUp} accent="var(--c-healthy)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       {annual ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ReturnCard label="Return on equity" value={fmtPct(annual.roe, 1)} hint="Net profit ÷ shareholder equity" />
@@ -2750,7 +2771,7 @@ function GiBalanceSheet({ annual }: { annual: GeneralInsuranceAnnual | null }) {
 
   return (
     <section>
-      <SectionEyebrow label="Balance-sheet snapshot" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
+      <SectionEyebrow label="Balance-sheet snapshot" icon={Icons.stack} accent="var(--p-found)" pill={annual ? `annual · ${annual.fiscalYear}` : "annual"} />
       <Panel>
         {annual && hasAny ? (
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -2778,7 +2799,7 @@ function GiBalanceSheet({ annual }: { annual: GeneralInsuranceAnnual | null }) {
 function GiAiSummarySlot() {
   return (
     <section>
-      <SectionEyebrow label="Fundamentals narrative" pill="preview" />
+      <SectionEyebrow label="Fundamentals narrative" icon={Icons.brain} accent="var(--p-mom)" pill="preview" />
       <div className="rounded-2xl border border-dashed border-line2 bg-surface-1/60 p-5">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-p-mom/30 bg-p-mom/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-p-mom">

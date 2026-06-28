@@ -28,6 +28,15 @@ interface DataFlow {
 
 const dataFlows: DataFlow[] = [
   {
+    href: "/settings/ingestion-errors",
+    title: "Ingestion Errors",
+    description: "Detection-layer violations — fill admin-fixable values (cited) or flag for a code fix.",
+    icon: Icons.warning,
+    lastSync: "Live",
+    status: "stale",
+    recordsToday: 0,
+  },
+  {
     href: "/settings/stock-prices",
     title: "Stock Prices",
     description: "End-of-day NSE Bhavcopy prices, deduped and inserted nightly.",
@@ -53,6 +62,15 @@ const dataFlows: DataFlow[] = [
     lastSync: "5h ago",
     status: "healthy",
     recordsToday: 312,
+  },
+  {
+    href: "/settings/casa",
+    title: "CASA Ratios",
+    description: "Quarterly CASA for the 12 scored banks — manual ingest, feeds banking F7.",
+    icon: Icons.scales,
+    lastSync: "Manual",
+    status: "stale",
+    recordsToday: 0,
   },
   {
     href: "/settings/corporate-events",
@@ -282,7 +300,7 @@ export default function SettingsPage() {
             eyebrow="Pipelines"
             icon={Icons.health}
             title="Data sources"
-            subtitle="Eight ingestion flows feed the terminal. Tap any source to trigger, backfill or inspect its jobs."
+            subtitle="Every ingestion flow feeds the terminal. Tap any source to trigger, backfill or inspect its jobs."
           />
         </Reveal>
 

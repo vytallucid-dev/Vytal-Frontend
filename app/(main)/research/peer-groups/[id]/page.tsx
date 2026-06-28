@@ -11,22 +11,31 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ComingSoonPanel } from "@/components/peer-group/coming-soon-panel";
 import { PeerGroupHealth } from "@/components/peer-group/health";
+import { PeerGroupShareholding } from "@/components/peer-group/ownership";
+import { PeerGroupValuation } from "@/components/peer-group/valuation";
+import { PeerGroupFundamentals } from "@/components/peer-group/fundamentals";
+import { PeerGroupOverview } from "@/components/peer-group/overview";
 
 const PAGE_WRAP = "mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 sm:gap-6";
 
-type TabId = "health" | "overview" | "fundamentals" | "shareholding" | "news";
+type TabId =
+  | "health"
+  | "overview"
+  | "fundamentals"
+  | "valuation"
+  | "shareholding";
 const TABS: { id: TabId; label: string; real: boolean }[] = [
-  { id: "overview", label: "Overview", real: false },
+  { id: "overview", label: "Overview", real: true },
   { id: "health", label: "Health", real: true },
-  { id: "fundamentals", label: "Fundamentals", real: false },
-  { id: "shareholding", label: "Shareholding", real: false },
-  { id: "news", label: "News", real: false },
+  { id: "fundamentals", label: "Fundamentals", real: true },
+  { id: "valuation", label: "Valuation", real: true },
+  { id: "shareholding", label: "Shareholding", real: true }
 ];
 
 export default function PeerGroupDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const [activeTab, setActiveTab] = useState<TabId>("health");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
   const { data, isLoading, isError, error, refetch } = usePeerGroupHealth(id);
 
   if (isLoading) {
@@ -119,10 +128,18 @@ export default function PeerGroupDetailPage() {
           {/* Panels. */}
           <div>
             {activeTab === "health" && <PeerGroupHealth view={data} />}
-            {activeTab === "overview" && <ComingSoonPanel label="Overview" />}
-            {activeTab === "fundamentals" && <ComingSoonPanel label="Fundamentals" />}
-            {activeTab === "shareholding" && <ComingSoonPanel label="Shareholding" />}
-            {activeTab === "news" && <ComingSoonPanel label="News" />}
+            {activeTab === "overview" && (
+              <PeerGroupOverview peerGroupId={id} view={data} onOpenTab={setActiveTab} />
+            )}
+            {activeTab === "fundamentals" && (
+              <PeerGroupFundamentals peerGroupId={id} members={data.members} />
+            )}
+            {activeTab === "valuation" && (
+              <PeerGroupValuation peerGroupId={id} members={data.members} />
+            )}
+            {activeTab === "shareholding" && (
+              <PeerGroupShareholding peerGroupId={id} members={data.members} />
+            )}
           </div>
         </>
       )}

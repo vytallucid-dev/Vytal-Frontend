@@ -1,291 +1,370 @@
 "use client";
 
+/**
+ * Comparison tool — SELECTION LANDING.
+ *
+ * Where the user chooses what to compare and learns comparability AT selection time,
+ * then routes to the dedicated view (`/comparison/[slug]`). The differentiator: the
+ * comparability signal is surfaced INLINE the moment both entities resolve — honest
+ * with you DURING selection, never after. It is INFORMATIVE, never blocking: every
+ * tier (same-family, cross-family, different-PG) is allowed. Warn-but-allow.
+ *
+ * Reads the live universe (useUniverseStocks) for the stock pickers and the /api/compare
+ * alignment service (useComparison) for stock comparability. Peer-Group mode reads the PG
+ * index (usePeerGroups) for its pickers and the two ponds' /health aggregates for the
+ * field-level comparability gate. Both modes are fully built; both warn-but-allow.
+ */
+
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { HealthRing } from "@/components/ui/health-ring";
-import { Sparkline } from "@/components/ui/sparkline";
-import { AnimatedNumber } from "@/components/ui/animated-number";
-import { Reveal } from "@/components/ui/reveal";
-import { SectionHeading } from "@/components/ui/section-heading";
-import { Button } from "@/components/ui/button";
+import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
+import { useComparison } from "@/lib/api/hooks/use-comparison";
+import { usePeerGroups } from "@/lib/api/hooks/use-peer-groups";
+import { usePeerGroupHealth } from "@/lib/api/hooks/use-peer-group-health";
 import { Icons } from "@/lib/icons";
-import { healthColorVar, healthLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { LabelBand } from "@/types/health";
+import { EntityPicker, type PickerStock } from "@/components/comparison/entity-picker";
+import {
+  PeerGroupPicker,
+  type PickerPeerGroup,
+} from "@/components/comparison/pg-picker";
 
-/* ------------------------------------------------------------------ */
-/* Local mock data — self-contained, no external route or import.      */
-/* ------------------------------------------------------------------ */
-
-type Pillars = {
-  profitability: number;
-  growth: number;
-  stability: number;
-  efficiency: number;
-  valuation: number;
-  momentum: number;
+const BAND_CHIP: Record<LabelBand, string> = {
+  pristine: "bg-pristine/15 text-pristine",
+  healthy: "bg-healthy/15 text-healthy",
+  steady: "bg-steady/15 text-steady",
+  below_par: "bg-below/15 text-below",
+  fragile: "bg-fragile/15 text-fragile",
+};
+const BAND_LABEL: Record<LabelBand, string> = {
+  pristine: "Pristine",
+  healthy: "Healthy",
+  steady: "Steady",
+  below_par: "Below par",
+  fragile: "Fragile",
 };
 
-type CompareStock = {
-  symbol: string;
-  name: string;
-  sector: string;
-  price: number;
-  health: number;
-  pillars: Pillars;
-  pe: number;
-  roe: number;
-  revenueGrowth: number;
-  debtEquity: number;
-  dividendYield: number;
-  marketCap: string;
-  spark: number[];
-};
+type Mode = "stocks" | "peer_groups";
 
-const STOCKS: CompareStock[] = [
-  {
-    symbol: "RELIANCE",
-    name: "Reliance Industries",
-    sector: "Energy · Conglomerate",
-    price: 2942,
-    health: 84,
-    pillars: { profitability: 82, growth: 79, stability: 88, efficiency: 75, valuation: 64, momentum: 81 },
-    pe: 24.6,
-    roe: 12.8,
-    revenueGrowth: 11.4,
-    debtEquity: 0.42,
-    dividendYield: 0.35,
-    marketCap: "₹19.9L Cr",
-    spark: [2710, 2740, 2705, 2790, 2830, 2810, 2880, 2942],
-  },
-  {
-    symbol: "TCS",
-    name: "Tata Consultancy Services",
-    sector: "IT Services",
-    price: 3865,
-    health: 91,
-    pillars: { profitability: 94, growth: 76, stability: 95, efficiency: 92, valuation: 58, momentum: 73 },
-    pe: 29.1,
-    roe: 46.2,
-    revenueGrowth: 8.1,
-    debtEquity: 0.08,
-    dividendYield: 1.6,
-    marketCap: "₹14.0L Cr",
-    spark: [3650, 3690, 3720, 3700, 3780, 3810, 3840, 3865],
-  },
-  {
-    symbol: "HDFCBANK",
-    name: "HDFC Bank",
-    sector: "Banking",
-    price: 1678,
-    health: 87,
-    pillars: { profitability: 86, growth: 84, stability: 90, efficiency: 80, valuation: 71, momentum: 70 },
-    pe: 19.4,
-    roe: 17.1,
-    revenueGrowth: 19.6,
-    debtEquity: 0.0,
-    dividendYield: 1.1,
-    marketCap: "₹12.7L Cr",
-    spark: [1540, 1565, 1590, 1572, 1610, 1640, 1660, 1678],
-  },
-  {
-    symbol: "INFY",
-    name: "Infosys",
-    sector: "IT Services",
-    price: 1612,
-    health: 82,
-    pillars: { profitability: 88, growth: 70, stability: 85, efficiency: 86, valuation: 66, momentum: 62 },
-    pe: 25.3,
-    roe: 31.4,
-    revenueGrowth: 6.2,
-    debtEquity: 0.09,
-    dividendYield: 2.3,
-    marketCap: "₹6.7L Cr",
-    spark: [1700, 1660, 1640, 1612, 1590, 1605, 1600, 1612],
-  },
-  {
-    symbol: "ITC",
-    name: "ITC Ltd",
-    sector: "FMCG",
-    price: 458,
-    health: 79,
-    pillars: { profitability: 90, growth: 61, stability: 88, efficiency: 74, valuation: 78, momentum: 58 },
-    pe: 26.7,
-    roe: 28.9,
-    revenueGrowth: 4.8,
-    debtEquity: 0.01,
-    dividendYield: 3.1,
-    marketCap: "₹5.7L Cr",
-    spark: [430, 438, 445, 440, 450, 448, 455, 458],
-  },
-  {
-    symbol: "BAJFINANCE",
-    name: "Bajaj Finance",
-    sector: "NBFC · Finance",
-    price: 7124,
-    health: 73,
-    pillars: { profitability: 78, growth: 92, stability: 64, efficiency: 70, valuation: 41, momentum: 88 },
-    pe: 33.8,
-    roe: 22.5,
-    revenueGrowth: 27.4,
-    debtEquity: 3.9,
-    dividendYield: 0.5,
-    marketCap: "₹4.4L Cr",
-    spark: [6600, 6720, 6810, 6750, 6900, 7010, 7080, 7124],
-  },
+/** Real same-family quick-starts — every symbol is in the universe; labeled as examples,
+ *  never fabricated. Used only as a convenience to show the tool's intent. */
+const SUGGESTED_PAIRS: { a: string; b: string; note: string }[] = [
+  { a: "HDFCBANK", b: "ICICIBANK", note: "Large-cap private banks" },
+  { a: "TCS", b: "INFY", note: "IT services" },
+  { a: "SUNPHARMA", b: "DRREDDY", note: "Pharma" },
 ];
 
-/* Pillar metadata (label + icon) */
-const PILLARS: { key: keyof Pillars; label: string; icon: typeof Icons.coins }[] = [
-  { key: "profitability", label: "Profitability", icon: Icons.coins },
-  { key: "growth", label: "Growth", icon: Icons.trendUp },
-  { key: "stability", label: "Stability", icon: Icons.shield },
-  { key: "efficiency", label: "Efficiency", icon: Icons.bolt },
-  { key: "valuation", label: "Valuation", icon: Icons.scales },
-  { key: "momentum", label: "Momentum", icon: Icons.pulse },
-];
+export default function ComparisonLandingPage() {
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("stocks");
+  const [a, setA] = useState<PickerStock | null>(null);
+  const [b, setB] = useState<PickerStock | null>(null);
+  const [pgA, setPgA] = useState<PickerPeerGroup | null>(null);
+  const [pgB, setPgB] = useState<PickerPeerGroup | null>(null);
 
-/* Metric rows. `lowerIsBetter` flips winner logic for valuation-style metrics. */
-type MetricRow = {
-  key: string;
-  label: string;
-  get: (s: CompareStock) => number;
-  fmt: (v: number) => string;
-  lowerIsBetter?: boolean;
-  hint: string;
-};
+  const { data: universe, isLoading: universeLoading } = useUniverseStocks();
 
-const METRICS: MetricRow[] = [
-  { key: "pe", label: "P/E ratio", get: (s) => s.pe, fmt: (v) => v.toFixed(1) + "×", lowerIsBetter: true, hint: "Lower is cheaper" },
-  { key: "roe", label: "Return on equity", get: (s) => s.roe, fmt: (v) => v.toFixed(1) + "%", hint: "Higher is better" },
-  { key: "revenueGrowth", label: "Revenue growth", get: (s) => s.revenueGrowth, fmt: (v) => v.toFixed(1) + "%", hint: "Higher is better" },
-  { key: "debtEquity", label: "Debt / Equity", get: (s) => s.debtEquity, fmt: (v) => v.toFixed(2), lowerIsBetter: true, hint: "Lower is safer" },
-  { key: "dividendYield", label: "Dividend yield", get: (s) => s.dividendYield, fmt: (v) => v.toFixed(2) + "%", hint: "Higher is better" },
-  { key: "health", label: "Health score", get: (s) => s.health, fmt: (v) => String(v), hint: "Higher is better" },
-];
+  const pickerStocks: PickerStock[] = useMemo(
+    () =>
+      (universe ?? []).map((s) => ({
+        symbol: s.symbol,
+        name: s.name,
+        sector: s.sector?.displayName ?? "",
+        scored: s.scored,
+        band: s.band ?? null,
+      })),
+    [universe],
+  );
 
-/* winner: 0 = left, 1 = right, -1 = tie */
-function winnerOf(a: number, b: number, lowerIsBetter?: boolean): 0 | 1 | -1 {
-  if (a === b) return -1;
-  const aWins = lowerIsBetter ? a < b : a > b;
-  return aWins ? 0 : 1;
-}
+  const bySymbol = useMemo(() => {
+    const m = new Map<string, PickerStock>();
+    for (const s of pickerStocks) m.set(s.symbol, s);
+    return m;
+  }, [pickerStocks]);
 
-const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
+  // Live comparability — fires the moment both symbols resolve (and differ).
+  const comparison = useComparison(a?.symbol ?? null, b?.symbol ?? null);
 
-/* ------------------------------------------------------------------ */
-/* Stock picker (button + dropdown list)                               */
-/* ------------------------------------------------------------------ */
+  const bothPicked = Boolean(a && b);
+  const sameSymbol = Boolean(a && b && a.symbol === b.symbol);
+  const canCompare = bothPicked && !sameSymbol;
 
-function StockPicker({
-  side,
-  stock,
-  otherSymbol,
-  accent,
-  onPick,
-}: {
-  side: "left" | "right";
-  stock: CompareStock;
-  otherSymbol: string;
-  accent: string;
-  onPick: (s: CompareStock) => void;
-}) {
-  const [open, setOpen] = useState(false);
+  function startCompare() {
+    if (!a || !b || sameSymbol) return;
+    router.push(`/comparison/${a.symbol}-vs-${b.symbol}`);
+  }
+
+  // ── Peer-group mode ──────────────────────────────────────────────────────────
+  const { data: pgList, isLoading: pgLoading } = usePeerGroups();
+
+  const pickerGroups: PickerPeerGroup[] = useMemo(
+    () =>
+      (pgList ?? []).map((g) => ({
+        id: g.id,
+        name: g.name,
+        displayName: g.displayName,
+        sector: g.sector?.displayName ?? "",
+        memberCount: g.memberCount,
+        scored: g.scored,
+        medianComposite: g.medianComposite,
+      })),
+    [pgList],
+  );
+
+  // The family gate needs industryPath, which lives only on /health (not the list). Fetch
+  // both ponds' aggregates once picked — react-query caches them for build #2's view.
+  const pgHealthA = usePeerGroupHealth(pgA?.id ?? "");
+  const pgHealthB = usePeerGroupHealth(pgB?.id ?? "");
+
+  const bothPgPicked = Boolean(pgA && pgB);
+  const samePg = Boolean(pgA && pgB && pgA.id === pgB.id);
+  const canComparePg = bothPgPicked && !samePg;
+
+  function startComparePg() {
+    if (!pgA || !pgB || samePg) return;
+    router.push(`/comparison/pg/${pgA.id}-vs-${pgB.id}`);
+  }
+
+  function applySuggested(pair: { a: string; b: string }) {
+    const pa = bySymbol.get(pair.a);
+    const pb = bySymbol.get(pair.b);
+    if (pa) setA(pa);
+    if (pb) setB(pb);
+  }
 
   return (
-    <div className="relative w-full">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "group relative w-full overflow-hidden rounded-3xl border p-5 text-left transition-colors sm:p-6",
-          "border-border/70 bg-surface-1/40 hover:border-primary/40"
-        )}
-        style={{ boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${accent} 16%, transparent)` }}
+    <div className="mx-auto w-full max-w-5xl px-6 py-12">
+      {/* Heading */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="space-y-3 text-center"
       >
-        <span
-          className="pointer-events-none absolute inset-x-0 top-0 h-1"
-          style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }}
-        />
-        <div className="flex items-center justify-between">
-          <span
-            className="rounded-full px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-[0.18em]"
-            style={{ color: accent, background: `color-mix(in oklch, ${accent} 14%, transparent)` }}
+        <div className="flex items-center justify-center gap-2 text-ink3">
+          <Icons.scales weight="duotone" className="h-4 w-4" />
+          <span className="text-sm font-medium">Comparison</span>
+        </div>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink md:text-5xl">
+          Compare, honestly
+        </h1>
+        <p className="mx-auto max-w-2xl text-base text-ink2 md:text-lg">
+          Pick two to study side by side. We tell you what lines up — and what
+          doesn&apos;t — while you choose. No winner is declared; you read the full
+          picture.
+        </p>
+      </motion.div>
+
+      {/* Mode selector */}
+      <div className="mt-10 flex justify-center">
+        <div className="inline-flex rounded-xl border border-line bg-surface p-1">
+          <button
+            type="button"
+            onClick={() => setMode("stocks")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium transition-colors",
+              mode === "stocks"
+                ? "bg-pristine/12 text-pristine shadow-sm ring-1 ring-pristine/25"
+                : "text-ink3 hover:text-ink2",
+            )}
           >
-            {side === "left" ? "Contender A" : "Contender B"}
-          </span>
-          <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-            Change <Icons.caretDown weight="bold" className={cn("size-3.5 transition-transform", open && "rotate-180")} />
-          </span>
-        </div>
-
-        <div className="mt-5 flex items-center gap-4">
-          <HealthRing score={stock.health} size={84} strokeWidth={8} showLabel />
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-xl font-extrabold leading-tight">{stock.symbol}</p>
-            <p className="truncate text-sm text-muted-foreground">{stock.name}</p>
-            <p className="mt-2 font-mono text-lg font-bold">{inr(stock.price)}</p>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3">
-          <span className="text-xs text-muted-foreground">{stock.sector}</span>
-          <Sparkline data={stock.spark} width={84} height={28} color={accent} />
-        </div>
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <>
-            <button
-              aria-label="Close picker"
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-30 cursor-default"
+            <Icons.chartBar
+              weight={mode === "stocks" ? "duotone" : "regular"}
+              className="h-4 w-4"
             />
-            <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="glass-strong absolute z-40 mt-2 max-h-80 w-full overflow-y-auto rounded-2xl border border-border/70 p-1.5 shadow-2xl"
-            >
-              {STOCKS.map((s) => {
-                const isCurrent = s.symbol === stock.symbol;
-                const isOther = s.symbol === otherSymbol;
-                return (
-                  <button
-                    key={s.symbol}
-                    disabled={isOther}
-                    onClick={() => {
-                      onPick(s);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
-                      isOther
-                        ? "cursor-not-allowed opacity-35"
-                        : isCurrent
-                          ? "bg-primary/10"
-                          : "hover:bg-surface-2/60"
-                    )}
-                  >
-                    <span
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-bold"
-                      style={{
-                        color: healthColorVar(s.health),
-                        background: `color-mix(in oklch, ${healthColorVar(s.health)} 14%, transparent)`,
-                      }}
+            Stocks
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("peer_groups")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium transition-colors",
+              mode === "peer_groups"
+                ? "bg-healthy/12 text-healthy shadow-sm ring-1 ring-healthy/25"
+                : "text-ink3 hover:text-ink2",
+            )}
+          >
+            <Icons.stack
+              weight={mode === "peer_groups" ? "duotone" : "regular"}
+              className="h-4 w-4"
+            />
+            Peer Groups
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {mode === "peer_groups" ? (
+          <motion.div
+            key="pg-mode"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="mt-10 space-y-8"
+          >
+            {/* Pickers */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] md:items-start">
+              <PgPickerSlot
+                label="First field"
+                picked={pgA}
+                onClear={() => setPgA(null)}
+                groups={pickerGroups}
+                loading={pgLoading}
+                disabledId={pgB?.id ?? null}
+                onPick={setPgA}
+              />
+              <div className="flex items-center justify-center py-2 md:pt-12">
+                <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink3">
+                  vs
+                </span>
+              </div>
+              <PgPickerSlot
+                label="Second field"
+                picked={pgB}
+                onClear={() => setPgB(null)}
+                groups={pickerGroups}
+                loading={pgLoading}
+                disabledId={pgA?.id ?? null}
+                onPick={setPgB}
+              />
+            </div>
+
+            {/* Live field-level comparability signal */}
+            <PgComparabilitySignal
+              bothPicked={bothPgPicked}
+              samePg={samePg}
+              queryA={pgHealthA}
+              queryB={pgHealthB}
+            />
+
+            {/* Compare action */}
+            <div className="flex flex-col items-center gap-3">
+              <button
+                type="button"
+                disabled={!canComparePg}
+                onClick={startComparePg}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all",
+                  canComparePg
+                    ? "cursor-pointer bg-primary text-primary-foreground hover:opacity-90"
+                    : "cursor-not-allowed bg-line2 text-ink3",
+                )}
+              >
+                <Icons.scales className="h-4 w-4" />
+                {canComparePg && pgA && pgB
+                  ? `Compare ${pgA.displayName} vs ${pgB.displayName}`
+                  : "Pick two peer groups to compare"}
+              </button>
+              {canComparePg && (
+                <p className="text-xs text-ink3">
+                  Distributions compare regardless of sector — you read each field in full.
+                </p>
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="stocks-mode"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="mt-10 space-y-8"
+          >
+            {/* Pickers */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] md:items-start">
+              <PickerSlot
+                label="First"
+                picked={a}
+                onPick={setA}
+                onClear={() => setA(null)}
+                stocks={pickerStocks}
+                loading={universeLoading}
+                disabledSymbol={b?.symbol ?? null}
+              />
+              <div className="flex items-center justify-center py-2 md:pt-12">
+                <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink3">
+                  vs
+                </span>
+              </div>
+              <PickerSlot
+                label="Second"
+                picked={b}
+                onPick={setB}
+                onClear={() => setB(null)}
+                stocks={pickerStocks}
+                loading={universeLoading}
+                disabledSymbol={a?.symbol ?? null}
+              />
+            </div>
+
+            {/* Live comparability signal */}
+            <ComparabilitySignal
+              bothPicked={bothPicked}
+              sameSymbol={sameSymbol}
+              query={comparison}
+            />
+
+            {/* Compare action */}
+            <div className="flex flex-col items-center gap-3">
+              <button
+                type="button"
+                disabled={!canCompare}
+                onClick={startCompare}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all",
+                  canCompare
+                    ? "cursor-pointer bg-primary text-primary-foreground hover:opacity-90"
+                    : "cursor-not-allowed bg-line2 text-ink3",
+                )}
+              >
+                <Icons.scales className="h-4 w-4" />
+                {canCompare && a && b
+                  ? `Compare ${a.symbol} vs ${b.symbol}`
+                  : "Pick two stocks to compare"}
+              </button>
+              {canCompare && (
+                <p className="text-xs text-ink3">
+                  Comparison opens regardless of sector — you choose what to read.
+                </p>
+              )}
+            </div>
+
+            {/* Suggested same-family quick-starts */}
+            <div className="border-t border-line pt-6">
+              <div className="mb-3 flex items-center justify-center gap-2 text-ink3">
+                <Icons.spark weight="duotone" className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wide">
+                  Example pairs
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {SUGGESTED_PAIRS.map((pair) => {
+                  const ready = bySymbol.has(pair.a) && bySymbol.has(pair.b);
+                  return (
+                    <button
+                      key={`${pair.a}-${pair.b}`}
+                      type="button"
+                      disabled={!ready}
+                      onClick={() => applySuggested(pair)}
+                      className={cn(
+                        "rounded-xl border border-line bg-surface px-4 py-2.5 text-left transition-colors",
+                        ready ? "hover:bg-line2/40" : "cursor-not-allowed opacity-50",
+                      )}
                     >
-                      {s.health}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">{s.symbol}</p>
-                      <p className="truncate text-xs text-muted-foreground">{s.name}</p>
-                    </div>
-                    {isCurrent && <Icons.check weight="bold" className="size-4 text-primary" />}
-                    {isOther && <span className="text-[0.6rem] uppercase text-muted-foreground">In use</span>}
-                  </button>
-                );
-              })}
-            </motion.div>
-          </>
+                      <div className="num text-sm font-semibold text-ink">
+                        {pair.a} <span className="text-ink3">vs</span> {pair.b}
+                      </div>
+                      <div className="text-xs text-ink3">{pair.note}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -293,453 +372,362 @@ function StockPicker({
 }
 
 /* ------------------------------------------------------------------ */
-/* Page                                                                */
+/* Picker slot — shows the search picker until a stock is chosen, then  */
+/* a confirmed chip with a clear/change action.                         */
 /* ------------------------------------------------------------------ */
 
-export default function ComparisonPage() {
-  const [left, setLeft] = useState<CompareStock>(STOCKS[0]); // RELIANCE
-  const [right, setRight] = useState<CompareStock>(STOCKS[1]); // TCS
-
-  const ACCENT_L = "var(--info)";
-  const ACCENT_R = "var(--primary)";
-
-  /* Tally metric wins for the AI verdict. */
-  const tally = useMemo(() => {
-    let leftWins = 0;
-    let rightWins = 0;
-    for (const m of METRICS) {
-      const w = winnerOf(m.get(left), m.get(right), m.lowerIsBetter);
-      if (w === 0) leftWins += 1;
-      else if (w === 1) rightWins += 1;
-    }
-    let pillarLeft = 0;
-    let pillarRight = 0;
-    for (const p of PILLARS) {
-      const a = left.pillars[p.key];
-      const b = right.pillars[p.key];
-      if (a > b) pillarLeft += 1;
-      else if (b > a) pillarRight += 1;
-    }
-    return { leftWins, rightWins, pillarLeft, pillarRight };
-  }, [left, right]);
-
-  /* Overall verdict: health score is the headline, metric/pillar wins back it up. */
-  const verdict = useMemo(() => {
-    const healthLead = left.health - right.health;
-    let champion: CompareStock;
-    let challenger: CompareStock;
-    let championAccent: string;
-    if (healthLead > 0 || (healthLead === 0 && tally.leftWins >= tally.rightWins)) {
-      champion = left;
-      challenger = right;
-      championAccent = ACCENT_L;
-    } else {
-      champion = right;
-      challenger = left;
-      championAccent = ACCENT_R;
-    }
-    const champMetricWins = champion === left ? tally.leftWins : tally.rightWins;
-    const champPillarWins = champion === left ? tally.pillarLeft : tally.pillarRight;
-    const gap = Math.abs(left.health - right.health);
-    const margin = gap >= 10 ? "decisively" : gap >= 4 ? "clearly" : "narrowly";
-
-    return {
-      champion,
-      challenger,
-      championAccent,
-      champMetricWins,
-      champPillarWins,
-      margin,
-      gap,
-      summary: `${champion.symbol} ${margin} edges out ${challenger.symbol} with a Health Score of ${champion.health} vs ${challenger.health}, winning ${champMetricWins} of ${METRICS.length} head-to-head metrics and ${champPillarWins} of ${PILLARS.length} quality pillars.`,
-    };
-  }, [left, right, tally]);
-
+function PickerSlot({
+  label,
+  picked,
+  onPick,
+  onClear,
+  stocks,
+  loading,
+  disabledSymbol,
+}: {
+  label: string;
+  picked: PickerStock | null;
+  onPick: (s: PickerStock) => void;
+  onClear: () => void;
+  stocks: PickerStock[];
+  loading: boolean;
+  disabledSymbol: string | null;
+}) {
   return (
-    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6">
-      {/* 1) Hero */}
-      <motion.section
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-strong relative overflow-hidden rounded-3xl border border-border/70 p-5 sm:p-7"
-      >
-        <div className="bg-aurora pointer-events-none absolute inset-0 -z-10 opacity-20" />
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-xl">
-            <div className="flex items-center gap-2 text-primary">
-              <span className="grid size-7 place-items-center rounded-lg bg-primary/12 ring-1 ring-primary/20">
-                <Icons.scales weight="duotone" className="size-4" />
+    <div className="space-y-2">
+      <div className="text-xs font-medium uppercase tracking-wide text-ink3">
+        {label}
+      </div>
+      {picked ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="num text-sm font-semibold text-ink">
+                {picked.symbol}
               </span>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em]">Head to head</span>
+              {picked.scored && picked.band ? (
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                    BAND_CHIP[picked.band],
+                  )}
+                >
+                  {BAND_LABEL[picked.band]}
+                </span>
+              ) : (
+                <span className="rounded-full bg-line2 px-2 py-0.5 text-[10px] font-medium text-ink3">
+                  Not scored
+                </span>
+              )}
             </div>
-            <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Compare, <span className="text-gradient">head to head</span>
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              Settle the debate in seconds. Put any two stocks side by side and let the InvestIQ Health
-              Score — plus the metrics that actually move it — pick a winner.
+            <p className="truncate text-xs text-ink2">{picked.name}</p>
+            {picked.sector && (
+              <p className="truncate text-xs text-ink3">{picked.sector}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={`Change ${label.toLowerCase()} stock`}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink3 transition-colors hover:bg-line2/50 hover:text-ink"
+          >
+            <Icons.close className="h-4 w-4" />
+          </button>
+        </motion.div>
+      ) : (
+        <EntityPicker
+          stocks={stocks}
+          loading={loading}
+          disabledSymbol={disabledSymbol}
+          onPick={onPick}
+          placeholder="Search ticker or name…"
+        />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Comparability signal — the differentiator. Informative, never a      */
+/* block. Reads the live /api/compare alignment result.                 */
+/* ------------------------------------------------------------------ */
+
+function ComparabilitySignal({
+  bothPicked,
+  sameSymbol,
+  query,
+}: {
+  bothPicked: boolean;
+  sameSymbol: boolean;
+  query: ReturnType<typeof useComparison>;
+}) {
+  if (!bothPicked) return null;
+
+  if (sameSymbol) {
+    return (
+      <SignalCard tone="neutral" icon={<Icons.info className="h-4 w-4" />}>
+        <span className="font-medium text-ink">Pick two different stocks.</span>{" "}
+        A comparison needs two distinct names.
+      </SignalCard>
+    );
+  }
+
+  if (query.isLoading) {
+    return (
+      <SignalCard tone="neutral" icon={<Icons.refresh className="h-4 w-4 animate-spin" />}>
+        Checking how these line up…
+      </SignalCard>
+    );
+  }
+
+  if (query.isError || !query.data) {
+    return (
+      <SignalCard tone="neutral" icon={<Icons.warning className="h-4 w-4" />}>
+        Couldn&apos;t check comparability right now — you can still open the comparison.
+      </SignalCard>
+    );
+  }
+
+  const { comparability, peerStandingComparable, a, b } = query.data;
+
+  if (comparability === "same_family") {
+    if (peerStandingComparable) {
+      return (
+        <SignalCard tone="positive" icon={<Icons.check className="h-4 w-4" />}>
+          <span className="font-medium text-ink">
+            Fully comparable — same family ({a.familyLabel}).
+          </span>{" "}
+          Every measure lines up, including peer-group ranks.
+        </SignalCard>
+      );
+    }
+    return (
+      <SignalCard tone="positive" icon={<Icons.check className="h-4 w-4" />}>
+        <span className="font-medium text-ink">
+          Same family ({a.familyLabel}) — financial metrics line up directly.
+        </span>{" "}
+        They sit in different peer groups, so within-group ranks are relative to
+        different sets and aren&apos;t directly comparable.
+      </SignalCard>
+    );
+  }
+
+  // cross_family — informative heads-up, framed as what they'll get.
+  return (
+    <SignalCard tone="info" icon={<Icons.info className="h-4 w-4" />}>
+      <span className="font-medium text-ink">
+        Different families ({a.familyLabel} vs {b.familyLabel}).
+      </span>{" "}
+      Universal measures — health, ROE, growth, returns, ownership — compare directly.
+      Sector-specific metrics are shown separately and aren&apos;t directly comparable.
+    </SignalCard>
+  );
+}
+
+function SignalCard({
+  tone,
+  icon,
+  children,
+}: {
+  tone: "positive" | "info" | "neutral";
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const toneClasses: Record<"positive" | "info" | "neutral", string> = {
+    positive: "border-healthy/30 bg-healthy/5",
+    info: "border-line2 bg-surface",
+    neutral: "border-line bg-surface",
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className={cn(
+        "mx-auto flex max-w-3xl items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+        toneClasses[tone],
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 shrink-0",
+          tone === "positive" ? "text-healthy" : tone === "info" ? "text-ctx" : "text-ink3",
+        )}
+      >
+        {icon}
+      </span>
+      <p className="text-ink2">{children}</p>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Peer-group picker slot — mirrors PickerSlot: search until chosen,    */
+/* then a confirmed chip (name, members, median) with a clear action.   */
+/* ------------------------------------------------------------------ */
+
+function PgPickerSlot({
+  label,
+  picked,
+  onPick,
+  onClear,
+  groups,
+  loading,
+  disabledId,
+}: {
+  label: string;
+  picked: PickerPeerGroup | null;
+  onPick: (g: PickerPeerGroup) => void;
+  onClear: () => void;
+  groups: PickerPeerGroup[];
+  loading: boolean;
+  disabledId: string | null;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium uppercase tracking-wide text-ink3">
+        {label}
+      </div>
+      {picked ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-ink">
+                {picked.displayName}
+              </span>
+              {picked.medianComposite != null && (
+                <span className="num rounded-full bg-line2 px-2 py-0.5 text-[10px] font-semibold text-ink3">
+                  med {Math.round(picked.medianComposite)}
+                </span>
+              )}
+            </div>
+            <p className="truncate text-xs text-ink2">
+              {picked.memberCount} members
+              {picked.sector ? ` · ${picked.sector}` : ""}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-3 self-start lg:self-center">
-            <div className="rounded-2xl border border-border/70 bg-surface-1/40 px-4 py-3 text-center">
-              <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Stocks</p>
-              <p className="font-display text-xl font-extrabold">{STOCKS.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-surface-1/40 px-4 py-3 text-center">
-              <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Metrics</p>
-              <p className="font-display text-xl font-extrabold">{METRICS.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-surface-1/40 px-4 py-3 text-center">
-              <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Pillars</p>
-              <p className="font-display text-xl font-extrabold">{PILLARS.length}</p>
-            </div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* 2) Pickers with VS */}
-      <Reveal>
-        <div className="glass rounded-3xl border border-border/70 p-4 sm:p-6">
-          <div className="flex flex-col items-stretch gap-4 md:flex-row md:items-center">
-            <div className="flex-1">
-              <StockPicker
-                side="left"
-                stock={left}
-                otherSymbol={right.symbol}
-                accent={ACCENT_L}
-                onPick={setLeft}
-              />
-            </div>
-
-            <div className="flex items-center justify-center md:px-1">
-              <motion.span
-                initial={{ scale: 0.7, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ type: "spring", stiffness: 260, damping: 18 }}
-                className="font-display text-2xl font-black"
-              >
-                <span className="grid size-12 place-items-center rounded-full border border-border/70 bg-surface-2 text-gradient shadow-lg sm:size-14">
-                  VS
-                </span>
-              </motion.span>
-            </div>
-
-            <div className="flex-1">
-              <StockPicker
-                side="right"
-                stock={right}
-                otherSymbol={left.symbol}
-                accent={ACCENT_R}
-                onPick={setRight}
-              />
-            </div>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* 3) Head-to-head metrics table */}
-      <Reveal>
-        <div className="glass rounded-3xl border border-border/70 p-5 sm:p-6">
-          <SectionHeading
-            eyebrow="Tale of the tape"
-            icon={Icons.scales}
-            title="Head-to-head metrics"
-            subtitle="Winner of each row is highlighted. For valuation-style metrics, lower is better."
-          />
-
-          {/* Desktop table */}
-          <div className="custom-scrollbar mt-5 hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border/70 text-xs text-muted-foreground">
-                  <th className="px-3 py-2.5 text-left font-medium">Metric</th>
-                  <th className="px-3 py-2.5 text-right font-medium">
-                    <span style={{ color: ACCENT_L }}>{left.symbol}</span>
-                  </th>
-                  <th className="px-3 py-2.5 text-center font-medium"></th>
-                  <th className="px-3 py-2.5 text-left font-medium">
-                    <span style={{ color: ACCENT_R }}>{right.symbol}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {METRICS.map((m) => {
-                  const av = m.get(left);
-                  const bv = m.get(right);
-                  const w = winnerOf(av, bv, m.lowerIsBetter);
-                  return (
-                    <tr key={m.key} className="border-b border-border/40">
-                      <td className="px-3 py-3">
-                        <p className="font-medium">{m.label}</p>
-                        <p className="text-xs text-muted-foreground">{m.hint}</p>
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-mono font-semibold",
-                            w === 0 ? "text-success" : "text-foreground"
-                          )}
-                          style={w === 0 ? { background: "color-mix(in oklch, var(--success) 12%, transparent)" } : undefined}
-                        >
-                          {w === 0 && <Icons.crown weight="fill" className="size-3.5" />}
-                          {m.fmt(av)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-center text-[0.65rem] uppercase tracking-wider text-muted-foreground/60">
-                        {w === -1 ? "tie" : "vs"}
-                      </td>
-                      <td className="px-3 py-3 text-left">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-mono font-semibold",
-                            w === 1 ? "text-success" : "text-foreground"
-                          )}
-                          style={w === 1 ? { background: "color-mix(in oklch, var(--success) 12%, transparent)" } : undefined}
-                        >
-                          {w === 1 && <Icons.crown weight="fill" className="size-3.5" />}
-                          {m.fmt(bv)}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="mt-5 space-y-2.5 md:hidden">
-            {METRICS.map((m) => {
-              const av = m.get(left);
-              const bv = m.get(right);
-              const w = winnerOf(av, bv, m.lowerIsBetter);
-              return (
-                <div key={m.key} className="rounded-2xl border border-border/60 bg-surface-1/40 p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{m.label}</p>
-                    <span className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">{m.hint}</span>
-                  </div>
-                  <div className="mt-2.5 grid grid-cols-2 gap-2">
-                    <div
-                      className={cn(
-                        "flex items-center justify-between rounded-xl border px-3 py-2",
-                        w === 0 ? "border-success/40 bg-success/10" : "border-border/50 bg-surface-2/40"
-                      )}
-                    >
-                      <span className="truncate text-[0.65rem] font-semibold" style={{ color: ACCENT_L }}>
-                        {left.symbol}
-                      </span>
-                      <span className={cn("flex items-center gap-1 font-mono text-sm font-bold", w === 0 && "text-success")}>
-                        {w === 0 && <Icons.crown weight="fill" className="size-3" />}
-                        {m.fmt(av)}
-                      </span>
-                    </div>
-                    <div
-                      className={cn(
-                        "flex items-center justify-between rounded-xl border px-3 py-2",
-                        w === 1 ? "border-success/40 bg-success/10" : "border-border/50 bg-surface-2/40"
-                      )}
-                    >
-                      <span className="truncate text-[0.65rem] font-semibold" style={{ color: ACCENT_R }}>
-                        {right.symbol}
-                      </span>
-                      <span className={cn("flex items-center gap-1 font-mono text-sm font-bold", w === 1 && "text-success")}>
-                        {w === 1 && <Icons.crown weight="fill" className="size-3" />}
-                        {m.fmt(bv)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </Reveal>
-
-      {/* 4) Pillar-by-pillar diverging bars */}
-      <Reveal>
-        <div className="glass rounded-3xl border border-border/70 p-5 sm:p-6">
-          <SectionHeading
-            eyebrow="Quality DNA"
-            icon={Icons.health}
-            title="Pillar by pillar"
-            subtitle="Six dimensions of the Health Score, mirrored. The leader of each pillar lights up."
-          />
-
-          <div className="mt-5 flex items-center justify-between text-xs font-semibold">
-            <span style={{ color: ACCENT_L }}>{left.symbol}</span>
-            <span className="text-muted-foreground">0 — 100</span>
-            <span style={{ color: ACCENT_R }}>{right.symbol}</span>
-          </div>
-
-          <div className="mt-3 space-y-4">
-            {PILLARS.map((p, i) => {
-              const a = left.pillars[p.key];
-              const b = right.pillars[p.key];
-              const leftWins = a > b;
-              const rightWins = b > a;
-              const PIcon = p.icon;
-              return (
-                <div key={p.key}>
-                  <div className="mb-1.5 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <PIcon weight="duotone" className="size-3.5 text-primary" />
-                    <span className="font-medium text-foreground">{p.label}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {/* left value */}
-                    <span
-                      className={cn("w-8 shrink-0 text-right font-mono text-sm font-bold", leftWins ? "" : "text-muted-foreground")}
-                      style={leftWins ? { color: ACCENT_L } : undefined}
-                    >
-                      {a}
-                    </span>
-                    {/* left bar (grows right-to-left) */}
-                    <div className="flex h-2.5 flex-1 justify-end overflow-hidden rounded-full bg-surface-3/60">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${a}%` }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.9, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                        className="h-full rounded-full"
-                        style={{
-                          background: ACCENT_L,
-                          opacity: leftWins ? 1 : 0.45,
-                          boxShadow: leftWins ? `0 0 10px ${ACCENT_L}` : undefined,
-                        }}
-                      />
-                    </div>
-                    {/* center divider */}
-                    <span className="size-1.5 shrink-0 rounded-full bg-border" />
-                    {/* right bar (grows left-to-right) */}
-                    <div className="flex h-2.5 flex-1 justify-start overflow-hidden rounded-full bg-surface-3/60">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${b}%` }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.9, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                        className="h-full rounded-full"
-                        style={{
-                          background: ACCENT_R,
-                          opacity: rightWins ? 1 : 0.45,
-                          boxShadow: rightWins ? `0 0 10px ${ACCENT_R}` : undefined,
-                        }}
-                      />
-                    </div>
-                    {/* right value */}
-                    <span
-                      className={cn("w-8 shrink-0 text-left font-mono text-sm font-bold", rightWins ? "" : "text-muted-foreground")}
-                      style={rightWins ? { color: ACCENT_R } : undefined}
-                    >
-                      {b}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-5 flex items-center justify-center gap-4 border-t border-border/50 pt-4 text-xs text-muted-foreground">
-            <span>
-              Pillars won — <span style={{ color: ACCENT_L }}>{left.symbol} {tally.pillarLeft}</span>
-            </span>
-            <span className="text-muted-foreground/40">·</span>
-            <span>
-              <span style={{ color: ACCENT_R }}>{right.symbol} {tally.pillarRight}</span>
-            </span>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* 5) AI verdict */}
-      <Reveal>
-        <div className="glass-strong relative overflow-hidden rounded-3xl border border-border/70 p-5 sm:p-7">
-          <div className="bg-aurora pointer-events-none absolute inset-0 -z-10 opacity-20" />
-          <div className="flex items-center gap-2 text-primary">
-            <span className="grid size-7 place-items-center rounded-lg bg-primary/12 ring-1 ring-primary/20">
-              <Icons.brain weight="duotone" className="size-4" />
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-[0.18em]">AI verdict</span>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-center">
-            {/* Champion badge */}
-            <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-border/70 bg-surface-1/40 p-4">
-              <div className="relative">
-                <HealthRing score={verdict.champion.health} size={92} strokeWidth={8} showLabel />
-                <motion.span
-                  initial={{ scale: 0, rotate: -20 }}
-                  whileInView={{ scale: 1, rotate: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ type: "spring", stiffness: 300, damping: 16, delay: 0.2 }}
-                  className="absolute -right-1 -top-1 grid size-7 place-items-center rounded-full bg-warning text-background shadow-lg"
-                >
-                  <Icons.crown weight="fill" className="size-4" />
-                </motion.span>
-              </div>
-              <div>
-                <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Winner</p>
-                <p className="font-display text-2xl font-extrabold" style={{ color: verdict.championAccent }}>
-                  {verdict.champion.symbol}
-                </p>
-                <p className="text-xs text-muted-foreground">{healthLabel(verdict.champion.health)} health</p>
-              </div>
-            </div>
-
-            {/* Narrative + scoreboard */}
-            <div className="min-w-0 flex-1">
-              <p className="text-base leading-relaxed text-foreground sm:text-lg">{verdict.summary}</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {verdict.gap >= 4
-                  ? `The ${verdict.gap}-point Health Score gap reflects stronger fundamentals overall — but check the pillars where ${verdict.challenger.symbol} still leads before you decide.`
-                  : `It is a tight race — the two are nearly evenly matched, so let your own valuation tolerance and time horizon break the tie.`}
-              </p>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-xl border border-border/60 bg-surface-1/40 p-3 text-center">
-                  <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Health gap</p>
-                  <p className="font-display text-xl font-extrabold">
-                    <AnimatedNumber value={verdict.gap} suffix=" pts" />
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-surface-1/40 p-3 text-center">
-                  <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Metric wins</p>
-                  <p className="font-display text-xl font-extrabold text-success">
-                    {verdict.champMetricWins}/{METRICS.length}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-surface-1/40 p-3 text-center">
-                  <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Pillars won</p>
-                  <p className="font-display text-xl font-extrabold text-success">
-                    {verdict.champPillarWins}/{PILLARS.length}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-surface-1/40 p-3 text-center">
-                  <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Verdict</p>
-                  <p className="font-display text-sm font-bold capitalize" style={{ color: verdict.championAccent }}>
-                    {verdict.margin}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button variant="gradient">
-                  <Icons.target weight="duotone" className="size-4" /> Add {verdict.champion.symbol} to watchlist
-                </Button>
-                <Button variant="outline">
-                  <Icons.arrowRight weight="bold" className="size-4" /> Full analysis
-                </Button>
-              </div>
-
-              <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
-                <Icons.info weight="duotone" className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                Generated from Health Scores and head-to-head metric wins. For education only, not investment advice.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Reveal>
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={`Change ${label.toLowerCase()}`}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink3 transition-colors hover:bg-line2/50 hover:text-ink"
+          >
+            <Icons.close className="h-4 w-4" />
+          </button>
+        </motion.div>
+      ) : (
+        <PeerGroupPicker
+          groups={groups}
+          loading={loading}
+          disabledId={disabledId}
+          onPick={onPick}
+          placeholder="Search peer groups…"
+        />
+      )}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Peer-group comparability signal — the field-level differentiator.    */
+/* Reads both ponds' industryPath (from /health) to gate metric-        */
+/* distribution alignment. Informative, never a block. Warn-but-allow.  */
+/* ------------------------------------------------------------------ */
+
+const INDUSTRY_LABEL: Record<string, string> = {
+  banking: "Banking",
+  non_financial: "Non-Financial",
+  mixed: "Mixed",
+};
+
+function industryLabel(path: string | null): string {
+  return (path && INDUSTRY_LABEL[path]) || "Unclassified";
+}
+
+function PgComparabilitySignal({
+  bothPicked,
+  samePg,
+  queryA,
+  queryB,
+}: {
+  bothPicked: boolean;
+  samePg: boolean;
+  queryA: ReturnType<typeof usePeerGroupHealth>;
+  queryB: ReturnType<typeof usePeerGroupHealth>;
+}) {
+  if (!bothPicked) return null;
+
+  if (samePg) {
+    return (
+      <SignalCard tone="neutral" icon={<Icons.info className="h-4 w-4" />}>
+        <span className="font-medium text-ink">Pick two different fields.</span>{" "}
+        A comparison needs two distinct peer groups.
+      </SignalCard>
+    );
+  }
+
+  if (queryA.isLoading || queryB.isLoading) {
+    return (
+      <SignalCard tone="neutral" icon={<Icons.refresh className="h-4 w-4 animate-spin" />}>
+        Checking how these fields line up…
+      </SignalCard>
+    );
+  }
+
+  if (
+    queryA.isError ||
+    queryB.isError ||
+    !queryA.data?.identity ||
+    !queryB.data?.identity
+  ) {
+    return (
+      <SignalCard tone="neutral" icon={<Icons.warning className="h-4 w-4" />}>
+        Couldn&apos;t check field comparability right now — you can still open the comparison.
+      </SignalCard>
+    );
+  }
+
+  const pathA = queryA.data.identity.industryPath;
+  const pathB = queryB.data.identity.industryPath;
+  const labelA = industryLabel(pathA);
+  const labelB = industryLabel(pathB);
+
+  // Same-family gate: both classified, identical, and NOT "mixed" (a mixed pond has no
+  // single metric set, so it's cross-family vs anything — including another mixed).
+  const sameFamily =
+    pathA != null && pathA !== "mixed" && pathA === pathB;
+
+  if (sameFamily) {
+    return (
+      <SignalCard tone="positive" icon={<Icons.check className="h-4 w-4" />}>
+        <span className="font-medium text-ink">
+          Both {labelA} fields — key-metric distributions compare directly.
+        </span>{" "}
+        Their sector-specific metric distributions line up, alongside the universal
+        health, band-spread, and dispersion measures.
+      </SignalCard>
+    );
+  }
+
+  // Cross-family / mixed — informative heads-up, framed as what they'll get.
+  return (
+    <SignalCard tone="info" icon={<Icons.info className="h-4 w-4" />}>
+      <span className="font-medium text-ink">
+        Different field types ({labelA} vs {labelB}).
+      </span>{" "}
+      Universal measures — health distribution, band spread, concentration, dispersion —
+      compare directly. Each field&apos;s sector-specific metric distributions are shown
+      separately, not aligned.
+    </SignalCard>
   );
 }

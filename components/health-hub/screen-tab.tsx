@@ -1,9 +1,10 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { HealthRing } from "@/components/ui/health-ring";
+import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
 import { Icons } from "@/lib/icons";
@@ -33,6 +34,9 @@ function Census({
   const dist = view.aggregate!.bandDistribution;
   const counts = LABEL_BAND_ORDER.map((b) => dist[b]);
   const max = Math.max(...counts, 1);
+  const total = view.scoredUniverseSize || counts.reduce((s, n) => s + n, 0) || 1;
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(chartRef);
   return (
     <div className="rounded-xl border border-line bg-surface-1 p-5">
       <div className="mb-3 flex items-center justify-between">
@@ -48,7 +52,8 @@ function Census({
           <p className="mt-2 text-[10.5px] text-ink3">Tip: click any band to filter the table below.</p>
         </div>
         <div className="min-w-[300px] flex-[1.3]">
-          <div className="flex h-24 items-end gap-1.5">
+          <div ref={chartRef} className="relative flex h-24 items-end gap-1.5">
+            <ChartTooltip tip={tip} />
             {LABEL_BAND_ORDER.map((band, i) => {
               const active = bandFilter === band;
               return (
@@ -56,6 +61,19 @@ function Census({
                   key={band}
                   type="button"
                   onClick={() => onBand(active ? null : band)}
+                  onMouseMove={(e) =>
+                    show(
+                      e,
+                      <TipBody
+                        title={BAND_META[band].label}
+                        rows={[
+                          { label: "Names", value: String(counts[i]) },
+                          { label: "Share", value: `${((counts[i] / total) * 100).toFixed(0)}%` },
+                        ]}
+                      />,
+                    )
+                  }
+                  onMouseLeave={hide}
                   className="flex h-full flex-1 cursor-pointer flex-col items-center justify-end gap-1.5 transition-opacity hover:opacity-85"
                 >
                   <span className="num text-[12px] font-medium" style={{ color: active ? BAND_META[band].cssVar : "var(--ink)" }}>

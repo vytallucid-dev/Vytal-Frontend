@@ -1,15 +1,18 @@
 "use client";
 
+import { useRef } from "react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Reveal } from "@/components/ui/reveal";
 import { changeColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Icons } from "@/lib/icons";
 import {
   SectionEyebrow,
   Panel,
   BAND_META,
   LABEL_BAND_ORDER,
 } from "@/components/stock-detail/health/shared";
+import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 import { pondCharacterRead, niceBounds, BAND_CUTS } from "./lib";
 import type {
   PeerGroupAggregate,
@@ -45,8 +48,13 @@ function PondChart({
 
   const sorted = [...members].sort((a, b) => a.composite - b.composite);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(containerRef);
+
   return (
-    <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block h-auto w-full" preserveAspectRatio="none">
+    <div ref={containerRef} className="relative">
+      <ChartTooltip tip={tip} />
+      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block h-auto w-full" preserveAspectRatio="none">
       {/* band-zone tints */}
       {ZONES.map((z) => {
         const x1 = clampX(xo(Math.max(z.from, lo)));
@@ -112,10 +120,31 @@ function PondChart({
             <text x={clampX(x)} y={vy} textAnchor="middle" className="num" style={{ fontSize: 9, fill: "var(--ink3)" }}>
               {Math.round(m.composite)}
             </text>
+            <circle
+              cx={x}
+              cy={AXIS_Y}
+              r={16}
+              fill="transparent"
+              style={{ cursor: "pointer" }}
+              onMouseMove={(e) =>
+                show(
+                  e,
+                  <TipBody
+                    title={m.symbol}
+                    rows={[
+                      { label: "Composite", value: String(Math.round(m.composite)) },
+                      { label: "Band", value: BAND_META[m.labelBand].label },
+                    ]}
+                  />,
+                )
+              }
+              onMouseLeave={hide}
+            />
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }
 
@@ -196,7 +225,7 @@ export function PortraitSection({
 
   return (
     <section>
-      <SectionEyebrow label="What kind of pond is this" />
+      <SectionEyebrow label="What kind of pond is this" icon={Icons.compass} accent="var(--p-found)" />
       <Reveal>
         <Panel className="grid gap-6 lg:grid-cols-[1.55fr_1fr]">
           {/* distribution */}

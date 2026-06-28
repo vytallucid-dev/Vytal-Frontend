@@ -188,7 +188,7 @@ export function FindingsSection({
   if (density === "empty") {
     return (
       <section>
-        <SectionEyebrow label="Notable findings" pill="all clear" />
+        <SectionEyebrow label="Notable findings" icon={Icons.pulse} accent="var(--p-mkt)" pill="all clear" />
         <Panel className="flex flex-col items-center gap-2 py-10 text-center">
           <Icons.success weight="duotone" className="h-9 w-9 text-healthy" />
           <p className="max-w-md text-[13px] leading-relaxed text-ink2">{DENSITY_EMPTY_COPY}</p>
@@ -202,7 +202,7 @@ export function FindingsSection({
 
   return (
     <section>
-      <SectionEyebrow label="Notable findings" pill={pill} />
+      <SectionEyebrow label="Notable findings" icon={Icons.pulse} accent="var(--p-mkt)" pill={pill} />
       {density === "quiet" && (
         <p className="-mt-2 mb-3 text-[12px] italic text-ink3">{DENSITY_QUIET_HEADER}.</p>
       )}

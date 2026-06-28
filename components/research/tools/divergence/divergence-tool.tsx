@@ -152,7 +152,7 @@ export function DivergenceTool() {
       symbol={symbol}
       window={window}
       onWindowChange={setWindow}
-      onSelectSymbol={(s) => router.push(`/research/divergence?symbol=${s}`)}
+      onSelectSymbol={(s) => router.push(`/research/divergence?symbol=${encodeURIComponent(s)}`)}
       onHome={() => router.push("/research/divergence")}
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}

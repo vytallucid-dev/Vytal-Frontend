@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatedNumber } from "@/components/ui/animated-number";
+import { Icons } from "@/lib/icons";
 import type { IdentitySection, PillarView } from "@/types/health";
 import { SectionEyebrow, Panel, clampPct } from "./shared";
 import { floorDescriptor, foundationFloorLine } from "./diagnosis";
@@ -23,7 +24,7 @@ export function RideSection({
 
   return (
     <section>
-      <SectionEyebrow label="How it rides" pill="balance-sheet floor" />
+      <SectionEyebrow label="How it rides" icon={Icons.shield} accent="var(--p-found)" pill="balance-sheet floor" />
       <Panel className="grid items-center gap-6 lg:grid-cols-[1.05fr_1fr]">
         {/* ribbon */}
         <div>

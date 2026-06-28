@@ -213,10 +213,42 @@ export interface BkRatioHistoryPoint {
   creditCostPct: number | null; // %
 }
 
+// ── CASA (current-and-savings ratio) — entered quarterly, tiered for HONEST display. ──
+// The tier in `current.source` is load-bearing: the UI renders four distinct states from
+// it (see §0 of the build spec). NEVER show a bare value — always with its `quarter`.
+// Banks-only: `casa` exists solely on the banking payload. A bank with no entered CASA is
+// honest-empty (current.value null, source "none", series []).
+
+/** The current CASA reading + the tier context needed to render it honestly. */
+export interface BankingCasaCurrent {
+  value: number | null; // CASA %, e.g. 34.5 — null when source === "none"
+  quarter: string | null; // the quarter this value is FOR, e.g. "FY26/Q4"; null on legacy_live / none
+  source: "quarter" | "legacy_live" | "none"; // resolved tier — THE field that drives honest display
+  isCurrent: boolean; // true ONLY when the latest entered quarter === the current expected quarter
+  asOf: string | null; // ISO — when the driving row was entered (null when none)
+}
+
+/** One entered CASA quarter for the history chart (quarter-keyed rows only, ascending). */
+export interface BankingCasaSeriesPoint {
+  quarter: string; // "FY26/Q3" — the chart x-axis label
+  value: number; // CASA % for that quarter (already percent — no conversion)
+  periodEnd: string | null; // period-end date if stored (currently always null — use `quarter`)
+}
+
+/** CASA block on the banking fundamentals view: current tiered value + full quarter series. */
+export interface BankingCasa {
+  current: BankingCasaCurrent;
+  series: BankingCasaSeriesPoint[]; // ascending by quarter; [] when no entered quarters
+}
+
 export interface BankingPayload {
   quarters: BankingQuarter[]; // oldest → newest
   annual: BankingAnnual | null;
   ratioHistory: BkRatioHistoryPoint[]; // oldest → newest; sparkline-eligible, per-stock gated
+  // current CASA (tiered, honest) + full quarter series for the history chart. OPTIONAL on the
+  // read model: a backend that predates the CASA read-exposure omits it → the UI honest-empties
+  // (never crashes). Present on every current build of the fundamentals service.
+  casa?: BankingCasa;
 }
 
 // ── NBFC family — a lending P&L, credit-cost as the (thinner) risk lens. No GNPA/PCR,

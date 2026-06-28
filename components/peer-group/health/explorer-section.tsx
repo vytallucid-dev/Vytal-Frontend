@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Reveal } from "@/components/ui/reveal";
+import { Icons } from "@/lib/icons";
 import { SectionEyebrow, Panel } from "@/components/stock-detail/health/shared";
+import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 import { getMetricLabel } from "@/lib/health/metric-labels";
 import { niceBounds } from "./lib";
 import type { PeerMetricDistribution } from "@/types/peer-group";
@@ -80,8 +82,13 @@ function MetricChart({ dist, unit }: { dist: PeerMetricDistribution; unit?: stri
   const sorted = [...dist.members].sort((a, b) => a.rawValue - b.rawValue);
   const med = median(raws);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(containerRef);
+
   return (
-    <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block h-auto w-full" preserveAspectRatio="none">
+    <div ref={containerRef} className="relative">
+      <ChartTooltip tip={tip} />
+      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block h-auto w-full" preserveAspectRatio="none">
       {/* data-derived band regions */}
       {regions.map((r, i) => (
         <rect
@@ -148,10 +155,32 @@ function MetricChart({ dist, unit }: { dist: PeerMetricDistribution; unit?: stri
             <text x={clampX(x)} y={ly} textAnchor="middle" className="num" style={{ fontSize: 9.5, fill: "var(--ink2)" }}>
               {m.symbol}
             </text>
+            <circle
+              cx={x}
+              cy={AXIS_Y}
+              r={16}
+              fill="transparent"
+              style={{ cursor: "pointer" }}
+              onMouseMove={(e) =>
+                show(
+                  e,
+                  <TipBody
+                    title={m.symbol}
+                    rows={[
+                      { label: "Value", value: `${fmtVal(m.rawValue, unit)}${unit ? ` ${unit}` : ""}` },
+                      { label: "Band", value: m.l1Band ?? "unscored" },
+                      ...(dim ? [{ label: "State", value: m.scoreState }] : []),
+                    ]}
+                  />,
+                )
+              }
+              onMouseLeave={hide}
+            />
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }
 
@@ -171,7 +200,7 @@ export function ExplorerSection({ metrics }: { metrics: PeerMetricDistribution[]
   if (!dist) {
     return (
       <section>
-        <SectionEyebrow label="Metric distribution explorer" />
+        <SectionEyebrow label="Metric distribution explorer" icon={Icons.chartBar} accent="var(--p-found)" />
         <Panel className="py-10 text-center text-[12px] text-ink3">
           No metric distributions for this pond.
         </Panel>
@@ -189,7 +218,7 @@ export function ExplorerSection({ metrics }: { metrics: PeerMetricDistribution[]
 
   return (
     <section>
-      <SectionEyebrow label="Metric distribution explorer" pill="the substrate behind every bar" />
+      <SectionEyebrow label="Metric distribution explorer" icon={Icons.chartBar} accent="var(--p-found)" pill="the substrate behind every bar" />
       <Reveal>
         <Panel>
           {/* metric chips */}

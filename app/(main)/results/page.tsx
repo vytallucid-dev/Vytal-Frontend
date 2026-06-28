@@ -1,740 +1,483 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { HealthRing } from "@/components/ui/health-ring";
-import { Sparkline } from "@/components/ui/sparkline";
-import { AnimatedNumber } from "@/components/ui/animated-number";
-import { Reveal } from "@/components/ui/reveal";
-import { SectionHeading } from "@/components/ui/section-heading";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Icons } from "@/lib/icons";
-import { formatINR, formatPct, changeColor, healthColorVar } from "@/lib/format";
+import { healthColorVar } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-/* ---------------------------------------------------------------- mock data */
-
-interface ResultItem {
-  symbol: string;
-  name: string;
-  sector: string;
-  quarter: string;
-  reportedOn: string; // ISO date
-  revenue: number; // ₹ crore
-  revenueYoY: number; // %
-  netProfit: number; // ₹ crore
-  profitYoY: number; // %
-  opMargin: number; // %
-  marginDeltaBps: number; // basis points YoY
-  health: number; // 0–100
-  marketReaction: number; // % price move post-results
-  reactionSpark: number[]; // 8 points
-  aiTake: string;
-  highlights: string[];
-}
-
-const CR = 1e7; // one crore in rupees → lets formatINR compact render "Cr"
-
-const results: ResultItem[] = [
-  {
-    symbol: "TCS",
-    name: "Tata Consultancy Services",
-    sector: "IT Services",
-    quarter: "Q1 FY26",
-    reportedOn: "2026-06-12",
-    revenue: 64210,
-    revenueYoY: 7.4,
-    netProfit: 12840,
-    profitYoY: 11.2,
-    opMargin: 25.1,
-    marginDeltaBps: 80,
-    health: 88,
-    marketReaction: 3.6,
-    reactionSpark: [100, 99, 101, 103, 102, 105, 106, 108],
-    aiTake:
-      "Steady growth and a healthier margin — the core business is humming even if it isn't sprinting.",
-    highlights: ["Record deal pipeline of $9.4B", "Margin up 80 bps", "Attrition cooling"],
-  },
-  {
-    symbol: "RELIANCE",
-    name: "Reliance Industries",
-    sector: "Energy & Retail",
-    quarter: "Q4 FY26",
-    reportedOn: "2026-06-11",
-    revenue: 248330,
-    revenueYoY: 9.8,
-    netProfit: 19450,
-    profitYoY: 14.6,
-    opMargin: 17.8,
-    marginDeltaBps: 120,
-    health: 84,
-    marketReaction: 4.2,
-    reactionSpark: [100, 101, 100, 102, 104, 103, 106, 108],
-    aiTake:
-      "Retail and digital did the heavy lifting, pushing profit growth well past sales — a clean beat.",
-    highlights: ["Jio ARPU climbs", "Retail margin expands", "Capex peak behind it"],
-  },
-  {
-    symbol: "HDFCBANK",
-    name: "HDFC Bank",
-    sector: "Banking",
-    quarter: "Q4 FY26",
-    reportedOn: "2026-06-10",
-    revenue: 78120,
-    revenueYoY: 11.3,
-    netProfit: 17890,
-    profitYoY: 13.1,
-    opMargin: 41.2,
-    marginDeltaBps: 30,
-    health: 86,
-    marketReaction: 1.9,
-    reactionSpark: [100, 100, 101, 100, 102, 101, 102, 103],
-    aiTake:
-      "Loan growth and steady asset quality kept profit ticking up — dependable rather than dramatic.",
-    highlights: ["NIM holds at 3.6%", "Deposits up 14%", "Bad loans near record low"],
-  },
-  {
-    symbol: "INFY",
-    name: "Infosys",
-    sector: "IT Services",
-    quarter: "Q1 FY26",
-    reportedOn: "2026-06-12",
-    revenue: 41560,
-    revenueYoY: 5.1,
-    netProfit: 6620,
-    profitYoY: 8.9,
-    opMargin: 21.4,
-    marginDeltaBps: -40,
-    health: 79,
-    marketReaction: -2.1,
-    reactionSpark: [100, 101, 99, 98, 99, 97, 96, 95],
-    aiTake:
-      "Profit grew, but a softer revenue outlook and slimmer margins left investors underwhelmed.",
-    highlights: ["FY26 guidance trimmed", "Margin dips 40 bps", "Large-deal wins steady"],
-  },
-  {
-    symbol: "TATAMOTORS",
-    name: "Tata Motors",
-    sector: "Automobiles",
-    quarter: "Q4 FY26",
-    reportedOn: "2026-06-09",
-    revenue: 121940,
-    revenueYoY: 3.2,
-    netProfit: 4980,
-    profitYoY: -6.4,
-    opMargin: 12.6,
-    marginDeltaBps: -90,
-    health: 64,
-    marketReaction: -4.8,
-    reactionSpark: [100, 99, 98, 99, 96, 95, 93, 92],
-    aiTake:
-      "JLR demand cooled and costs bit into margins, so profit slipped despite flat-ish sales — a clear miss.",
-    highlights: ["JLR volumes soften", "EV losses widen", "Net debt edges up"],
-  },
-  {
-    symbol: "BHARTIARTL",
-    name: "Bharti Airtel",
-    sector: "Telecom",
-    quarter: "Q4 FY26",
-    reportedOn: "2026-06-08",
-    revenue: 41280,
-    revenueYoY: 12.7,
-    netProfit: 5210,
-    profitYoY: 28.4,
-    opMargin: 53.1,
-    marginDeltaBps: 160,
-    health: 82,
-    marketReaction: 5.4,
-    reactionSpark: [100, 102, 103, 105, 104, 107, 109, 111],
-    aiTake:
-      "Tariff hikes and rising data use sent profit soaring — one of the standout beats this week.",
-    highlights: ["ARPU jumps to ₹245", "Africa swings to profit", "Margin best-in-class"],
-  },
-  {
-    symbol: "ITC",
-    name: "ITC",
-    sector: "FMCG",
-    quarter: "Q4 FY26",
-    reportedOn: "2026-06-07",
-    revenue: 18640,
-    revenueYoY: 6.3,
-    netProfit: 5460,
-    profitYoY: 9.7,
-    opMargin: 36.8,
-    marginDeltaBps: 50,
-    health: 81,
-    marketReaction: 1.2,
-    reactionSpark: [100, 100, 101, 101, 100, 102, 101, 102],
-    aiTake:
-      "Cigarettes stayed resilient and the consumer arm chipped in, delivering a quietly solid quarter.",
-    highlights: ["FMCG margin improves", "Hotels demand strong", "Steady dividend cushion"],
-  },
-  {
-    symbol: "ASIANPAINT",
-    name: "Asian Paints",
-    sector: "Consumer",
-    quarter: "Q4 FY26",
-    reportedOn: "2026-06-06",
-    revenue: 9120,
-    revenueYoY: -1.8,
-    netProfit: 1180,
-    profitYoY: -11.3,
-    opMargin: 18.9,
-    marginDeltaBps: -210,
-    health: 58,
-    marketReaction: -3.4,
-    reactionSpark: [100, 99, 98, 97, 98, 96, 95, 94],
-    aiTake:
-      "Weak demand and pricing pressure squeezed both sales and margins — the toughest print this week.",
-    highlights: ["Volume growth stalls", "Raw-material cost rises", "Rural recovery delayed"],
-  },
-];
-
-/* a "beat" = profit growth at/above 12%, otherwise a miss */
-const isBeat = (r: ResultItem) => r.profitYoY >= 12;
-
-/* "this week" relative to the demo's current date */
-const NOW = new Date("2026-06-15");
-const isThisWeek = (r: ResultItem) => {
-  const days = (NOW.getTime() - new Date(r.reportedOn).getTime()) / 86_400_000;
-  return days >= 0 && days <= 7;
-};
-
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-
-type Filter = "all" | "beats" | "misses" | "week";
-
-const filters: { key: Filter; label: string; icon: typeof Icons.results }[] = [
-  { key: "all", label: "All", icon: Icons.results },
-  { key: "beats", label: "Beats", icon: Icons.trendUp },
-  { key: "misses", label: "Misses", icon: Icons.trendDown },
-  { key: "week", label: "This week", icon: Icons.calendar },
-];
+import { Reveal, StaggerGroup, StaggerItem } from "@/components/ui/reveal";
+import { Panel, SectionEyebrow, tint } from "@/components/stock-detail/health/shared";
+import {
+  toneColor,
+  fmtSignedPct,
+  fmtPct,
+  fmtMarketCap,
+  DASH,
+  Chip,
+  HonestEmpty,
+  LoadingBlock,
+} from "@/components/stock-detail/overview/shared";
+import { useResultsList } from "@/lib/api/hooks/use-results-list";
+import type { ReportedResultItem, UpcomingResultItem } from "@/types/results";
 
 /* ------------------------------------------------------------------ helpers */
 
-function YoYStat({
-  label,
-  value,
-  delta,
-  deltaSuffix = "%",
-  isBps = false,
-}: {
-  label: string;
-  value: string;
-  delta: number;
-  deltaSuffix?: string;
-  isBps?: boolean;
-}) {
-  const up = delta >= 0;
+const WEEK_MS = 7 * 86_400_000;
+
+const fmtDay = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+const fmtFullDay = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+const money = (cr: number | null) => (cr == null ? DASH : fmtMarketCap(cr));
+
+const avg = (vals: (number | null)[]): number | null => {
+  const v = vals.filter((x): x is number => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+};
+
+/* derive honest highlight chips from the real, stored facts of a result */
+function highlightsFor(r: ReportedResultItem): string[] {
+  const out: string[] = [];
+  if (r.revenueYoy != null) out.push(`${r.revenueLabel} ${fmtSignedPct(r.revenueYoy)} YoY`);
+  if (r.profitYoy != null) out.push(`Net profit ${fmtSignedPct(r.profitYoy)} YoY`);
+  if (r.margin != null) out.push(`${r.marginLabel} ${fmtPct(r.margin)}`);
+  if (r.profitQoq != null) out.push(`Profit ${fmtSignedPct(r.profitQoq)} QoQ`);
+  return out.slice(0, 4);
+}
+
+/* ---------------------------------------------------------------- primitives */
+
+/** Calm KPI tile — label + a single `.num` value, optional directional colour. */
+function Kpi({ label, value, color = "var(--ink)" }: { label: string; value: string; color?: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-surface-1/40 px-3 py-2">
-      <p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="font-mono text-sm font-bold">{value}</p>
-      <p className={cn("flex items-center gap-0.5 font-mono text-[0.7rem]", changeColor(delta))}>
-        {up ? (
-          <Icons.arrowUpRight weight="bold" className="size-3" />
-        ) : (
-          <Icons.arrowDownRight weight="bold" className="size-3" />
-        )}
-        {isBps
-          ? `${up ? "+" : ""}${delta} bps`
-          : `${up ? "+" : ""}${delta.toFixed(1)}${deltaSuffix}`}
-        <span className="text-muted-foreground/70"> YoY</span>
-      </p>
+    <div className="rounded-xl border border-line bg-surface-2 p-3.5">
+      <div className="text-[11px] text-ink3">{label}</div>
+      <div className="num mt-1 text-[18px] font-semibold" style={{ color }}>
+        {value}
+      </div>
     </div>
   );
 }
 
+/** Health score chip — tinted by the condition band (the same scale the Health tab uses),
+ *  honest-dash when the stock isn't scored. NOT placed beside any price/return figure. */
+function HealthChip({ score }: { score: number | null }) {
+  if (score == null) {
+    return (
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line text-[10px] text-ink3">
+        {DASH}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="num grid size-9 shrink-0 place-items-center rounded-lg border text-[13px] font-semibold"
+      style={tint(healthColorVar(score))}
+    >
+      {Math.round(score)}
+    </span>
+  );
+}
+
+/** A small headline-number tile inside a feed card — value (.num) + optional signed YoY. */
+function MiniStat({ label, value, delta }: { label: string; value: string; delta?: number | null }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface-2 px-2.5 py-2">
+      <div className="truncate text-[10px] text-ink3">{label}</div>
+      <div className="num mt-0.5 text-[12.5px] font-semibold text-ink">{value}</div>
+      {delta != null ? (
+        <div className="num text-[10.5px]" style={{ color: toneColor(delta) }}>
+          {fmtSignedPct(delta)} YoY
+        </div>
+      ) : (
+        <div className="num text-[10.5px] text-ink3">{DASH}</div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- filters */
+
+type Filter = "reported" | "week" | "scored" | "upcoming";
+
+const FILTERS: { key: Filter; label: string; icon: typeof Icons.results }[] = [
+  { key: "reported", label: "Reported", icon: Icons.chartBar },
+  { key: "week", label: "This week", icon: Icons.calendar },
+  { key: "scored", label: "Scored", icon: Icons.shield },
+  { key: "upcoming", label: "Upcoming", icon: Icons.target },
+];
+
+const FILTER_ACCENT = "var(--p-found)";
+const cardGrid = "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3";
+
 /* --------------------------------------------------------------------- page */
 
 export default function ResultsPage() {
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("reported");
   const [query, setQuery] = useState("");
 
-  const stats = useMemo(() => {
-    const week = results.filter(isThisWeek);
-    const beats = results.filter(isBeat).length;
-    const misses = results.length - beats;
-    const avgRev = results.reduce((a, r) => a + r.revenueYoY, 0) / results.length;
-    const avgReaction = results.reduce((a, r) => a + r.marketReaction, 0) / results.length;
-    return { reportedThisWeek: week.length, beats, misses, avgRev, avgReaction };
-  }, []);
+  const { data, isLoading, isError } = useResultsList({ limit: 250 });
 
-  const filtered = useMemo(
-    () =>
-      results
-        .filter((r) =>
-          filter === "beats"
-            ? isBeat(r)
-            : filter === "misses"
-            ? !isBeat(r)
-            : filter === "week"
-            ? isThisWeek(r)
-            : true
-        )
-        .filter(
-          (r) =>
-            r.symbol.toLowerCase().includes(query.toLowerCase()) ||
-            r.name.toLowerCase().includes(query.toLowerCase()) ||
-            r.sector.toLowerCase().includes(query.toLowerCase())
-        )
-        .sort((a, b) => +new Date(b.reportedOn) - +new Date(a.reportedOn)),
-    [filter, query]
-  );
+  const reported = useMemo<ReportedResultItem[]>(() => data?.data.reported ?? [], [data]);
+  const upcoming = useMemo<UpcomingResultItem[]>(() => data?.data.upcoming ?? [], [data]);
+  const counts = data?.data.counts;
 
-  const movers = useMemo(
-    () => [...results].sort((a, b) => b.marketReaction - a.marketReaction),
-    []
-  );
-
-  const counts: Record<Filter, number> = {
-    all: results.length,
-    beats: stats.beats,
-    misses: stats.misses,
-    week: stats.reportedThisWeek,
+  const now = Date.now();
+  const isThisWeek = (iso: string) => {
+    const dt = now - new Date(iso).getTime();
+    return dt >= 0 && dt <= WEEK_MS;
   };
 
+  const scoredCount = useMemo(
+    () => reported.filter((r) => r.healthScore != null).length,
+    [reported],
+  );
+
+  const stats = useMemo(
+    () => ({
+      reportedThisWeek:
+        counts?.reportedThisWeek ?? reported.filter((r) => isThisWeek(r.filingDate)).length,
+      upcomingCount: counts?.upcoming ?? upcoming.length,
+      avgRev: avg(reported.map((r) => r.revenueYoy)),
+      avgProfit: avg(reported.map((r) => r.profitYoy)),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reported, upcoming, counts],
+  );
+
+  const q = query.toLowerCase();
+  const matchReported = (r: ReportedResultItem) =>
+    r.symbol.toLowerCase().includes(q) ||
+    r.name.toLowerCase().includes(q) ||
+    (r.sector ?? "").toLowerCase().includes(q);
+  const matchUpcoming = (r: UpcomingResultItem) =>
+    r.symbol.toLowerCase().includes(q) ||
+    r.name.toLowerCase().includes(q) ||
+    (r.sector ?? "").toLowerCase().includes(q);
+
+  const filteredReported = useMemo(
+    () =>
+      reported
+        .filter((r) =>
+          filter === "week"
+            ? isThisWeek(r.filingDate)
+            : filter === "scored"
+              ? r.healthScore != null
+              : true,
+        )
+        .filter(matchReported)
+        .sort((a, b) => +new Date(b.filingDate) - +new Date(a.filingDate)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reported, filter, query],
+  );
+
+  const filteredUpcoming = useMemo(
+    () => upcoming.filter(matchUpcoming).sort((a, b) => +new Date(a.eventDate) - +new Date(b.eventDate)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [upcoming, query],
+  );
+
+  // Top growers — REAL fundamental signal (net-profit YoY), capped at the top 10.
+  const topGrowers = useMemo(
+    () =>
+      [...reported]
+        .filter((r) => r.profitYoy != null)
+        .sort((a, b) => (b.profitYoy ?? 0) - (a.profitYoy ?? 0))
+        .slice(0, 10),
+    [reported],
+  );
+
+  const counts4: Record<Filter, number> = {
+    reported: counts?.reported ?? reported.length,
+    week: stats.reportedThisWeek,
+    scored: scoredCount,
+    upcoming: stats.upcomingCount,
+  };
+
+  const showingUpcoming = filter === "upcoming";
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col">
       {/* ---------------------------------------------------------------- Hero */}
-      <motion.section
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-strong relative overflow-hidden rounded-3xl border border-border/70 p-5 sm:p-7"
-      >
-        <div className="bg-aurora pointer-events-none absolute inset-0 -z-10 opacity-20" />
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-primary">
-              <span className="grid size-6 place-items-center rounded-md bg-primary/12 ring-1 ring-primary/20">
-                <Icons.results weight="duotone" className="size-3.5" />
-              </span>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em]">
-                Quarterly Results
-              </span>
-            </div>
-            <h1 className="mt-3 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
-              Earnings, <span className="text-gradient">decoded</span>
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
-              Every quarterly result translated into plain English and scored by the InvestIQ
-              Health Score — so you see what actually changed, not just the numbers.
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[
-                {
-                  l: "Reported this week",
-                  node: <AnimatedNumber value={stats.reportedThisWeek} />,
-                },
-                {
-                  l: "Beats vs misses",
-                  node: (
-                    <span>
-                      <span className="text-success">{stats.beats}</span>
-                      <span className="text-muted-foreground"> / </span>
-                      <span className="text-danger">{stats.misses}</span>
-                    </span>
-                  ),
-                },
-                {
-                  l: "Avg revenue growth",
-                  node: (
-                    <span className="text-success">
-                      <AnimatedNumber value={stats.avgRev} prefix="+" suffix="%" decimals={1} />
-                    </span>
-                  ),
-                },
-                {
-                  l: "Avg market reaction",
-                  node: (
-                    <span className={changeColor(stats.avgReaction)}>
-                      <AnimatedNumber
-                        value={stats.avgReaction}
-                        prefix={stats.avgReaction >= 0 ? "+" : ""}
-                        suffix="%"
-                        decimals={1}
-                      />
-                    </span>
-                  ),
-                },
-              ].map((s) => (
-                <div
-                  key={s.l}
-                  className="rounded-xl border border-border/70 bg-surface-1/40 px-3 py-2.5"
-                >
-                  <p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground">
-                    {s.l}
-                  </p>
-                  <p className="font-display text-lg font-bold">{s.node}</p>
-                </div>
-              ))}
-            </div>
+      <Reveal>
+        <Panel className="p-5 sm:p-6">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border"
+              style={tint("var(--p-found)")}
+            >
+              <Icons.results weight="duotone" className="h-4 w-4" />
+            </span>
+            <span className="eyebrow">Quarterly Results</span>
           </div>
 
-          <div className="flex shrink-0 items-center gap-4 self-start rounded-2xl border border-border/70 bg-surface-1/40 p-4 lg:self-center">
-            <span className="grid size-12 place-items-center rounded-xl bg-primary/12 text-primary ring-1 ring-primary/20">
-              <Icons.brain weight="duotone" className="size-6" />
-            </span>
-            <div className="max-w-[12rem]">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                AI earnings desk
-              </p>
-              <p className="font-display text-base font-bold leading-snug">
-                {results.length} results read &amp; summarized for you
-              </p>
-            </div>
+          <h1 className="mt-3 text-[26px] font-semibold tracking-tight text-ink sm:text-[30px]">
+            Earnings, decoded
+          </h1>
+          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-ink3">
+            Every quarterly result, scored by the InvestIQ Health Score — so you see what actually
+            changed, not just the numbers.
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <Kpi label="Reported this week" value={`${stats.reportedThisWeek}`} />
+            <Kpi label="Upcoming" value={`${stats.upcomingCount}`} />
+            <Kpi
+              label="Avg revenue growth"
+              value={fmtSignedPct(stats.avgRev)}
+              color={toneColor(stats.avgRev)}
+            />
+            <Kpi
+              label="Avg profit growth"
+              value={fmtSignedPct(stats.avgProfit)}
+              color={toneColor(stats.avgProfit)}
+            />
           </div>
-        </div>
-      </motion.section>
+        </Panel>
+      </Reveal>
 
       {/* ------------------------------------------------------- Filters + search */}
-      <Reveal className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="custom-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
-          {filters.map((f) => {
+      <Reveal className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5">
+          {FILTERS.map((f) => {
             const active = filter === f.key;
             return (
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/70 text-muted-foreground hover:text-foreground"
+                  "flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+                  !active && "border-line bg-surface-1 text-ink3 hover:border-line2 hover:text-ink",
                 )}
+                style={active ? tint(FILTER_ACCENT) : undefined}
               >
-                <f.icon weight={active ? "fill" : "regular"} className="size-4" />
+                <f.icon weight={active ? "fill" : "regular"} className="h-3.5 w-3.5" />
                 {f.label}
                 <span
                   className={cn(
-                    "rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold",
-                    active ? "bg-primary/15 text-primary" : "bg-surface-3/60 text-muted-foreground"
+                    "num rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                    active ? "bg-surface-1/60" : "bg-surface-3 text-ink3",
                   )}
                 >
-                  {counts[f.key]}
+                  {counts4[f.key]}
                 </span>
               </button>
             );
           })}
         </div>
         <div className="relative sm:w-64">
-          <Icons.search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Icons.search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink3" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search company or sector…"
-            className="h-10 w-full rounded-xl border border-border/70 bg-surface-1/40 pl-9 pr-3 text-sm outline-none focus:border-primary/40"
+            className="h-9 w-full rounded-lg border border-line bg-surface-1 pl-9 pr-3 text-[13px] text-ink outline-none transition-colors placeholder:text-ink3 focus:border-line3"
           />
         </div>
       </Reveal>
 
-      {/* --------------------------------------------------------- Biggest movers */}
-      <Reveal>
-        <div className="glass rounded-3xl border border-border/70 p-5 sm:p-6">
-          <SectionHeading
-            eyebrow="Biggest movers"
-            icon={Icons.fire}
-            title="How the market reacted"
-            subtitle="Share-price moves in the sessions right after each result dropped."
-          />
-          <div className="custom-scrollbar -mx-1 mt-4 flex gap-3 overflow-x-auto px-1 pb-1">
-            {movers.map((m) => (
-              <div
-                key={m.symbol}
-                className="flex w-44 shrink-0 flex-col gap-2 rounded-2xl border border-border/60 bg-surface-1/40 p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{m.symbol}</span>
-                  <span
-                    className={cn(
-                      "flex items-center gap-0.5 font-mono text-xs font-bold",
-                      changeColor(m.marketReaction)
-                    )}
-                  >
-                    {m.marketReaction >= 0 ? (
-                      <Icons.trendUp weight="bold" className="size-3" />
-                    ) : (
-                      <Icons.trendDown weight="bold" className="size-3" />
-                    )}
-                    {formatPct(m.marketReaction)}
-                  </span>
-                </div>
-                <Sparkline data={m.reactionSpark} width={152} height={34} className="w-full" />
-                <span className="truncate text-[0.7rem] text-muted-foreground">{m.sector}</span>
-              </div>
-            ))}
-          </div>
+      {/* --------------------------------------------------------- Loading / error */}
+      {isLoading ? (
+        <div className={cn("mt-8", cardGrid)}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <LoadingBlock key={i} className="h-44" />
+          ))}
         </div>
-      </Reveal>
-
-      {/* ----------------------------------------------------------- Results feed */}
-      <div>
-        <SectionHeading
-          eyebrow="Earnings feed"
-          icon={Icons.chartBar}
-          title={`${filtered.length} result${filtered.length === 1 ? "" : "s"}`}
-          subtitle="Latest quarterly prints, freshest first."
-          className="mb-4"
-        />
-
-        {filtered.length === 0 ? (
-          <Reveal>
-            <div className="glass flex flex-col items-center gap-2 rounded-3xl border border-border/70 p-12 text-center">
-              <Icons.search className="size-7 text-muted-foreground" />
-              <p className="font-display text-lg font-bold">No results match</p>
-              <p className="text-sm text-muted-foreground">
-                Try a different filter or clear your search.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-2"
-                onClick={() => {
-                  setFilter("all");
-                  setQuery("");
-                }}
+      ) : isError ? (
+        <div className="mt-8">
+          <HonestEmpty>The results feed is unavailable right now. Please try again shortly.</HonestEmpty>
+        </div>
+      ) : (
+        <>
+          {/* --------------------------------------------------------- Top growers */}
+          {!showingUpcoming && topGrowers.length > 0 && (
+            <section>
+              <SectionEyebrow
+                label="Top growers"
+                icon={Icons.trendUp}
+                accent="var(--p-mom)"
+                pill="Top 10 · net-profit YoY"
+              />
+              <StaggerGroup
+                inView={false}
+                className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
               >
-                Reset filters
-              </Button>
-            </div>
-          </Reveal>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((r, i) => {
-              const beat = isBeat(r);
-              return (
-                <Reveal key={r.symbol} delay={Math.min(i, 5) * 0.05}>
-                  <article className="glass flex h-full flex-col gap-4 rounded-3xl border border-border/70 p-5 transition-colors hover:border-primary/30">
-                    {/* header */}
-                    <div className="flex items-start gap-3">
-                      <HealthRing score={r.health} size={48} strokeWidth={5} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="truncate font-display text-lg font-bold leading-none">
-                            {r.symbol}
-                          </h3>
-                          <span
-                            className={cn(
-                              "rounded-md px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide",
-                              beat
-                                ? "bg-success/12 text-success"
-                                : "bg-danger/12 text-danger"
-                            )}
-                          >
-                            {beat ? "Beat" : "Miss"}
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">{r.name}</p>
-                        <p className="text-[0.7rem] text-muted-foreground/80">{r.sector}</p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <span className="inline-block rounded-md border border-border/70 bg-surface-1/40 px-2 py-0.5 font-mono text-[0.7rem] font-semibold">
-                          {r.quarter}
-                        </span>
-                        <p className="mt-1 flex items-center justify-end gap-1 text-[0.65rem] text-muted-foreground">
-                          <Icons.calendar weight="regular" className="size-3" />
-                          {fmtDate(r.reportedOn)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* headline numbers */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <YoYStat
-                        label="Revenue"
-                        value={formatINR(r.revenue * CR, { compact: true })}
-                        delta={r.revenueYoY}
-                      />
-                      <YoYStat
-                        label="Net profit"
-                        value={formatINR(r.netProfit * CR, { compact: true })}
-                        delta={r.profitYoY}
-                      />
-                      <YoYStat
-                        label="Op margin"
-                        value={`${r.opMargin.toFixed(1)}%`}
-                        delta={r.marginDeltaBps}
-                        isBps
-                      />
-                    </div>
-
-                    {/* market reaction */}
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-surface-1/40 px-3 py-2.5">
-                      <div>
-                        <p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground">
-                          Market reaction
-                        </p>
-                        <p
-                          className={cn(
-                            "flex items-center gap-1 font-mono text-base font-bold",
-                            changeColor(r.marketReaction)
-                          )}
-                        >
-                          {r.marketReaction >= 0 ? (
-                            <Icons.arrowUpRight weight="bold" className="size-4" />
-                          ) : (
-                            <Icons.arrowDownRight weight="bold" className="size-4" />
-                          )}
-                          {formatPct(r.marketReaction)}
-                        </p>
-                      </div>
-                      <Sparkline data={r.reactionSpark} width={120} height={36} />
-                    </div>
-
-                    {/* AI quick take */}
-                    <div className="flex gap-2.5 rounded-xl border border-primary/20 bg-primary/[0.06] p-3">
-                      <Icons.spark
-                        weight="fill"
-                        className="mt-0.5 size-4 shrink-0 text-primary"
-                      />
-                      <div>
-                        <p className="text-[0.62rem] font-semibold uppercase tracking-wider text-primary">
-                          AI quick take
-                        </p>
-                        <p className="mt-0.5 text-sm leading-snug text-foreground/90">{r.aiTake}</p>
-                      </div>
-                    </div>
-
-                    {/* highlight chips */}
-                    <div className="mt-auto flex flex-wrap gap-1.5">
-                      {r.highlights.map((h) => (
-                        <span
-                          key={h}
-                          className="flex items-center gap-1 rounded-lg border border-border/60 bg-surface-1/40 px-2 py-1 text-[0.7rem] text-muted-foreground"
-                        >
-                          <Icons.check weight="bold" className="size-3 text-success" />
-                          {h}
-                        </span>
-                      ))}
-                    </div>
-                  </article>
-                </Reveal>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* -------------------------------------------------------- Peer rank table */}
-      <Reveal>
-        <div className="glass rounded-3xl border border-border/70 p-5 sm:p-6">
-          <SectionHeading
-            eyebrow="Peer rank"
-            icon={Icons.target}
-            title="This quarter, ranked"
-            subtitle="Sorted by profit growth — the clearest read on who actually delivered."
-          />
-
-          {/* desktop table */}
-          <div className="custom-scrollbar -mx-2 mt-4 hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[680px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border/70 text-xs text-muted-foreground">
-                  <th className="px-3 py-2 text-left font-medium">#</th>
-                  <th className="px-3 py-2 text-left font-medium">Company</th>
-                  <th className="px-3 py-2 text-center font-medium">Health</th>
-                  <th className="px-3 py-2 text-right font-medium">Rev YoY</th>
-                  <th className="px-3 py-2 text-right font-medium">Profit YoY</th>
-                  <th className="px-3 py-2 text-right font-medium">Op margin</th>
-                  <th className="px-3 py-2 text-right font-medium">Reaction</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...results]
-                  .sort((a, b) => b.profitYoY - a.profitYoY)
-                  .map((r, i) => (
-                    <tr
-                      key={r.symbol}
-                      className="border-b border-border/40 transition-colors hover:bg-surface-2/40"
+                {topGrowers.map((m) => (
+                  <StaggerItem key={m.symbol}>
+                    <Link
+                      href={`/results/${m.symbol}?tab=snapshot`}
+                      className="flex h-full flex-col gap-1.5 rounded-xl border border-line bg-surface-1 p-3 transition-colors hover:border-line3 hover:bg-surface-2"
                     >
-                      <td className="px-3 py-2.5 font-mono text-muted-foreground">{i + 1}</td>
-                      <td className="px-3 py-2.5">
-                        <p className="font-semibold">{r.symbol}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {r.sector} · {r.quarter}
-                        </p>
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-[13px] font-semibold text-ink">{m.symbol}</span>
                         <span
-                          className="inline-grid size-7 place-items-center rounded-lg text-xs font-bold"
-                          style={{
-                            color: healthColorVar(r.health),
-                            background: `color-mix(in oklch, ${healthColorVar(r.health)} 14%, transparent)`,
-                          }}
+                          className="num text-[12.5px] font-semibold"
+                          style={{ color: toneColor(m.profitYoy) }}
                         >
-                          {r.health}
+                          {fmtSignedPct(m.profitYoy)}
                         </span>
-                      </td>
-                      <td className={cn("px-3 py-2.5 text-right font-mono", changeColor(r.revenueYoY))}>
-                        {formatPct(r.revenueYoY)}
-                      </td>
-                      <td className={cn("px-3 py-2.5 text-right font-mono", changeColor(r.profitYoY))}>
-                        {formatPct(r.profitYoY)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono">{r.opMargin.toFixed(1)}%</td>
-                      <td className={cn("px-3 py-2.5 text-right font-mono", changeColor(r.marketReaction))}>
-                        {formatPct(r.marketReaction)}
-                      </td>
-                    </tr>
+                      </div>
+                      <span className="num text-[10.5px] text-ink3">Net profit YoY · {m.periodLabel}</span>
+                      <span className="mt-auto truncate text-[10.5px] text-ink3">{m.sector ?? DASH}</span>
+                    </Link>
+                  </StaggerItem>
+                ))}
+              </StaggerGroup>
+            </section>
+          )}
+
+          {/* ----------------------------------------------------- Upcoming feed */}
+          {showingUpcoming ? (
+            <section>
+              <SectionEyebrow
+                label="Earnings calendar"
+                icon={Icons.calendar}
+                accent="var(--p-mkt)"
+                pill={`${filteredUpcoming.length} upcoming`}
+              />
+              {filteredUpcoming.length === 0 ? (
+                <HonestEmpty>
+                  No scheduled result dates match — check back as board-meeting filings come in.
+                </HonestEmpty>
+              ) : (
+                <StaggerGroup inView={false} className={cardGrid}>
+                  {filteredUpcoming.map((u) => (
+                    <StaggerItem key={`${u.symbol}-${u.eventDate}`}>
+                      <Link href={`/results/${u.symbol}?tab=snapshot`} className="block h-full">
+                        <Panel className="flex h-full flex-col gap-3 p-4 transition-colors hover:border-line3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="truncate text-[15px] font-semibold text-ink">{u.symbol}</h3>
+                              <p className="mt-0.5 truncate text-[12px] text-ink2">{u.name}</p>
+                              <p className="text-[11px] text-ink3">{u.sector ?? DASH}</p>
+                            </div>
+                            <Chip tone={u.isConfirmed ? "accent" : "neutral"}>
+                              {u.isConfirmed ? "Confirmed" : "Tentative"}
+                            </Chip>
+                          </div>
+                          <div className="flex items-center gap-2.5 rounded-lg border border-line bg-surface-2 px-3 py-2">
+                            <span
+                              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border"
+                              style={tint("var(--p-mkt)")}
+                            >
+                              <Icons.calendar weight="duotone" className="h-4 w-4" />
+                            </span>
+                            <div>
+                              <div className="text-[10px] text-ink3">Result date</div>
+                              <div className="num text-[13.5px] font-semibold text-ink">
+                                {fmtFullDay(u.eventDate)}
+                              </div>
+                            </div>
+                          </div>
+                          {u.description && (
+                            <p className="mt-auto line-clamp-2 text-[11.5px] leading-relaxed text-ink3">
+                              {u.description}
+                            </p>
+                          )}
+                        </Panel>
+                      </Link>
+                    </StaggerItem>
                   ))}
-              </tbody>
-            </table>
-          </div>
+                </StaggerGroup>
+              )}
+            </section>
+          ) : (
+            /* ----------------------------------------------------- Results feed */
+            <section>
+              <SectionEyebrow
+                label={filter === "scored" ? "Scored results" : "Earnings feed"}
+                icon={filter === "scored" ? Icons.shield : Icons.chartBar}
+                accent="var(--p-found)"
+                pill={`${filteredReported.length} result${filteredReported.length === 1 ? "" : "s"}`}
+              />
 
-          {/* mobile cards */}
-          <div className="mt-4 space-y-2.5 md:hidden">
-            {[...results]
-              .sort((a, b) => b.profitYoY - a.profitYoY)
-              .map((r, i) => (
-                <div
-                  key={r.symbol}
-                  className="rounded-2xl border border-border/60 bg-surface-1/40 p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs text-muted-foreground">#{i + 1}</span>
-                    <span
-                      className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-bold"
-                      style={{
-                        color: healthColorVar(r.health),
-                        background: `color-mix(in oklch, ${healthColorVar(r.health)} 14%, transparent)`,
-                      }}
-                    >
-                      {r.health}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold">{r.symbol}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {r.sector} · {r.quarter}
-                      </p>
-                    </div>
-                    <span
-                      className={cn(
-                        "font-mono text-sm font-bold",
-                        changeColor(r.profitYoY)
-                      )}
-                    >
-                      {formatPct(r.profitYoY)}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
-                    <span className={cn("font-mono", changeColor(r.revenueYoY))}>
-                      Rev {formatPct(r.revenueYoY)}
-                    </span>
-                    <span className="font-mono text-muted-foreground">
-                      Margin {r.opMargin.toFixed(1)}%
-                    </span>
-                    <span className={cn("font-mono", changeColor(r.marketReaction))}>
-                      {formatPct(r.marketReaction)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      </Reveal>
+              {filteredReported.length === 0 ? (
+                <HonestEmpty className="flex flex-col items-center gap-3">
+                  <span>
+                    {filter === "scored"
+                      ? "No scored results match — try a different filter or clear your search."
+                      : "No results match — try a different filter or clear your search."}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setFilter("reported");
+                      setQuery("");
+                    }}
+                    className="rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"
+                  >
+                    Reset filters
+                  </button>
+                </HonestEmpty>
+              ) : (
+                <StaggerGroup inView={false} className={cardGrid}>
+                  {filteredReported.map((r) => (
+                    <StaggerItem key={r.symbol}>
+                      <Link href={`/results/${r.symbol}?tab=snapshot`} className="block h-full">
+                        <Panel className="flex h-full flex-col gap-3.5 p-4 transition-colors hover:border-line3">
+                          {/* header */}
+                          <div className="flex items-start gap-3">
+                            <HealthChip score={r.healthScore} />
+                            <div className="min-w-0 flex-1">
+                              <h3 className="truncate text-[15px] font-semibold leading-tight text-ink">
+                                {r.symbol}
+                              </h3>
+                              <p className="mt-0.5 truncate text-[12px] text-ink2">{r.name}</p>
+                              <p className="text-[11px] text-ink3">{r.sector ?? DASH}</p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <span className="num inline-block rounded-md border border-line bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-ink2">
+                                {r.periodLabel}
+                              </span>
+                              <p className="num mt-1 flex items-center justify-end gap-1 text-[10.5px] text-ink3">
+                                <Icons.calendar weight="regular" className="h-3 w-3" />
+                                {fmtDay(r.filingDate)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* headline numbers */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <MiniStat label={r.revenueLabel} value={money(r.revenue)} delta={r.revenueYoy} />
+                            <MiniStat label="Net profit" value={money(r.netProfit)} delta={r.profitYoy} />
+                            <MiniStat
+                              label={r.marginLabel}
+                              value={r.margin != null ? fmtPct(r.margin) : DASH}
+                            />
+                          </div>
+
+                          {/* AI quick take — only when a REAL summary exists */}
+                          {r.aiHeadline && (
+                            <div
+                              className="flex gap-2.5 rounded-lg border bg-surface-2 p-2.5"
+                              style={{ borderColor: "color-mix(in oklch, var(--p-mkt) 26%, transparent)" }}
+                            >
+                              <Icons.spark weight="fill" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-p-mkt" />
+                              <div>
+                                <div className="kicker" style={{ color: "var(--p-mkt)" }}>
+                                  AI quick take
+                                </div>
+                                <p className="mt-0.5 text-[12.5px] leading-snug text-ink2">{r.aiHeadline}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* highlight chips — derived from real YoY/QoQ facts */}
+                          <div className="mt-auto flex flex-wrap gap-1.5">
+                            {highlightsFor(r).map((h) => (
+                              <Chip key={h}>{h}</Chip>
+                            ))}
+                          </div>
+                        </Panel>
+                      </Link>
+                    </StaggerItem>
+                  ))}
+                </StaggerGroup>
+              )}
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }

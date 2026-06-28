@@ -1,102 +1,100 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { stocksData, sectorComparisonData, StockData } from "@/lib/mock-data";
-import { ComparisonHeader } from "@/components/comparison/ComparisonHeader";
-import { AIOverview } from "@/components/comparison/AIOverview";
-import { QuickStatsCards } from "@/components/comparison/QuickStatsCards";
-import { ComparisonTable } from "@/components/comparison/ComparisonTable";
-import { VisualComparison } from "@/components/comparison/VisualComparison";
-import { PriceComparisonChart } from "@/components/comparison/PriceComparisonChart";
+/**
+ * Comparison VIEW route — /comparison/[slug] where slug = "SYMBOL1-vs-SYMBOL2".
+ *
+ * Parses the pair, fetches the curated /api/compare payload (useComparison), and hands
+ * it to <ComparisonView>. The alignment service owns the comparability thinking; this
+ * route only resolves the slug and the loading/error/empty states. NO mock data, NO
+ * winner — the old phantom-metric components are gone.
+ */
+
+import { useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useComparison } from "@/lib/api/hooks/use-comparison";
+import { QueryError } from "@/components/ui/query-error";
+import { Icons } from "@/lib/icons";
+import { ComparisonView } from "@/components/comparison/view/comparison-view";
+
+function parseSlug(slug: string | undefined): { a: string | null; b: string | null } {
+  if (!slug) return { a: null, b: null };
+  const parts = slug.split("-vs-");
+  if (parts.length !== 2) return { a: null, b: null };
+  const a = parts[0]?.toUpperCase().trim() || null;
+  const b = parts[1]?.toUpperCase().trim() || null;
+  return { a, b };
+}
 
 export default function ComparisonResultPage() {
   const params = useParams();
-  const slug = params.slug as string;
+  const router = useRouter();
+  const slug = typeof params.slug === "string" ? params.slug : undefined;
 
-  // Parse the slug to extract symbols (could be stock tickers or sector IDs)
-  const symbols = slug?.split("-vs-") || [];
-  const leftSymbol = symbols[0];
-  const rightSymbol = symbols[1];
+  const { a, b } = useMemo(() => parseSlug(slug), [slug]);
+  const query = useComparison(a, b);
 
-  // Try to find in stocks first (uppercase ticker)
-  let leftItem = stocksData.find(
-    (stock) => stock.ticker.toUpperCase() === leftSymbol?.toUpperCase(),
-  );
-  let rightItem = stocksData.find(
-    (stock) => stock.ticker.toUpperCase() === rightSymbol?.toUpperCase(),
-  );
-
-  // If not found in stocks, try sectors (using lowercase sector IDs)
-  if (!leftItem) {
-    leftItem = sectorComparisonData.find(
-      (sector) => sector.ticker.toLowerCase() === leftSymbol?.toLowerCase(),
-    );
-  }
-  if (!rightItem) {
-    rightItem = sectorComparisonData.find(
-      (sector) => sector.ticker.toLowerCase() === rightSymbol?.toLowerCase(),
-    );
-  }
-
-  // Fallback if items not found
-  if (!leftItem || !rightItem) {
+  // Malformed slug — can't resolve a pair.
+  if (!a || !b || a === b) {
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full p-6">
-        <div className="text-center space-y-4 max-w-2xl">
-          <h1 className="text-3xl font-bold text-muted-foreground">
-            Comparison Items Not Found
-          </h1>
-          <p className="text-muted-foreground">
-            Could not find data for "{leftSymbol}" or "{rightSymbol}"
-          </p>
-          <div className="text-sm text-muted-foreground space-y-2 mt-4">
-            <p className="font-semibold">Available Stocks:</p>
-            <p className="text-xs">
-              {stocksData.map((s) => s.ticker).join(", ")}
-            </p>
-            <p className="font-semibold mt-3">Available Sectors:</p>
-            <p className="text-xs">
-              {sectorComparisonData.map((s) => s.ticker).join(", ")}
-            </p>
-          </div>
+      <div className="mx-auto flex min-h-[60vh] w-full max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-line2">
+          <Icons.scales className="h-6 w-6 text-ink3" />
+        </div>
+        <h1 className="text-xl font-semibold text-ink">Couldn&apos;t read this comparison</h1>
+        <p className="text-sm text-ink2">
+          The link should look like{" "}
+          <span className="num text-ink">/comparison/HDFCBANK-vs-ICICIBANK</span>. Pick two
+          stocks to start a fresh comparison.
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push("/comparison")}
+          className="mt-2 inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-line2/40"
+        >
+          <Icons.scales className="h-4 w-4" />
+          Choose two stocks
+        </button>
+      </div>
+    );
+  }
+
+  if (query.isLoading) {
+    return <ComparisonSkeleton />;
+  }
+
+  if (query.isError || !query.data) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-6 py-16">
+        <QueryError
+          message={`Couldn't load the comparison for ${a} vs ${b}. One or both may not be in the universe.`}
+          onRetry={() => query.refetch()}
+        />
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => router.push("/comparison")}
+            className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-line2/40"
+          >
+            <Icons.scales className="h-4 w-4" />
+            Pick two stocks
+          </button>
         </div>
       </div>
     );
   }
 
+  return <ComparisonView view={query.data} />;
+}
+
+function ComparisonSkeleton() {
   return (
-    <div className="flex flex-col h-full w-full">
-      {/* Header Section */}
-      <ComparisonHeader leftStock={leftItem} rightStock={rightItem} />
-
-      {/* Main Content */}
-      <div className="flex-1 px-4 sm:px-6 py-6 space-y-8">
-        {/* Price Chart and AI Overview Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Price Comparison Chart */}
-          <PriceComparisonChart leftStock={leftItem} rightStock={rightItem} />
-
-          {/* Right: AI Overview */}
-          <AIOverview leftStock={leftItem} rightStock={rightItem} />
-        </div>
-
-        {/* Quick Stats Cards */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4">
-            Key Metrics at a Glance
-          </h3>
-          <QuickStatsCards leftStock={leftItem} rightStock={rightItem} />
-        </div>
-
-        {/* Main Comparison Table */}
-        <div>
-          <h3 className="text-xl font-semibold mb-4">Detailed Comparison</h3>
-          <ComparisonTable leftStock={leftItem} rightStock={rightItem} />
-        </div>
-
-        {/* Visual Comparison */}
-        <VisualComparison leftStock={leftItem} rightStock={rightItem} />
+    <div className="mx-auto w-full px-4 py-6 sm:px-6">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="shimmer h-24 flex-1 rounded-xl bg-surface-2" />
+        <div className="shimmer h-24 flex-1 rounded-xl bg-surface-2" />
       </div>
+      <div className="shimmer mt-4 h-12 rounded-xl bg-surface-2" />
+      <div className="shimmer mt-6 h-72 rounded-xl bg-surface-2" />
     </div>
   );
 }

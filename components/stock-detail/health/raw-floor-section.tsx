@@ -84,7 +84,7 @@ export function RawFloorSection({ pillars }: { pillars: PillarView[] }) {
 
   return (
     <section className="mt-2">
-      <SectionEyebrow label="The underlying record" pill="every number behind the score" />
+      <SectionEyebrow label="The underlying record" icon={Icons.results} accent="var(--p-own)" pill="every number behind the score" />
       <div className="overflow-hidden rounded-xl border border-line bg-surface-1">
         <button
           type="button"

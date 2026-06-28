@@ -1,8 +1,11 @@
 "use client";
 
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
+import { Icons } from "@/lib/icons";
 import type { IdentitySection, VerdictSection, PeerStandingSection, PillarKey } from "@/types/health";
 import { SectionEyebrow, Panel, PILLAR_META, clampPct, fmt } from "./shared";
+import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
 import { rankNarrative, PILLAR_TITLE } from "./diagnosis";
 
 const BAND_CUTS: { v: number; cssVar: string; label: string }[] = [
@@ -47,16 +50,21 @@ export function PeerSection({
   const pgName = identity.peerGroup?.displayName ?? peer.peerGroupId;
   const narrative = rankNarrative(peer.perPillarRank);
 
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { tip, show, hide } = useChartTooltip(chartRef);
+
   return (
     <section>
       <SectionEyebrow
-        label="Standing in its peer group"
+        label="Standing in its peer group" icon={Icons.compare} accent="var(--p-mom)"
         pill={`${pgName} · ${peer.memberCount} scored`}
       />
       <Panel className="grid gap-7 lg:grid-cols-[1.5fr_1fr]">
         {/* ── distribution + neighbours ── */}
         <div>
           <div className="kicker mb-3">Where it sits — by composite</div>
+          <div ref={chartRef} className="relative">
+          <ChartTooltip tip={tip} />
           <svg viewBox="0 0 1000 92" preserveAspectRatio="none" className="block h-auto w-full">
             {/* band separators within domain */}
             {BAND_CUTS.filter((b) => b.v > lo && b.v < hi).map((b) => (
@@ -89,7 +97,28 @@ export function PeerSection({
             <text x={x(me)} y={88} textAnchor="middle" className="num" style={{ fill: "var(--ink3)", fontSize: 10 }}>
               #{peer.rank} of {peer.memberCount}
             </text>
+            {/* hover hit-targets */}
+            {above && (
+              <circle
+                cx={x(above.composite)} cy={44} r={16} fill="transparent" style={{ cursor: "pointer" }}
+                onMouseMove={(e) => show(e, <TipBody title={above.symbol} rows={[{ label: "Composite", value: fmt(above.composite) }, { label: "vs this stock", value: "just above" }]} />)}
+                onMouseLeave={hide}
+              />
+            )}
+            {below && (
+              <circle
+                cx={x(below.composite)} cy={44} r={16} fill="transparent" style={{ cursor: "pointer" }}
+                onMouseMove={(e) => show(e, <TipBody title={below.symbol} rows={[{ label: "Composite", value: fmt(below.composite) }, { label: "vs this stock", value: "just below" }]} />)}
+                onMouseLeave={hide}
+              />
+            )}
+            <circle
+              cx={x(me)} cy={44} r={16} fill="transparent" style={{ cursor: "pointer" }}
+              onMouseMove={(e) => show(e, <TipBody title={identity.symbol} rows={[{ label: "Composite", value: fmt(me) }, { label: "Rank", value: `#${peer.rank} of ${peer.memberCount}` }, { label: "Percentile", value: `${peer.percentile.toFixed(0)}th` }]} />)}
+              onMouseLeave={hide}
+            />
           </svg>
+          </div>
           <p className="mt-2 text-[10.5px] italic text-ink3">
             Nearest names shown — the read carries rank &amp; percentile, not the full roster.
           </p>

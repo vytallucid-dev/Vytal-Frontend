@@ -54,7 +54,7 @@ export function TrajectorySection({
   if (points.length <= 1) {
     return (
       <section>
-        <SectionEyebrow label="Trajectory" pill="building history" />
+        <SectionEyebrow label="Trajectory" icon={Icons.chartLine} accent="var(--p-mom)" pill="building history" />
         <Panel className="flex flex-col items-center gap-2 py-10 text-center">
           <Icons.clock weight="duotone" className="h-9 w-9 text-ink3" />
           <p className="text-[13px] font-medium text-ink">Only one scored quarter so far</p>
@@ -69,7 +69,7 @@ export function TrajectorySection({
 
   return (
     <section>
-      <SectionEyebrow label="Trajectory" pill={`${points.length} quarters`} />
+      <SectionEyebrow label="Trajectory" icon={Icons.chartLine} accent="var(--p-mom)" pill={`${points.length} quarters`} />
       <Panel className="px-4 py-4">
         <div className="mb-1 flex items-center justify-between gap-2">
           <span className="kicker">Composite &amp; pillars over time</span>
@@ -87,7 +87,7 @@ export function TrajectorySection({
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={points} margin={{ top: 12, right: 16, bottom: 4, left: -8 }}>
             {ZONE_BANDS.map((b) => (
-              <ReferenceArea key={b.y1} y1={b.y1} y2={b.y2} fill={b.cssVar} fillOpacity={0.07} ifOverflow="hidden" />
+              <ReferenceArea key={`zone-${b.y1}`} y1={b.y1} y2={b.y2} fill={b.cssVar} fillOpacity={0.07} ifOverflow="hidden" />
             ))}
             <CartesianGrid strokeDasharray="2 5" stroke="var(--line)" vertical={false} />
             <XAxis
@@ -115,7 +115,7 @@ export function TrajectorySection({
             />
             {bandCrossings.map((c, i) => (
               <ReferenceLine
-                key={i}
+                key={`xing-${c.toPeriod}-${i}`}
                 x={shortPeriod(c.toPeriod)}
                 stroke="var(--c-steady)"
                 strokeDasharray="2 3"

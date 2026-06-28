@@ -16,6 +16,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { WhereNext } from "./where-next";
 import {
   ResponsiveContainer,
   LineChart,
@@ -46,6 +47,7 @@ import type {
 } from "@/types/research-tools";
 import type { FlowCategoryView } from "@/types/health";
 import { SectionEyebrow, Panel, shortPeriod, humanizeKey } from "./health/shared";
+import { color } from "framer-motion";
 
 // ════════════════════════════════════════════════════════════════════════════
 // formatters — every number wears .num at the render site
@@ -160,6 +162,7 @@ const TOOLTIP_STYLE = {
     fontSize: 12,
   },
   labelStyle: { color: "var(--ink2)", fontSize: 11 },
+  itemStyle: { color: "var(--ink)" }
 } as const;
 
 /** Direction chip — purely descriptive (Rising / Easing / Stable), no advice.
@@ -200,7 +203,7 @@ function FlowGlanceStrip({
   if (!hasHoldingData && !current) {
     return (
       <section>
-        <SectionEyebrow label="Ownership flow" pill="4 lanes" />
+        <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="4 lanes" />
         <Panel className="flex flex-col items-center gap-2 py-9 text-center">
           <Icons.chartLine weight="duotone" className="h-8 w-8 text-ink3" />
           <p className="text-[13px] font-medium text-ink">No holding data yet</p>
@@ -231,7 +234,7 @@ function FlowGlanceStrip({
   if (hasScoredPeriod && current && current.flowCategories.length > 0) {
     return (
       <section>
-        <SectionEyebrow label="Ownership flow" pill="4 lanes" />
+        <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="4 lanes" />
         <StaggerGroup className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {current.flowCategories.map((f) => {
             const dormant = f.categoryState !== "scored";
@@ -316,7 +319,7 @@ function FlowGlanceStrip({
 
   return (
     <section>
-      <SectionEyebrow label="Ownership flow" pill="4 lanes" />
+      <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="4 lanes" />
       <StaggerGroup className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {unscoredLanes.map(({ category, live }) => {
           const Glyph = FLOW_ICON[category];
@@ -408,15 +411,13 @@ function ShareholdingDonut({ holding }: { holding: OwnershipHolding }) {
                 <Cell key={p.key} fill={p.cssVar} />
               ))}
             </Pie>
-            <Tooltip {...TOOLTIP_STYLE} formatter={(v: number) => [`${v.toFixed(2)}%`, ""]} />
+            <Tooltip
+              {...TOOLTIP_STYLE}
+              cursor={false}
+              formatter={(v: number, name: string) => [`${v.toFixed(2)}%`, name]}
+            />
           </PieChart>
         </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 grid place-items-center">
-          <div className="text-center">
-            <div className="kicker text-ink3">Promoter</div>
-            <div className="num text-[18px] font-semibold text-ink">{fmtPct(holding.promoterPct)}</div>
-          </div>
-        </div>
       </div>
 
       <div className="space-y-1.5">
@@ -459,7 +460,7 @@ function ShareholdingSection({ current, series }: { current: OwnershipAnatomy; s
 
   return (
     <section>
-      <SectionEyebrow label="Shareholding pattern" pill={`as of ${fmtDate(current.holding?.asOnDate)}`} />
+      <SectionEyebrow label="Shareholding pattern" icon={Icons.user} accent="var(--p-own)" pill={`as of ${fmtDate(current.holding?.asOnDate)}`} />
       <Panel>
         <ShareholdingDonut holding={current.holding ?? ({} as OwnershipHolding)} />
 
@@ -648,7 +649,7 @@ function PromoterPledgeSection({
 
   return (
     <section>
-      <SectionEyebrow label="Promoter & pledging" pill={`${promoterPoints.length} quarters`} />
+      <SectionEyebrow label="Promoter & pledging" icon={Icons.warning} accent="var(--p-mkt)" pill={`${promoterPoints.length} quarters`} />
       <Panel>
         <div className="grid gap-5 lg:grid-cols-2">
           {/* promoter holding trend */}
@@ -773,7 +774,7 @@ function InsiderSection({ insider, current }: { insider: InsiderEvent[]; current
   if (insider.length === 0) {
     return (
       <section>
-        <SectionEyebrow label="Insider activity" pill="PIT disclosures" />
+        <SectionEyebrow label="Insider activity" icon={Icons.eye} accent="var(--p-mom)" pill="PIT disclosures" />
         <Panel className="flex flex-col items-center gap-2 py-9 text-center">
           <Icons.eye weight="duotone" className="h-8 w-8 text-ink3" />
           <p className="text-[13px] font-medium text-ink">No insider transactions on record</p>
@@ -794,7 +795,7 @@ function InsiderSection({ insider, current }: { insider: InsiderEvent[]; current
 
   return (
     <section>
-      <SectionEyebrow label="Insider activity" pill={`${insider.length} disclosed`} />
+      <SectionEyebrow label="Insider activity" icon={Icons.eye} accent="var(--p-mom)" pill={`${insider.length} disclosed`} />
       <Panel>
         <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px]">
           <span className="text-ink2">
@@ -911,7 +912,7 @@ function DealsSection({ block, current }: { block: BlockEvent[]; current: Owners
   if (block.length === 0) {
     return (
       <section>
-        <SectionEyebrow label="Bulk & block deals" pill="NSE bhavcopy" />
+        <SectionEyebrow label="Bulk & block deals" icon={Icons.coins} accent="var(--p-found)" pill="NSE bhavcopy" />
         <Panel className="flex flex-col items-center gap-2 py-9 text-center">
           <Icons.stack weight="duotone" className="h-8 w-8 text-ink3" />
           <p className="text-[13px] font-medium text-ink">No bulk or block deals on record</p>
@@ -927,7 +928,7 @@ function DealsSection({ block, current }: { block: BlockEvent[]; current: Owners
 
   return (
     <section>
-      <SectionEyebrow label="Bulk & block deals" pill={`${block.length} deals`} />
+      <SectionEyebrow label="Bulk & block deals" icon={Icons.coins} accent="var(--p-found)" pill={`${block.length} deals`} />
       <div className="grid gap-3.5 lg:grid-cols-2">
         {bulk.length > 0 && (
           <Panel>
@@ -963,7 +964,7 @@ function InstitutionalSection({ series }: { series: OwnershipSeriesPoint[] }) {
 
   return (
     <section>
-      <SectionEyebrow label="Institutional ownership" pill="quarterly · combined" />
+      <SectionEyebrow label="Institutional ownership" icon={Icons.building} accent="var(--p-found)" pill="quarterly · combined" />
       <Panel>
         {points.length >= 2 ? (
           <>
@@ -1031,7 +1032,7 @@ function TransparencySection({ current }: { current: OwnershipAnatomy }) {
 
   return (
     <section>
-      <SectionEyebrow label="How this reads" pill="ownership mechanics" />
+      <SectionEyebrow label="How this reads" icon={Icons.info} accent="var(--p-mkt)" pill="ownership mechanics" />
       <Panel>
         <div className="flex items-start gap-3">
           <Icons.info weight="duotone" className="mt-0.5 h-5 w-5 shrink-0 text-p-own" />
@@ -1072,7 +1073,7 @@ function TransparencySection({ current }: { current: OwnershipAnatomy }) {
 function AiSummarySlot() {
   return (
     <section>
-      <SectionEyebrow label="Ownership narrative" pill="preview" />
+      <SectionEyebrow label="Ownership narrative" icon={Icons.brain} accent="var(--p-mom)" pill="preview" />
       <div className="rounded-2xl border border-dashed border-line2 bg-surface-1/60 p-5">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-p-mom/30 bg-p-mom/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-p-mom">
@@ -1095,41 +1096,7 @@ function AiSummarySlot() {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// §3.9 — What's next nav
-// ════════════════════════════════════════════════════════════════════════════
-const NAV_CARDS: { tab: string; icon: Icon; title: string; desc: string }[] = [
-  { tab: "news", icon: Icons.news, title: "Latest developments", desc: "Announcements, disclosures & coverage" },
-  { tab: "fundamentals", icon: Icons.chartBar, title: "The fundamentals", desc: "Whether performance backs the interest" },
-  { tab: "technical", icon: Icons.chartLine, title: "Price structure", desc: "Where the chart sits right now" },
-];
-
-function WhatsNextNav({ symbol }: { symbol: string }) {
-  return (
-    <section>
-      <SectionEyebrow label="Where to look next" />
-      <div className="grid gap-3.5 md:grid-cols-3">
-        {NAV_CARDS.map(({ tab, icon: Glyph, title, desc }) => (
-          <Link
-            key={tab}
-            href={`/research/stock-screener/${symbol}?tab=${tab}`}
-            className="lift group rounded-2xl border border-line bg-surface-1 p-5 transition-colors hover:border-line2"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-surface-3 text-ink2 transition-colors group-hover:bg-p-own/10 group-hover:text-p-own">
-              <Glyph weight="fill" className="h-5 w-5" />
-            </span>
-            <h3 className="mt-3 text-[14px] font-semibold text-ink">{title}</h3>
-            <p className="mt-1 text-[12px] text-ink3">{desc}</p>
-            <span className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-ink2 transition-colors group-hover:text-ink">
-              Open {tab} tab
-              <Icons.arrowRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
+// §3.9 — What's next nav now uses the shared, colourful WhereNext (../where-next).
 
 // ════════════════════════════════════════════════════════════════════════════
 // Activity tab
@@ -1214,7 +1181,7 @@ export default function Activity() {
         <AiSummarySlot />
       </Reveal>
       <Reveal>
-        <WhatsNextNav symbol={symbol} />
+        <WhereNext symbol={symbol} exclude={["activity"]} />
       </Reveal>
     </div>
   );

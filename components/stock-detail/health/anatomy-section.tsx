@@ -328,7 +328,7 @@ export function AnatomySection({ pillars }: { pillars: PillarView[] }) {
 
   return (
     <section>
-      <SectionEyebrow label="Anatomy" pill="4 pillars · tap to expand" />
+      <SectionEyebrow label="Anatomy" icon={Icons.stack} accent="var(--p-found)" pill="4 pillars · tap to expand" />
       <div className="space-y-3.5">
         {foundation && (
           <Reveal>
