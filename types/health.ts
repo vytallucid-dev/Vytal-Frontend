@@ -81,13 +81,115 @@ export interface PeerStats {
   usable: boolean;
 }
 
+// ── THREE-LENS CONTRACT (S2/S3) ────────────────────────────────────────────────
+
+/** Honest discriminant for every metric (scored AND not). PER-LENS thinness
+ *  (building_history / insufficient_peers) lives on lens.l*.reason, NOT here — a
+ *  scored metric with an empty trend lens still reads metricState="scored". */
+export type MetricState =
+  | "scored"
+  | "no_bar"
+  | "data_unavailable"
+  | "normalized_out"
+  | "insufficient_peers"
+  | "building_history";
+
+export type L1State = "above_bar" | "below_bar" | "not_evaluable";
+export type L2State = "above_peer" | "near_peer" | "below_peer" | "not_evaluable";
+export type L3State = "improving" | "flat" | "declining" | "not_evaluable";
+
+/** One lens read. referenceValue: bar (L1), peer μ (L2), own-history μ (L3).
+ *  evaluable=false ⇒ state is not_evaluable; reason explains why (building_history…). */
+export interface LensRead {
+  state: L1State | L2State | L3State;
+  evaluable: boolean;
+  referenceValue: number | null;
+  reason: string | null;
+}
+
+/** One L3 own-history series point (the per-metric sparkline). */
+export interface L3SeriesPoint {
+  periodKey: string;
+  asOfDate: string;
+  rawValue: number;
+}
+
+/** A fired metric-level lens pattern (LM1–LM8). tone drives colour (§0.2); a field-
+ *  verdict (PG_WEAK/PG_STRONG) is CONTEXT, never styled good/bad. */
+export interface MetricLensPattern {
+  id: string;
+  label: string;
+  tone: string;
+  fieldVerdict: "PG_WEAK" | "PG_STRONG" | null;
+  role: "top_level" | "supporting_detail";
+}
+
+/** A fired pillar-level lens pattern (LP1–LP6). */
+export interface PillarLensPattern {
+  id: string;
+  label: string;
+  tone: string;
+  fieldVerdict: "PG_WEAK" | "PG_STRONG" | null;
+  role: "top_level" | "supporting_detail";
+}
+
+/** The 5 band cuts + the active band + direction (the modal §2.1 ladder). */
+export interface BandLadder {
+  direction: BarDirection;
+  excellent: number;
+  good: number;
+  acceptable: number;
+  concerning: number;
+  distress: number;
+  activeBand: MetricBand | null;
+}
+
+/** Pillar-level pass-shares (denominator = per-lens-evaluable scored metrics only). */
+export interface PillarLensShares {
+  l1Pass: number | null;
+  l2Pass: number | null;
+  l3Improving: number | null;
+  l3Declining: number | null;
+  nL1: number;
+  nL2: number;
+  nL3: number;
+}
+
+/** One PG member's value for a metric in the peer cross-section (modal §2.3). */
+export interface PeerDistributionMember {
+  symbol: string;
+  value: number;
+  isSelf: boolean;
+}
+
+/** The metric's full peer cross-section + this stock's direction-aware rank.
+ *  `usable` mirrors PeerStats.usable (≥5 peers AND σ>0) — when false, show the spread
+ *  but NOT a field-verdict. null for an honest-empty row. */
+export interface PeerDistribution {
+  mean: number;
+  selfValue: number;
+  rank: number; // 1 = healthiest
+  outOf: number;
+  usable: boolean;
+  members: PeerDistributionMember[];
+}
+
+/** Where the metric's bars came from + when last recalibrated (modal §2.1). */
+export interface BarProvenance {
+  barPath: string;
+  recalibratedAt: string; // YYYY-MM-DD
+  inheritedFromPeerGroupId: string | null;
+}
+
 export interface MetricView {
   metricKey: string;
-  rawValue: number;
+  /** null only for an honest-empty (non-scored) metric row. */
+  rawValue: number | null;
   l1Score: number | null;
   l2Score: number | null;
   l3Score: number | null;
-  metricScore: number;
+  /** null when not scored. */
+  metricScore: number | null;
   l1Band: MetricBand | null;
   scoreState: MetricScoreState;
   nominalWeight: number;
@@ -96,6 +198,27 @@ export interface MetricView {
   suppressionReason: string | null;
   bars: MetricBars | null;
   peer: PeerStats | null;
+
+  // ── S2/S3 three-lens fields ──
+  metricState: MetricState;
+  l2Available: boolean;
+  l3Available: boolean;
+  l3WindowN: number | null;
+  lensFallbackApplied: string;
+  /** The three lens reads (l3 includes its sparkline series). null when not scored. */
+  lens: {
+    l1: LensRead;
+    l2: LensRead;
+    l3: LensRead & { series: L3SeriesPoint[] };
+  } | null;
+  /** Fired LM pattern + role; null for no-tension / honest-empty cells. */
+  lensPattern: MetricLensPattern | null;
+  /** 5 cuts + active band; null when no bar set (metricState=no_bar). */
+  bandLadder: BandLadder | null;
+  /** Peer cross-section for the modal §2.3; null for an honest-empty row. */
+  peerDistribution: PeerDistribution | null;
+  /** Bar provenance for the modal §2.1; null when no bar set. */
+  barProvenance: BarProvenance | null;
 }
 
 export interface MarketSubView {
@@ -151,6 +274,12 @@ export interface PillarView {
   metrics: MetricView[] | null;
   marketSubs: MarketSubView[] | null;
   ownership: OwnershipDetail | null;
+
+  // ── S2/S3 pillar-level lens contract (Foundation + Momentum only; null otherwise) ──
+  /** Fired LP patterns (LP1–LP6) + role; empty array when none fire. */
+  lensPillarPatterns: PillarLensPattern[] | null;
+  /** Per-lens pass-shares used to derive the LP patterns. */
+  lensShares: PillarLensShares | null;
 }
 
 export interface TrajectoryPoint {

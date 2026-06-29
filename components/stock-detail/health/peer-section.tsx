@@ -3,10 +3,51 @@
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
-import type { IdentitySection, VerdictSection, PeerStandingSection, PillarKey } from "@/types/health";
-import { SectionEyebrow, Panel, PILLAR_META, clampPct, fmt } from "./shared";
+import type { IdentitySection, VerdictSection, PeerStandingSection, PillarKey, PillarView } from "@/types/health";
+import { SectionEyebrow, Panel, PILLAR_META, clampPct, fmt, lensAccentKey, lensAccentVars } from "./shared";
 import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
 import { rankNarrative, PILLAR_TITLE } from "./diagnosis";
+import { getMetricLabel } from "@/lib/health/metric-labels";
+
+// ── §3 · the FIELD half of the lens story — one line, only when a field-verdict is
+//    active: a pillar-level LP2/LP3 (preferred, broadest), or a notable metric-level
+//    LM3/LM4. It states whether the stock leads/trails the field AND what that says
+//    about the FIELD — context, never a stock pass/fail (§0.2). ──────────────────────
+function fieldRead(pillars: PillarView[]): { text: string; tone: string; fieldVerdict: string | null } | null {
+  // 1) Pillar-wide field-verdict (LP2 field-lifted / LP3 elite-field).
+  for (const pillar of ["foundation", "momentum"] as PillarKey[]) {
+    const p = pillars.find((x) => x.pillar === pillar);
+    const lp = p?.lensPillarPatterns?.find((x) => x.fieldVerdict != null);
+    if (!lp) continue;
+    const name = PILLAR_TITLE[pillar];
+    if (lp.fieldVerdict === "PG_WEAK")
+      return { text: `Leads the field — but the field is weak on ${name} right now. Its relative strength is the pond being low, not the stock being strong.`, tone: lp.tone, fieldVerdict: lp.fieldVerdict };
+    return { text: `Trails the field — but this is an exceptional peer group on ${name}. The stock lags an elite field, not a weak one.`, tone: lp.tone, fieldVerdict: lp.fieldVerdict };
+  }
+  // 2) A notable (top-level) metric-level field-verdict (LM3 weak-field / LM4 elite-field).
+  for (const pillar of ["foundation", "momentum"] as PillarKey[]) {
+    const p = pillars.find((x) => x.pillar === pillar);
+    const mt = p?.metrics?.find((m) => m.lensPattern?.fieldVerdict != null && m.lensPattern.role === "top_level");
+    if (!mt || !mt.lensPattern) continue;
+    const label = getMetricLabel(mt.metricKey).label;
+    if (mt.lensPattern.fieldVerdict === "PG_WEAK")
+      return { text: `Leads the field on ${label} despite sitting below its bar — the field is weak there, not uniquely this stock.`, tone: mt.lensPattern.tone, fieldVerdict: mt.lensPattern.fieldVerdict };
+    return { text: `Trails the field on ${label} despite clearing its bar — an elite field on that metric, not a weak stock.`, tone: mt.lensPattern.tone, fieldVerdict: mt.lensPattern.fieldVerdict };
+  }
+  return null;
+}
+
+function FieldReadLine({ pillars }: { pillars: PillarView[] }) {
+  const read = fieldRead(pillars);
+  if (!read) return null;
+  const v = lensAccentVars(lensAccentKey(read.tone, read.fieldVerdict));
+  return (
+    <div className="mb-4 flex items-start gap-2 rounded-lg border px-3 py-2 text-[12px] leading-relaxed" style={{ borderColor: v.bd, background: v.bg, color: "var(--ink2)" }}>
+      <Icons.compare weight="duotone" className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: v.color }} />
+      <span>{read.text}</span>
+    </div>
+  );
+}
 
 const BAND_CUTS: { v: number; cssVar: string; label: string }[] = [
   { v: 55, cssVar: "var(--c-below)", label: "55" },
@@ -27,10 +68,12 @@ export function PeerSection({
   identity,
   verdict,
   peer,
+  pillars,
 }: {
   identity: IdentitySection;
   verdict: VerdictSection;
   peer: PeerStandingSection;
+  pillars: PillarView[];
 }) {
   const me = verdict.composite;
   const above = peer.neighbours.above;
@@ -59,6 +102,7 @@ export function PeerSection({
         label="Standing in its peer group" icon={Icons.compare} accent="var(--p-mom)"
         pill={`${pgName} · ${peer.memberCount} scored`}
       />
+      <FieldReadLine pillars={pillars} />
       <Panel className="grid gap-7 lg:grid-cols-[1.5fr_1fr]">
         {/* ── distribution + neighbours ── */}
         <div>

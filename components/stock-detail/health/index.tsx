@@ -65,7 +65,7 @@ export default function HealthScore() {
 
       {peerStanding && (
         <Reveal>
-          <PeerSection identity={identity} verdict={verdict} peer={peerStanding} />
+          <PeerSection identity={identity} verdict={verdict} peer={peerStanding} pillars={pillars} />
         </Reveal>
       )}
 

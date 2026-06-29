@@ -85,11 +85,14 @@ function toFinding(
 ): PreparedFinding {
   const ev = asObj(evidence);
   const priceLinked = isPriceLinked(key);
+  // Lens findings (lens_lm3/lm7/lp2/lp5) carry the verbatim catalog label in evidence;
+  // use it as the card name (findingName would mangle the dynamic lens_* key).
+  const name = key.startsWith("lens_") && typeof ev?.label === "string" ? (ev.label as string) : findingName(key);
   return {
     key,
     family: familyOf(key),
     kind,
-    name: findingName(key),
+    name,
     accent: accentOf(severity),
     severity,
     displayState,

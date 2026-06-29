@@ -27,15 +27,16 @@ interface Row {
 }
 
 type SortKey = "metric" | "raw" | "score" | "l2" | "l3";
+type FloorFilter = "all" | "foundation" | "momentum";
 
 function sortVal(r: Row, key: SortKey): number | string {
   switch (key) {
     case "metric":
       return getMetricLabel(r.m.metricKey).label.toLowerCase();
     case "raw":
-      return r.m.rawValue;
+      return r.m.rawValue ?? -Infinity; // honest-empty (non-scored) rows sort last
     case "score":
-      return r.m.metricScore;
+      return r.m.metricScore ?? -Infinity;
     case "l2":
       return r.m.l2Score ?? -Infinity;
     case "l3":
@@ -48,13 +49,15 @@ export function RawFloorSection({ pillars }: { pillars: PillarView[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FloorFilter>("all");
 
   const rows: Row[] = [];
   for (const p of pillars) {
     if (p.metrics) for (const m of p.metrics) rows.push({ pillar: p.pillar, m });
   }
+  const filtered = filter === "all" ? rows : rows.filter((r) => r.pillar === filter);
 
-  const sorted = [...rows].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     const av = sortVal(a, sortKey);
     const bv = sortVal(b, sortKey);
     if (typeof av === "string" || typeof bv === "string") {
@@ -106,10 +109,28 @@ export function RawFloorSection({ pillars }: { pillars: PillarView[] }) {
 
         {open && (
           <div className="px-5 pb-5">
-            <p className="pb-3 text-[11px] italic text-ink3">
-              Click any metric to expand its full lens breakdown. Quarterly/annual reported series per
-              metric is a later enrichment — current-period values shown.
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
+              <p className="text-[11px] italic text-ink3">
+                Click any metric to expand its full lens breakdown. Quarterly/annual reported series per
+                metric is a later enrichment — current-period values shown.
+              </p>
+              {/* All / Foundation / Momentum (the floor covers the metric-scored pillars) */}
+              <div className="inline-flex shrink-0 rounded-lg border border-line2 bg-surface-2 p-0.5 text-[11px]">
+                {(["all", "foundation", "momentum"] as FloorFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => { setFilter(f); setExpanded(null); }}
+                    className={cn(
+                      "rounded-md px-3 py-1 font-medium capitalize transition-colors",
+                      filter === f ? "bg-surface-1 text-ink shadow-sm" : "text-ink3 hover:text-ink2",
+                    )}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
@@ -170,7 +191,8 @@ function BandChip({ band }: { band: MetricBand | null }) {
 function MetricRow({ r, isExp, onToggle }: { r: Row; isExp: boolean; onToggle: () => void }) {
   const m = r.m;
   const meta = getMetricLabel(m.metricKey);
-  const dim = m.scoreState !== "scored";
+  const dim = m.metricState !== "scored";
+  const scoreColor = m.l1Band ? METRIC_BAND_VAR[m.l1Band] : "var(--ink3)";
   return (
     <>
       <tr className={cn("hover:bg-surface-2", dim && "opacity-60")}>
@@ -186,10 +208,10 @@ function MetricRow({ r, isExp, onToggle }: { r: Row; isExp: boolean; onToggle: (
           </span>
         </td>
         <td className="num border-b border-line px-3 py-2.5 text-right text-ink2">
-          {fmtVal(m.rawValue, meta.unit)}
+          {m.rawValue != null ? fmtVal(m.rawValue, meta.unit) : "—"}
         </td>
-        <td className="num border-b border-line px-3 py-2.5 text-right font-medium text-ink">
-          {Math.round(m.metricScore)}
+        <td className="num border-b border-line px-3 py-2.5 text-right font-semibold" style={{ color: m.metricScore != null ? scoreColor : "var(--ink3)" }}>
+          {m.metricScore != null ? Math.round(m.metricScore) : "—"}
         </td>
         <td className="num border-b border-line px-3 py-2.5 text-right text-ink2">{fmtScore(m.l2Score)}</td>
         <td className="num border-b border-line px-3 py-2.5 text-right text-ink2">{fmtScore(m.l3Score)}</td>
@@ -227,6 +249,8 @@ function bandOfValue(v: number, bars: NonNullable<MetricView["bars"]>, dir: BarD
 function LensBar({ m }: { m: MetricView }) {
   const bars = m.bars;
   if (!bars) return <p className="text-[11.5px] text-ink3">No bar set linked for this metric.</p>;
+  if (m.rawValue == null)
+    return <p className="text-[11.5px] text-ink3">Not scored this period — no value to place against the bars.</p>;
   const unit = getMetricLabel(m.metricKey).unit;
   const dir = bars.direction;
   const vals = [bars.excellent, bars.good, bars.acceptable, bars.concerning, bars.distress, m.rawValue];
@@ -301,7 +325,7 @@ function LensDetail({ r }: { r: Row }) {
           {peer && peer.usable ? (
             <div className="num text-[12.5px] text-ink2">
               μ {fmtVal(peer.mean, unit)} · σ {fmtVal(peer.stdDev, unit)} · N {peer.sampleN}
-              {peer.stdDev > 0 && (
+              {peer.stdDev > 0 && m.rawValue != null && (
                 <span className="ml-2 text-ink3">
                   z {((m.rawValue - peer.mean) / peer.stdDev).toFixed(2)}
                 </span>

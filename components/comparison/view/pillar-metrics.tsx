@@ -194,6 +194,7 @@ function SingleMetricList({
 function metricDisplay(m?: MetricView): string {
   if (!m) return "—";
   if (m.scoreState === "missing_renorm") return "—";
+  if (m.rawValue === null) return "—"; // honest-empty (non-scored) row carries no value
   return fmt(m.rawValue, 2);
 }
 

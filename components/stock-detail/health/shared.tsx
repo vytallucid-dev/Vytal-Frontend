@@ -10,7 +10,14 @@ import { motion, useInView } from "framer-motion";
 import { useRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { type Icon } from "@/lib/icons";
-import type { LabelBand, PillarKey, MetricBand } from "@/types/health";
+import type {
+  LabelBand,
+  PillarKey,
+  MetricBand,
+  MetricState,
+  BandLadder as TBandLadder,
+  BarDirection,
+} from "@/types/health";
 
 /** A faint tinted-surface style from any accent colour (icon chips, pills, accents). */
 export function tint(accent: string, fill = 14, border = 30): CSSProperties {
@@ -219,5 +226,269 @@ export function Panel({
     <div className={cn("rounded-xl border border-line bg-surface-1 p-5", className)} style={style}>
       {children}
     </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// THREE-LENS SHARED PRIMITIVES (§6 — place once, reuse everywhere: Anatomy + the
+// metric modal now; the main chart (Prompt B) + PG/Comparison surfaces later).
+// ════════════════════════════════════════════════════════════════════════════════
+
+// ── tone → accent (§0.2) — reuses the findings accent tokens (--rec/--high/--crit/
+//    --ctx, each with -bg/-bd). LOAD-BEARING: a FIELD-VERDICT (PG_WEAK/PG_STRONG) is
+//    CONTEXT — amber/neutral, NEVER good/bad. So field-verdicts resolve to high/ctx,
+//    never rec(green) or crit(red). The no-advice spine, one layer down. ──────────────
+export type LensAccentKey = "rec" | "high" | "crit" | "ctx";
+
+export function lensAccentKey(tone: string, fieldVerdict: string | null): LensAccentKey {
+  if (fieldVerdict === "PG_WEAK") return "high"; // field-weak → amber CONTEXT (never red/green)
+  if (fieldVerdict === "PG_STRONG") return "ctx"; // elite field → neutral CONTEXT
+  const t = tone.toLowerCase();
+  if (t.includes("concern")) return "crit";
+  if (t.includes("caution")) return "high";
+  if (t.includes("constructive")) return "rec";
+  return "ctx"; // Neutral
+}
+
+export function lensAccentVars(key: LensAccentKey): { color: string; bg: string; bd: string } {
+  return { color: `var(--${key})`, bg: `var(--${key}-bg)`, bd: `var(--${key}-bd)` };
+}
+
+// ── honest metric-state chip (every non-scored row carries one) ───────────────────
+export const METRIC_STATE_LABEL: Record<MetricState, string> = {
+  scored: "Scored",
+  no_bar: "No bar set",
+  data_unavailable: "Data unavailable",
+  normalized_out: "Normalized out",
+  insufficient_peers: "Insufficient peers",
+  building_history: "Building history",
+};
+
+export function MetricStateChip({ state }: { state: MetricState }) {
+  return (
+    <span className="rounded-md border border-line2 bg-surface-3 px-2 py-0.5 text-[10px] text-ink3">
+      {METRIC_STATE_LABEL[state]}
+    </span>
+  );
+}
+
+// ── lens chip (vs bar · vs field · vs trend) — compact, light, content-first ──────
+// `muted` renders the calm honest-empty state (building-history / not-evaluable) so the
+// SAME chip gracefully degrades; `dotColor` puts a tiny state hue without heavy styling.
+export function LensChip({
+  label,
+  state,
+  detail,
+  muted,
+  dotColor,
+}: {
+  label: string;
+  state: string;
+  detail?: string;
+  muted?: boolean;
+  dotColor?: string;
+}) {
+  return (
+    <span className="inline-flex items-baseline gap-1 rounded-md bg-surface-3 px-2 py-0.5 text-[10px]">
+      <span className="text-ink3">{label}</span>
+      {dotColor && !muted && (
+        <span className="inline-block h-1.5 w-1.5 translate-y-px rounded-full" style={{ background: dotColor }} />
+      )}
+      <span className={cn(muted ? "italic text-ink3" : "font-medium text-ink2")}>{state}</span>
+      {detail && <span className="num text-ink3">{detail}</span>}
+    </span>
+  );
+}
+
+// ── lens-pattern pill (tone-coloured; field-verdicts neutral per §0.2) ────────────
+export function LensPatternPill({
+  label,
+  tone,
+  fieldVerdict,
+  role,
+}: {
+  label: string;
+  tone: string;
+  fieldVerdict: string | null;
+  role?: "top_level" | "supporting_detail";
+}) {
+  const v = lensAccentVars(lensAccentKey(tone, fieldVerdict));
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-medium"
+      style={{ color: v.color, background: v.bg, borderColor: v.bd }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: v.color }} />
+      {label}
+      {role === "supporting_detail" && <span className="font-normal text-ink3">· detail</span>}
+    </span>
+  );
+}
+
+// ── band-ladder renderer (§2.1) — every band Distress→Excellent with its range, the
+//    active band highlighted, the raw value's exact position marked. ────────────────
+const LADDER_BANDS: { band: MetricBand; label: string }[] = [
+  { band: "excellent", label: "Excellent" },
+  { band: "good", label: "Good" },
+  { band: "acceptable", label: "Acceptable" },
+  { band: "concerning", label: "Concerning" },
+  { band: "distress", label: "Distress" },
+];
+const LADDER_BAND_VAR: Record<MetricBand, string> = {
+  excellent: "var(--c-pristine)",
+  good: "var(--c-healthy)",
+  acceptable: "var(--c-steady)",
+  concerning: "var(--c-below)",
+  distress: "var(--c-fragile)",
+};
+
+/** The numeric [lower, upper] range of each band given the 5 cuts + direction. Open
+ *  ends render as "≥"/"≤". For higher_better the excellent band is the top (≥ excellent);
+ *  for lower_better it inverts (≤ excellent). */
+export function bandRangeText(band: MetricBand, l: TBandLadder): string {
+  const f1 = (n: number) => n.toFixed(2);
+  const hb = l.direction === "higher_better";
+  switch (band) {
+    case "excellent":
+      return hb ? `≥ ${f1(l.excellent)}` : `≤ ${f1(l.excellent)}`;
+    case "good":
+      return hb ? `${f1(l.good)} – ${f1(l.excellent)}` : `${f1(l.excellent)} – ${f1(l.good)}`;
+    case "acceptable":
+      return hb ? `${f1(l.acceptable)} – ${f1(l.good)}` : `${f1(l.good)} – ${f1(l.acceptable)}`;
+    case "concerning":
+      return hb ? `${f1(l.concerning)} – ${f1(l.acceptable)}` : `${f1(l.acceptable)} – ${f1(l.concerning)}`;
+    case "distress":
+      return hb ? `< ${f1(l.concerning)}` : `> ${f1(l.concerning)}`;
+  }
+}
+
+export function BandLadder({ ladder, rawValue }: { ladder: TBandLadder; rawValue: number | null }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {LADDER_BANDS.map(({ band, label }) => {
+        const active = ladder.activeBand === band;
+        const color = LADDER_BAND_VAR[band];
+        return (
+          <div
+            key={band}
+            className={cn(
+              "flex items-center justify-between rounded-md border px-3 py-1.5 text-[11.5px] transition-colors",
+              active ? "border-line2 bg-surface-2" : "border-transparent",
+            )}
+            style={active ? { borderColor: color, background: `color-mix(in oklch, ${color} 9%, transparent)` } : undefined}
+          >
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-sm" style={{ background: color, opacity: active ? 1 : 0.45 }} />
+              <span className={cn(active ? "font-semibold text-ink" : "text-ink2")}>{label}</span>
+              {active && rawValue !== null && (
+                <span className="num rounded bg-surface-3 px-1.5 text-[10px] text-ink2">raw {rawValue.toFixed(2)}</span>
+              )}
+            </span>
+            <span className="num text-[10.5px] text-ink3">{bandRangeText(band, ladder)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── held-aware L3 line (§0.3 / §6) — draws a metric/pillar series where HELD segments
+//    (no new data in the window) render visually DISTINCT (dotted + faded), never a
+//    confident solid flat line. A segment is held when the incoming point is flagged
+//    `held`, or — absent an explicit flag — when its value is unchanged from the prior
+//    point (a flat run is treated cautiously). Prompt B's chart passes explicit held
+//    flags; both paths render "flat" identically through THIS primitive. ────────────
+export interface HeldAwarePoint {
+  value: number | null;
+  /** Explicit held marker (Prompt B). When omitted, a flat run (equal value) is held. */
+  held?: boolean;
+  label?: string;
+}
+
+export function HeldAwareLine({
+  points,
+  color,
+  width = 280,
+  height = 90,
+  refValue,
+  refLabel,
+}: {
+  points: HeldAwarePoint[];
+  color: string;
+  width?: number;
+  height?: number;
+  /** A reference line (the bar / active-band threshold) drawn across the chart. */
+  refValue?: number | null;
+  refLabel?: string;
+}) {
+  const real = points.filter((p): p is HeldAwarePoint & { value: number } => p.value != null);
+  if (real.length < 2) return null; // a single point is not a trajectory
+
+  const domainVals = [...real.map((p) => p.value), ...(refValue != null ? [refValue] : [])];
+  const min = Math.min(...domainVals);
+  const max = Math.max(...domainVals);
+  const span = max - min || 1;
+  const padY = 10;
+  const usableH = height - padY * 2;
+  const n = points.length;
+  const denom = n > 1 ? n - 1 : 1;
+  const padX = 6;
+  const usableW = width - padX * 2;
+  const xy = (i: number, v: number) => ({
+    x: padX + (i / denom) * usableW,
+    y: padY + (usableH - ((v - min) / span) * usableH),
+  });
+
+  // Build per-segment paths, marking held segments distinct.
+  const segs: { d: string; held: boolean }[] = [];
+  let prevIdx = -1;
+  let prevVal: number | null = null;
+  points.forEach((p, i) => {
+    if (p.value == null) return;
+    if (prevIdx >= 0 && prevVal != null) {
+      const a = xy(prevIdx, prevVal);
+      const b = xy(i, p.value);
+      const held = p.held ?? p.value === prevVal; // explicit flag, else a flat run is held
+      segs.push({ d: `M${a.x.toFixed(1)},${a.y.toFixed(1)} L${b.x.toFixed(1)},${b.y.toFixed(1)}`, held });
+    }
+    prevIdx = i;
+    prevVal = p.value;
+  });
+
+  const refY = refValue != null ? xy(0, refValue).y : null;
+  const last = real.length ? xy(points.indexOf(real[real.length - 1] as HeldAwarePoint), real[real.length - 1].value) : null;
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block max-w-full" aria-hidden>
+      {refY !== null && (
+        <g>
+          <line x1={padX} y1={refY} x2={width - padX} y2={refY} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
+          {refLabel && (
+            <text x={width - padX} y={refY - 3} textAnchor="end" className="num" style={{ fill: "var(--ink3)", fontSize: 9 }}>
+              {refLabel}
+            </text>
+          )}
+        </g>
+      )}
+      {segs.map((s, i) => (
+        <path
+          key={i}
+          d={s.d}
+          fill="none"
+          stroke={color}
+          strokeWidth={s.held ? 1.4 : 1.9}
+          strokeLinecap="round"
+          strokeDasharray={s.held ? "2.5 3" : undefined}
+          opacity={s.held ? 0.5 : 0.95}
+        />
+      ))}
+      {points.map((p, i) =>
+        p.value == null ? null : (() => {
+          const c = xy(i, p.value);
+          return <circle key={i} cx={c.x} cy={c.y} r={1.7} fill={color} opacity={0.8} />;
+        })(),
+      )}
+      {last && <circle cx={last.x} cy={last.y} r={2.6} fill={color} />}
+    </svg>
   );
 }

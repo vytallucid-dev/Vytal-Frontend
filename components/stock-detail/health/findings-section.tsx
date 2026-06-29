@@ -131,7 +131,7 @@ function FindingCard({ f, symbol }: { f: PreparedFinding; symbol?: string }) {
             <EvidencePips value={st.evidence} />
           </div>
         ))
-      ) : (
+      ) : f.key.startsWith("lens_") ? null /* lens verdict sentence is self-contained — no raw pips */ : (
         <EvidencePips value={f.evidence} />
       )}
 

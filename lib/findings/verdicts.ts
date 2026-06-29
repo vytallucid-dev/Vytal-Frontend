@@ -217,6 +217,17 @@ const DOESNT_MEAN: Record<Family, string> = {
   I: "a band change to note — not a buy/sell call.",
 };
 
+// Three-Lens escalations (lens_lm3/lm7/lp2/lp5) carry their own no-prediction boundary —
+// field-verdicts are CONTEXT (about the field), never a stock call.
+const LENS_DOESNT_MEAN: Record<string, string> = {
+  lm3: "where the weakness lives — in the field, not uniquely this name; not a forecast the field recovers.",
+  lm7: "a hard quality read on this metric to investigate — not a prediction the stock falls.",
+  lp2: "the pillar leads a weak pond — its relative strength is a field artifact, not a forecast.",
+  lp5: "broad self-deterioration to investigate — an early breadth read, not a price call.",
+};
+
 export function doesntMean(key: string): string {
+  const lens = /^lens_(lm3|lm7|lp2|lp5)_/.exec(key);
+  if (lens) return LENS_DOESNT_MEAN[lens[1]] ?? DOESNT_MEAN.E;
   return DOESNT_MEAN[familyOf(key)];
 }
