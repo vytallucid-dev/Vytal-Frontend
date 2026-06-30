@@ -22,6 +22,7 @@ import {
   fmtPct,
   DASH,
 } from "./shared";
+import { AnnualBlock } from "./AnnualBlock";
 
 const STAGE_COLORS = ["var(--p-found)", "var(--p-mom)", "var(--p-mkt)", "var(--p-own)"];
 
@@ -63,6 +64,7 @@ export default function PnlTrendsTab({ data }: { data: ResultDetailData }) {
                   <th className="px-4 py-2.5 text-right font-medium">{c.revenueLabel}</th>
                   <th className="px-4 py-2.5 text-right font-medium">Op profit</th>
                   <th className="px-4 py-2.5 text-right font-medium">PBT</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Tax</th>
                   <th className="px-4 py-2.5 text-right font-medium">Net profit</th>
                   <th className="px-4 py-2.5 text-right font-medium">Op margin</th>
                   <th className="px-4 py-2.5 text-right font-medium">Net margin</th>
@@ -82,6 +84,7 @@ export default function PnlTrendsTab({ data }: { data: ResultDetailData }) {
                       <td className="num px-4 py-2.5 text-right text-ink">{fmtCr(q.revenue)}</td>
                       <td className="num px-4 py-2.5 text-right text-ink2">{fmtCr(q.operatingProfit)}</td>
                       <td className="num px-4 py-2.5 text-right text-ink2">{fmtCr(q.profitBeforeTax)}</td>
+                      <td className="num px-4 py-2.5 text-right text-ink2">{fmtCr(q.tax)}</td>
                       <td className="num px-4 py-2.5 text-right text-ink">{fmtCr(q.netProfit)}</td>
                       <td className="num px-4 py-2.5 text-right text-ink2">{q.operatingMargin != null ? fmtPct(q.operatingMargin) : DASH}</td>
                       <td className="num px-4 py-2.5 text-right text-ink2">{fmtPct(q.netMargin)}</td>
@@ -180,6 +183,24 @@ export default function PnlTrendsTab({ data }: { data: ResultDetailData }) {
         </section>
       </Reveal>
 
+      {/* ── Annual statements (full-year CF + BS-headline, family-aware) ─ */}
+      <Reveal>
+        <section>
+          <SectionEyebrow
+            label="Annual statements"
+            icon={Icons.building}
+            accent="var(--p-found)"
+            pill={data.annualState === "available" && data.annual ? data.annual.fiscalYear : undefined}
+          />
+          {data.annualState === "available" && data.annual && (
+            <p className="mb-3 px-1 text-[12px] text-ink3">
+              Full-year (annual) cash-flow &amp; balance-sheet headline for {data.annual.fiscalYear} —
+              distinct from the quarterly spine above.
+            </p>
+          )}
+          <AnnualBlock annual={data.annual} annualState={data.annualState} />
+        </section>
+      </Reveal>
     </div>
   );
 }

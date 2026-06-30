@@ -8,6 +8,7 @@ import { humanizeKey } from "@/components/stock-detail/health/shared";
 import type {
   PeerGroupAggregate,
   PeerGroupMemberView,
+  PeerGroupFieldLensVerdict,
   PathologyReach,
 } from "@/types/peer-group";
 import type { LabelBand, SectorClass } from "@/types/health";
@@ -168,6 +169,46 @@ export function classifyMembers(members: PeerGroupMemberView[]): {
     .filter((c) => c.side === "hazard")
     .sort((a, b) => a.m.composite - b.m.composite);
   return { prospects, hazards };
+}
+
+// ── field-lens verdict phrasing (descriptive only — states the field condition; never
+//    predicts, never "therefore buy"). Reads ONLY aggregate.fieldLensVerdicts. ─────────
+
+/** Short verdict phrase per field-verdict — used by the Field-Lens section and the
+ *  explorer field-read. Wording reflects the BAND-CLUSTER verdict logic (PG_STRONG when
+ *  members cluster in high bands, PG_WEAK when they cluster low), NOT the old clearing-bar
+ *  framing. `null` verdict is the honest "not assessable" case (caller renders the "only N
+ *  members" copy). Both surfaces read the same `verdict`, so they cannot disagree. */
+export function fieldVerdictPhrase(
+  verdict: PeerGroupFieldLensVerdict["verdict"],
+): { headline: string; explorer: string } | null {
+  switch (verdict) {
+    case "PG_STRONG":
+      return {
+        headline: "Elite field — most members land in the top bands",
+        explorer: "Elite field — most members land in the top bands",
+      };
+    case "PG_WEAK":
+      return {
+        headline: "Weak field — most members land in the low bands",
+        explorer: "Weak field — most members land in the low bands",
+      };
+    case "mixed":
+      return {
+        headline: "Average — no decisive band cluster",
+        explorer: "Average — no decisive band cluster",
+      };
+    default:
+      return null; // not assessable (usableMembers < 5)
+  }
+}
+
+/** "9 of 12 clear the bar" supporting figure (shareClearingBar evidence), or null when
+ *  not assessable. Supporting detail only — no longer the verdict driver. */
+export function clearingFigure(v: PeerGroupFieldLensVerdict): string | null {
+  if (v.shareClearingBar == null) return null;
+  const cleared = Math.round(v.shareClearingBar * v.usableMembers);
+  return `${cleared} of ${v.usableMembers} clear the bar`;
 }
 
 // ── SVG scale helper ────────────────────────────────────────────────────────────

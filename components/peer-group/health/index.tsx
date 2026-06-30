@@ -2,6 +2,7 @@
 
 import type { PeerGroupHealthView } from "@/types/peer-group";
 import { PortraitSection } from "./portrait-section";
+import { FieldLensSection } from "./field-lens-section";
 import { StructureSection } from "./structure-section";
 import { ProspectsSection } from "./prospects-section";
 import { ExplorerSection } from "./explorer-section";
@@ -35,10 +36,14 @@ export function PeerGroupHealth({ view }: { view: PeerGroupHealthView }) {
         identity={view.identity}
         notAtCurrentPeriod={view.notAtCurrentPeriod}
       />
+      <FieldLensSection verdicts={view.aggregate.fieldLensVerdicts ?? []} />
       <StructureSection movers={view.movers} pathology={view.pathology} />
       <ProspectsSection members={view.members} />
-      <ExplorerSection metrics={view.metricDistributions} />
-      <RawFloorSection metrics={view.metricDistributions} members={view.members} />
+      <ExplorerSection
+        metrics={view.metricDistributions}
+        fieldLensVerdicts={view.aggregate.fieldLensVerdicts ?? []}
+      />
+      <RawFloorSection metrics={view.metricDistributions} />
     </div>
   );
 }

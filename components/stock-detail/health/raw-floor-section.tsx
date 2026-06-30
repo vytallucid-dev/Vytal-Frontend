@@ -19,14 +19,24 @@ function fmtVal(v: number, unit?: string): string {
   const d = unit === "×" || unit === "ratio" ? 2 : Math.abs(v) >= 100 ? 0 : 1;
   return v.toFixed(d);
 }
-const fmtScore = (v: number | null) => (v == null ? "—" : v.toFixed(1));
+/** Absolute raw value WITH its unit — the floor's hero rendering ("18.4%", "0.42×", "38 days"). */
+function fmtRawWithUnit(v: number, unit?: string): string {
+  const base = fmtVal(v, unit);
+  switch (unit) {
+    case "%": return `${base}%`;
+    case "×": case "ratio": return `${base}×`;
+    case "days": return `${base} days`;
+    case "pp": return `${base}pp`;
+    default: return base;
+  }
+}
 
 interface Row {
   pillar: PillarKey;
   m: MetricView;
 }
 
-type SortKey = "metric" | "raw" | "score" | "l2" | "l3";
+type SortKey = "metric" | "raw" | "score";
 type FloorFilter = "all" | "foundation" | "momentum";
 
 function sortVal(r: Row, key: SortKey): number | string {
@@ -37,10 +47,6 @@ function sortVal(r: Row, key: SortKey): number | string {
       return r.m.rawValue ?? -Infinity; // honest-empty (non-scored) rows sort last
     case "score":
       return r.m.metricScore ?? -Infinity;
-    case "l2":
-      return r.m.l2Score ?? -Infinity;
-    case "l3":
-      return r.m.l3Score ?? -Infinity;
   }
 }
 
@@ -77,12 +83,16 @@ export function RawFloorSection({ pillars }: { pillars: PillarView[] }) {
 
   if (rows.length === 0) return null;
 
-  const cols: { key: SortKey; label: string; align: "left" | "right" }[] = [
+  // Absolute-value audit surface: Raw is the hero (with unit); vs bar/field/trend are the
+  // RAW reference values (not z-scores), read against Raw across the row.
+  const cols: { key?: SortKey; label: string; align: "left" | "right" }[] = [
     { key: "metric", label: "Metric", align: "left" },
     { key: "raw", label: "Raw", align: "right" },
+    { label: "vs bar", align: "right" },
+    { label: "vs field", align: "right" },
+    { label: "vs trend", align: "right" },
     { key: "score", label: "Score", align: "right" },
-    { key: "l2", label: "Peer-Z", align: "right" },
-    { key: "l3", label: "Trend", align: "right" },
+    { label: "State", align: "right" },
   ];
 
   return (
@@ -137,20 +147,18 @@ export function RawFloorSection({ pillars }: { pillars: PillarView[] }) {
                   <tr>
                     {cols.map((c) => (
                       <th
-                        key={c.key}
-                        onClick={() => onSort(c.key)}
+                        key={c.label}
+                        onClick={c.key ? () => onSort(c.key!) : undefined}
                         className={cn(
-                          "cursor-pointer select-none whitespace-nowrap border-b border-line2 px-3 py-2.5 text-[9.5px] font-semibold uppercase tracking-wide text-ink3 hover:text-ink2",
+                          "select-none whitespace-nowrap border-b border-line2 px-3 py-2.5 text-[9.5px] font-semibold uppercase tracking-wide text-ink3",
                           c.align === "left" ? "text-left" : "text-right",
+                          c.key && "cursor-pointer hover:text-ink2",
                         )}
                       >
                         {c.label}{" "}
-                        {sortKey === c.key && <span className="text-steady">{sortDir < 0 ? "▼" : "▲"}</span>}
+                        {c.key && sortKey === c.key && <span className="text-steady">{sortDir < 0 ? "▼" : "▲"}</span>}
                       </th>
                     ))}
-                    <th className="border-b border-line2 px-3 py-2.5 text-right text-[9.5px] font-semibold uppercase tracking-wide text-ink3">
-                      State
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -188,6 +196,16 @@ function BandChip({ band }: { band: MetricBand | null }) {
   );
 }
 
+/** A RAW reference value (the bar / peer μ / own-history μ) — absolute, never a z-score.
+ *  Honest-empty ("—") when that lens isn't evaluable (e.g. L3 building history). */
+function RefCell({ value, unit }: { value: number | null | undefined; unit?: string }) {
+  return (
+    <td className="num border-b border-line px-3 py-2.5 text-right text-ink2">
+      {value == null ? <span className="text-ink3">—</span> : fmtVal(value, unit)}
+    </td>
+  );
+}
+
 function MetricRow({ r, isExp, onToggle }: { r: Row; isExp: boolean; onToggle: () => void }) {
   const m = r.m;
   const meta = getMetricLabel(m.metricKey);
@@ -207,21 +225,24 @@ function MetricRow({ r, isExp, onToggle }: { r: Row; isExp: boolean; onToggle: (
             <span className="num text-[9px] uppercase tracking-wider text-ink3">{m.metricKey}</span>
           </span>
         </td>
-        <td className="num border-b border-line px-3 py-2.5 text-right text-ink2">
-          {m.rawValue != null ? fmtVal(m.rawValue, meta.unit) : "—"}
+        {/* Raw — the hero column, absolute value WITH unit */}
+        <td className="num border-b border-line px-3 py-2.5 text-right font-medium text-ink">
+          {m.rawValue != null ? fmtRawWithUnit(m.rawValue, meta.unit) : "—"}
         </td>
+        {/* vs bar / vs field / vs trend — RAW reference values (read against Raw), never z-scores */}
+        <RefCell value={m.lens && m.lens.l1.evaluable ? m.lens.l1.referenceValue : null} unit={meta.unit} />
+        <RefCell value={m.lens && m.lens.l2.evaluable ? m.lens.l2.referenceValue : null} unit={meta.unit} />
+        <RefCell value={m.lens && m.lens.l3.evaluable ? m.lens.l3.referenceValue : null} unit={meta.unit} />
         <td className="num border-b border-line px-3 py-2.5 text-right font-semibold" style={{ color: m.metricScore != null ? scoreColor : "var(--ink3)" }}>
           {m.metricScore != null ? Math.round(m.metricScore) : "—"}
         </td>
-        <td className="num border-b border-line px-3 py-2.5 text-right text-ink2">{fmtScore(m.l2Score)}</td>
-        <td className="num border-b border-line px-3 py-2.5 text-right text-ink2">{fmtScore(m.l3Score)}</td>
         <td className="border-b border-line px-3 py-2.5 text-right">
           <BandChip band={m.l1Band} />
         </td>
       </tr>
       {isExp && (
         <tr>
-          <td colSpan={6} className="border-b border-line2 bg-surface-2 p-0">
+          <td colSpan={7} className="border-b border-line2 bg-surface-2 p-0">
             <LensDetail r={r} />
           </td>
         </tr>

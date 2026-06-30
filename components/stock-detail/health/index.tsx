@@ -69,7 +69,7 @@ export default function HealthScore() {
         </Reveal>
       )}
 
-      <AnatomySection pillars={pillars} />
+      <AnatomySection pillars={pillars} trajectory={trajectory} />
 
       {trajectory && (
         <Reveal>

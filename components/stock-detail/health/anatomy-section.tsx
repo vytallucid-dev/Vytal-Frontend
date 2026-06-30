@@ -14,6 +14,7 @@ import type {
   MetricBand,
   PillarLensPattern,
   LensRead,
+  TrajectorySection as TTrajectory,
 } from "@/types/health";
 import { getMetricLabel, getMarketSubLabel } from "@/lib/health/metric-labels";
 import {
@@ -24,6 +25,7 @@ import {
   clampPct,
   fmt,
   humanizeKey,
+  shortPeriod,
   LensChip,
   LensPatternPill,
   MetricStateChip,
@@ -31,6 +33,72 @@ import {
   lensAccentVars,
 } from "./shared";
 import { MetricModal } from "./metric-modal";
+
+// ── per-pillar change indicator (Feature A — fills the reserved header slot) ───────
+// Quarterly delta derived FRONTEND-SIDE from trajectory.series (last point vs prior),
+// plus the prior period. Ownership prefers a recent corporate event when one exists.
+// Descriptive history only — never a forecast. Negative is NOT auto-red (directional
+// context, not alarm). Market is a quarterly delta today; it upgrades to a session
+// delta automatically when a daily Market score lands (same series, finer points).
+interface PillarChange {
+  kind: "delta" | "unchanged" | "event" | "none";
+  delta?: number;
+  sincePeriod?: string;
+  eventType?: string;
+  eventDate?: string;
+}
+
+function computePillarChanges(trajectory: TTrajectory | null): Record<PillarKey, PillarChange> {
+  const none: PillarChange = { kind: "none" };
+  const out: Record<PillarKey, PillarChange> = {
+    foundation: none, momentum: none, market: none, ownership: none,
+  };
+  const s = trajectory?.series ?? [];
+  if (s.length < 2) return out; // no prior quarter → honest-empty ("no prior quarter")
+  const last = s[s.length - 1];
+  const prior = s[s.length - 2];
+  const since = shortPeriod(prior.periodKey);
+  const mk = (curr: number, prev: number): PillarChange => {
+    const d = Math.round((curr - prev) * 10) / 10;
+    return Math.abs(d) < 0.05
+      ? { kind: "unchanged", sincePeriod: since }
+      : { kind: "delta", delta: d, sincePeriod: since };
+  };
+  out.foundation = mk(last.foundation, prior.foundation);
+  out.momentum = mk(last.momentum, prior.momentum);
+  out.market = mk(last.market, prior.market);
+  const ev = trajectory && trajectory.events.length ? trajectory.events[trajectory.events.length - 1] : null;
+  out.ownership = ev
+    ? { kind: "event", eventType: ev.eventType, eventDate: ev.eventDate }
+    : mk(last.ownership, prior.ownership);
+  return out;
+}
+
+function ChangeChip({ change }: { change?: PillarChange }) {
+  if (!change || change.kind === "none")
+    return <span className="shrink-0 text-[10px] text-ink3">no prior quarter</span>;
+  if (change.kind === "event")
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line2 bg-surface-2 px-1.5 py-0.5 text-[10px] text-ink2">
+        <Icons.spark className="h-2.5 w-2.5 text-p-own" />
+        event · <span className="num">{change.eventDate}</span>
+      </span>
+    );
+  if (change.kind === "unchanged")
+    return <span className="shrink-0 text-[10px] text-ink3">unchanged since {change.sincePeriod}</span>;
+  const up = (change.delta ?? 0) > 0;
+  // Neutral tone — directional arrow only, never red/green alarm.
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line2 bg-surface-2 px-1.5 py-0.5 text-[10px] text-ink2"
+      title={`vs ${change.sincePeriod}`}
+    >
+      <span className="num font-medium">{up ? "+" : ""}{change.delta?.toFixed(1)}</span>
+      <span className="text-ink3">{up ? "▲" : "▼"}</span>
+      <span className="text-ink3">vs last quarter</span>
+    </span>
+  );
+}
 
 // ── zone descriptor (unchanged) ────────────────────────────────────────────────
 function zoneDescriptor(p: PillarView): { text: string; cls: string } {
@@ -175,7 +243,7 @@ function LensChipRow({ m }: { m: MetricView }) {
     ? `${f1(l3.series[0].rawValue)}→${f1(l3.series[l3.series.length - 1].rawValue)}`
     : undefined;
   return (
-    <div className="mt-2.5 flex flex-wrap gap-1.5">
+    <div className="mt-2.5 flex flex-wrap items-center gap-1">
       {l1.evaluable && (
         <LensChip label="vs bar" state={L1_LABEL[l1.state]} detail={l1.referenceValue != null ? `bar ${f1(l1.referenceValue)}` : undefined} dotColor={l1Dot} />
       )}
@@ -215,8 +283,8 @@ function ScoredMetricRow({ m, pillarLabel }: { m: MetricView; pillarLabel: strin
         className="group block w-full cursor-pointer border-t border-line py-3 text-left transition-colors first:border-t-0 hover:bg-surface-2/60"
       >
         <div className="flex items-start justify-between gap-3">
-          <span className="flex flex-col">
-            <span className="text-[12.5px] font-medium text-ink">{meta.label}</span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-[12.5px] font-medium text-ink">{meta.label}</span>
             <span className="num text-[9.5px] uppercase tracking-wider text-ink3">{m.metricKey}</span>
           </span>
           {/* RAW VALUE = hero */}
@@ -390,35 +458,36 @@ function PillarBody({ p, pillarLabel, twoCol }: { p: PillarView; pillarLabel: st
   return <p className="py-3 text-[12px] text-ink3">No detail rows for this pillar.</p>;
 }
 
-function PillarCard({ p, featured, defaultOpen }: { p: PillarView; featured?: boolean; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(Boolean(defaultOpen));
+function PillarCard({ p, featured, open, onToggle, change }: { p: PillarView; featured?: boolean; open: boolean; onToggle: () => void; change?: PillarChange }) {
   const meta = PILLAR_META[p.pillar];
   const zone = zoneDescriptor(p);
   const redistributed = p.state === "unavailable_redistributed";
 
   return (
     <div
-      className={cn("lift overflow-hidden rounded-2xl border border-line bg-surface-1", featured && "lg:col-span-3")}
+      className={cn("lift flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface-1", featured && "lg:col-span-3")}
       style={{ borderTop: `2px solid ${meta.cssVar}` }}
     >
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-start gap-3.5 p-4 text-left">
+      <button type="button" onClick={onToggle} className="flex w-full items-start gap-3.5 p-4 text-left">
         <PillarGauge score={p.subtotal} color={meta.cssVar} size={featured ? 70 : 62} />
         <div className="min-w-0 flex-1">
-          {/* header row — leaves room for Prompt B's recency chip on the right */}
-          <div className="flex items-start gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-2 text-[13.5px] font-semibold">
-              <span className={cn("h-1.5 w-1.5 rounded-sm", meta.dot)} />
-              {meta.label}
+          {/* header row — label + weight on the left, per-pillar change chip on the right */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13.5px] font-semibold">
+              <span className="flex items-center gap-2">
+                <span className={cn("h-1.5 w-1.5 rounded-sm", meta.dot)} />
+                {meta.label}
+              </span>
               <span className="text-[10px] font-normal text-ink3">
                 {(p.appliedWeight * 100).toFixed(0)}%
                 {p.appliedWeight !== p.nominalWeight && ` (nom ${(p.nominalWeight * 100).toFixed(0)})`}
               </span>
               {redistributed && <span className="rounded bg-surface-3 px-1.5 py-0.5 text-[9px] text-ink3">redistributed</span>}
             </div>
-            {/* (recency chip slot — Prompt B) */}
+            <ChangeChip change={change} />
           </div>
-          <div className={cn("mt-1 text-[10.5px]", zone.cls)}>{zone.text}</div>
-          {/* lens verdict line — the new headline */}
+          <div className={cn("mt-1.5 text-[10.5px]", zone.cls)}>{zone.text}</div>
+          {/* lens verdict line — the headline (reads backend-composed pattern.verdict) */}
           <PillarVerdict p={p} />
           <span className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink3">
             {open ? "Hide metrics" : "Metrics & lenses"}
@@ -438,11 +507,25 @@ function PillarCard({ p, featured, defaultOpen }: { p: PillarView; featured?: bo
 // ── section ───────────────────────────────────────────────────────────────────
 const COMPACT_ORDER: PillarKey[] = ["momentum", "market", "ownership"];
 
-export function AnatomySection({ pillars }: { pillars: PillarView[] }) {
+export function AnatomySection({ pillars, trajectory }: { pillars: PillarView[]; trajectory?: TTrajectory | null }) {
   const foundation = pillars.find((p) => p.pillar === "foundation");
   const compact = COMPACT_ORDER.map((k) => pillars.find((p) => p.pillar === k)).filter(
     (p): p is PillarView => Boolean(p),
   );
+  const changes = computePillarChanges(trajectory ?? null);
+
+  // Per-card open state (independent toggle per pillar). Foundation opens by default.
+  const [openSet, setOpenSet] = useState<Set<string>>(() => new Set(["foundation"]));
+  const toggle = (key: string) =>
+    setOpenSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  // Even-height stretch applies to the COLLAPSED compact row only — when one compact card
+  // is open it sizes to its own content and siblings must NOT stretch up to match it.
+  const anyCompactOpen = compact.some((p) => openSet.has(p.pillar));
 
   return (
     <section>
@@ -450,13 +533,13 @@ export function AnatomySection({ pillars }: { pillars: PillarView[] }) {
       <div className="space-y-3.5">
         {foundation && (
           <Reveal>
-            <PillarCard p={foundation} featured defaultOpen />
+            <PillarCard p={foundation} featured open={openSet.has(foundation.pillar)} onToggle={() => toggle(foundation.pillar)} change={changes[foundation.pillar]} />
           </Reveal>
         )}
-        <div className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-3">
+        <div className={cn("grid gap-3.5 md:grid-cols-2 lg:grid-cols-3", anyCompactOpen ? "items-start" : "items-stretch")}>
           {compact.map((p, i) => (
-            <Reveal key={p.pillar} delay={i * 0.06}>
-              <PillarCard p={p} />
+            <Reveal key={p.pillar} delay={i * 0.06} className={anyCompactOpen ? undefined : "h-full"}>
+              <PillarCard p={p} open={openSet.has(p.pillar)} onToggle={() => toggle(p.pillar)} change={changes[p.pillar]} />
             </Reveal>
           ))}
         </div>

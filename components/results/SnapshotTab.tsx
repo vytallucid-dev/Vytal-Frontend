@@ -29,6 +29,7 @@ import {
   toneColor,
   tint,
 } from "./shared";
+import { HealthContext } from "./HealthContext";
 
 const fmtFullDay = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -80,6 +81,14 @@ export default function SnapshotTab({
             <MetricTile label="Profit before tax" value={fmtCr(c.profitBeforeTax)} yoy={pbtYoy} qoq={pbtQoq} />
             <MetricTile label="Net profit" value={fmtCr(c.netProfit)} yoy={c.profitYoy} qoq={c.profitQoq} />
           </div>
+        </section>
+      </Reveal>
+
+      {/* ── Health & flags (scoring connection) ──────────────────────── */}
+      <Reveal>
+        <section>
+          <SectionEyebrow label="Health & flags" icon={Icons.health} accent="var(--p-found)" />
+          <HealthContext health={data.health} viewedPeriodKey={c.periodKey} />
         </section>
       </Reveal>
 

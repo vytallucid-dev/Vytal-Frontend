@@ -14,6 +14,7 @@
  * the Health tab's story — this tab shows who is moving, not a grade).
  */
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { WhereNext } from "./where-next";
@@ -27,6 +28,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   PieChart,
   Pie,
   Cell,
@@ -45,7 +47,6 @@ import type {
   BlockEvent,
   PledgingPoint,
 } from "@/types/research-tools";
-import type { FlowCategoryView } from "@/types/health";
 import { SectionEyebrow, Panel, shortPeriod, humanizeKey } from "./health/shared";
 import { color } from "framer-motion";
 
@@ -126,18 +127,6 @@ const ACQ_MODE_LABEL: Record<string, string> = {
 const labelOf = (map: Record<string, string>, k: string) => map[k] ?? humanizeKey(k);
 
 // ── flow-lane identity ──────────────────────────────────────────────────────
-const FLOW_LABEL: Record<FlowCategoryView["category"], string> = {
-  A_promoter: "Promoter",
-  B_institutional: "Institutional",
-  C_insider: "Insider",
-  D_block: "Block & bulk",
-};
-const FLOW_ICON: Record<FlowCategoryView["category"], Icon> = {
-  A_promoter: Icons.crown,
-  B_institutional: Icons.building,
-  C_insider: Icons.eye,
-  D_block: Icons.stack,
-};
 const TREND_GLYPH: Record<string, string> = {
   three_up: "↑↑↑",
   three_down: "↓↓↓",
@@ -179,31 +168,81 @@ type WithHolding = OwnershipSeriesPoint & { holding: OwnershipHolding };
 const hasHolding = (p: OwnershipSeriesPoint): p is WithHolding => p.holding != null;
 
 // ════════════════════════════════════════════════════════════════════════════
-// §3.1 — Flow-lane glance strip
-// The 4 ownership flow lanes. C & D carry their own trend/value when their feeds
-// wire; today they're dormant. A & B never expose a flow value (engine keys them
-// on share-count / FII+DII deltas, not a net number) — so their direction is
-// derived honestly from the holding series, never from a score.
+// §3.1 — Flow-lane glance strip — FIVE per-lane-honest cards
+// The five ownership lanes are NOT identically shaped; each is rendered to the
+// data that actually exists:
+//   • FII / DII  — HOLDING-shaped. No separate net-₹ flow exists (the engine keys
+//     institutional flow on the COMBINED FII+DII delta), so each card reads its
+//     direction + figure straight from the quarterly holding series.
+//   • Promoter   — FLOW-shaped & fully wired: current stake %, q/q change, pledge.
+//   • Insider    — FLOW-shaped but DORMANT today (PIT feed unwired, events.insider
+//     empty). Honest "activates once reported" state; the populated path computes a
+//     net ₹ FE-side from buys−sells so it lights up automatically when events land.
+//   • Bulk/Block — FLOW-shaped, DORMANT today (bulk/block feed unwired). Same honest
+//     dormant state; populated path ready (last-period value + deal count).
+// Direction tags are DESCRIPTIVE (Accumulating / Net buyers / Stable), never "BUY".
+// A dormant feed shows the honest state, never a fabricated figure.
 // ════════════════════════════════════════════════════════════════════════════
+
+// A flow card's resolved render-state — one of three honest shapes.
+type FlowCard = {
+  key: string;
+  label: string;
+  icon: Icon;
+  /** descriptive direction tag (Accumulating / Net buyers / Stable / Dormant) */
+  tag: { word: string; cls: string };
+  /** what / when context line under the title */
+  whatWhen: string;
+} & (
+  | { shape: "value"; hero: string; heroCls: string; rows: [string, string] }
+  | { shape: "dormant"; dormantLine: string }
+);
+
+/** Holding-direction tag from a q/q % delta — descriptive, never advice.
+ *  Up reads "Accumulating", down "Reducing", flat "Steady". */
+function holdingTag(delta: number | null) {
+  if (delta == null) return { word: "Single quarter", cls: "text-ink3" };
+  const eps = 0.05;
+  if (delta > eps) return { word: "Accumulating", cls: "text-healthy" };
+  if (delta < -eps) return { word: "Reducing", cls: "text-high" };
+  return { word: "Steady", cls: "text-ink2" };
+}
+
+/** Count consecutive trailing quarters the holding % moved the same direction as
+ *  `delta` (net buyers / net sellers run length) — a factual streak, not a score. */
+function holdingStreak(holds: OwnershipHolding[], key: "fiiPct" | "diiPct", delta: number | null): number {
+  if (delta == null || Math.abs(delta) <= 0.05) return 0;
+  const dir = Math.sign(delta);
+  let n = 0;
+  for (let i = holds.length - 1; i > 0; i--) {
+    const a = holds[i][key];
+    const b = holds[i - 1][key];
+    if (a == null || b == null) break;
+    if (Math.sign(a - b) !== dir || a - b === 0) break;
+    n++;
+  }
+  return n;
+}
+
 function FlowGlanceStrip({
   current,
   series,
-  hasScoredPeriod,
+  events,
 }: {
   current: OwnershipAnatomy | null;
   series: OwnershipSeriesPoint[];
-  hasScoredPeriod: boolean;
+  events: { insider: InsiderEvent[]; block: BlockEvent[] };
 }) {
-  const holdings = series.filter(hasHolding);
-  const latest = holdings.at(-1)?.holding ?? null;
-  const prior = holdings.at(-2)?.holding ?? null;
-  const hasHoldingData = latest != null || current?.holding != null;
+  const holdings = series.filter(hasHolding).map((p) => p.holding);
+  const latest = holdings.at(-1) ?? current?.holding ?? null;
+  const prior = holdings.at(-2) ?? null;
+  const hasHoldingData = latest != null;
 
   // Nothing to show at all — rare; parent only renders when hasAnyData.
   if (!hasHoldingData && !current) {
     return (
       <section>
-        <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="4 lanes" />
+        <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="5 lanes" />
         <Panel className="flex flex-col items-center gap-2 py-9 text-center">
           <Icons.chartLine weight="duotone" className="h-8 w-8 text-ink3" />
           <p className="text-[13px] font-medium text-ink">No holding data yet</p>
@@ -215,149 +254,191 @@ function FlowGlanceStrip({
     );
   }
 
-  const derivedDelta = (cat: FlowCategoryView["category"]): number | null => {
+  const qoqDelta = (key: "promoterPct" | "fiiPct" | "diiPct"): number | null => {
     if (!latest || !prior) return null;
-    if (cat === "A_promoter") {
-      if (latest.promoterPct == null || prior.promoterPct == null) return null;
-      return latest.promoterPct - prior.promoterPct;
-    }
-    if (cat === "B_institutional") {
-      const a = (latest.fiiPct ?? 0) + (latest.diiPct ?? 0);
-      const b = (prior.fiiPct ?? 0) + (prior.diiPct ?? 0);
-      if (latest.fiiPct == null && latest.diiPct == null) return null;
-      return a - b;
-    }
-    return null;
+    const a = latest[key];
+    const b = prior[key];
+    return a == null || b == null ? null : a - b;
   };
 
-  // ── SCORED path: flowCategories is populated (4 real lanes) ────────────────
-  if (hasScoredPeriod && current && current.flowCategories.length > 0) {
-    return (
-      <section>
-        <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="4 lanes" />
-        <StaggerGroup className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {current.flowCategories.map((f) => {
-            const dormant = f.categoryState !== "scored";
-            const Glyph = FLOW_ICON[f.category];
-            const derive = f.category === "A_promoter" || f.category === "B_institutional";
-            const delta = derive ? derivedDelta(f.category) : null;
-            const chip = derive ? dirChip(delta) : null;
-
-            return (
-              <StaggerItem key={f.category}>
-                <div
-                  className={cn(
-                    "h-full rounded-2xl border bg-surface-1 p-4",
-                    dormant ? "border-dashed border-line2" : "border-line",
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "grid h-7 w-7 shrink-0 place-items-center rounded-lg",
-                        dormant ? "bg-surface-3 text-ink3" : "bg-p-own/10 text-p-own",
-                      )}
-                    >
-                      <Glyph weight="fill" className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="text-[12.5px] font-semibold text-ink">{FLOW_LABEL[f.category]}</span>
-                  </div>
-
-                  {dormant ? (
-                    <p className="mt-3 text-[11px] italic text-ink3">
-                      {f.categoryState === "dormant_no_feed" ? "Awaiting feed" : "No data"}
-                    </p>
-                  ) : derive ? (
-                    <div className="mt-3">
-                      <div className={cn("flex items-baseline gap-1.5", chip!.cls)}>
-                        <span className="num text-[15px]">{chip!.glyph}</span>
-                        <span className="text-[13px] font-medium">{chip!.word}</span>
-                      </div>
-                      <p className="num mt-1 text-[11px] text-ink3">
-                        {delta == null ? "single quarter" : `${fmtPp(delta)} q/q holding`}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-3">
-                      <div className="flex items-baseline gap-2 text-ink2">
-                        {f.trendState && <span className="num text-[14px]">{TREND_GLYPH[f.trendState] ?? "→"}</span>}
-                        <span className="text-[12px]">{f.bandLanded ? humanizeKey(f.bandLanded) : "Neutral"}</span>
-                      </div>
-                      {f.netFlowValue != null && (
-                        <p className="num mt-1 text-[11px] text-ink3">
-                          {f.category === "D_block" ? `${fmtPp(f.netFlowValue)} m-cap` : fmtSignedCr(f.netFlowValue)}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </StaggerItem>
-            );
-          })}
-        </StaggerGroup>
-        <p className="mt-2.5 text-[11px] italic text-ink3">
-          Promoter &amp; institutional direction is read from the quarterly holding split. Insider and block
-          lanes activate when their disclosure feeds wire — shown dormant, never hidden.
-        </p>
-      </section>
-    );
-  }
-
-  // ── UNSCORED path: flowCategories is [] — build 4 tiles manually ────────────
-  // A & B: direction derivable from the holding series right now.
-  // C & D: dormant — scored values don't exist yet.
-  type UnscoredLane = {
-    category: FlowCategoryView["category"];
-    live: boolean;
+  // ── FII / DII — HOLDING-shaped ────────────────────────────────────────────
+  const holdingCard = (key: "fiiPct" | "diiPct", label: string, icon: Icon): FlowCard => {
+    const pct = latest?.[key] ?? null;
+    const delta = qoqDelta(key);
+    const tag = holdingTag(delta);
+    const streak = holdingStreak(holdings, key, delta);
+    const sideWord = delta != null && delta > 0.05 ? "net buyers" : delta != null && delta < -0.05 ? "net sellers" : "flat";
+    const trendRow =
+      streak >= 1
+        ? `${sideWord} · ${streak} ${streak === 1 ? "quarter" : "quarters"}`
+        : prior == null
+          ? "single quarter so far"
+          : "no sustained run";
+    return {
+      key,
+      label,
+      icon,
+      tag,
+      whatWhen: "Holding share · latest quarter",
+      shape: "value",
+      hero: fmtPct(pct, 1),
+      heroCls: tag.cls,
+      rows: [delta == null ? "— q/q" : `${fmtPp(delta)} q/q`, trendRow],
+    };
   };
-  const unscoredLanes: UnscoredLane[] = [
-    { category: "A_promoter", live: true },
-    { category: "B_institutional", live: true },
-    { category: "C_insider", live: false },
-    { category: "D_block", live: false },
+
+  // ── Promoter — FLOW-shaped (fully wired) ──────────────────────────────────
+  const promoterCard = (): FlowCard => {
+    const pct = latest?.promoterPct ?? null;
+    const delta = qoqDelta("promoterPct");
+    const tag =
+      delta == null
+        ? { word: "Single quarter", cls: "text-ink3" }
+        : delta > 0.05
+          ? { word: "Rising", cls: "text-healthy" }
+          : delta < -0.05
+            ? { word: "Reducing", cls: "text-high" }
+            : { word: "Stable", cls: "text-ink2" };
+    const pledged = latest?.pledgedPctOfPromoter ?? null;
+    const pledgeWord =
+      pledged == null ? "" : pledged === 0 ? "none pledged" : pledged < 5 ? "very low" : pledged < 25 ? "moderate" : pledged < 50 ? "elevated" : "high";
+    return {
+      key: "promoter",
+      label: "Promoter",
+      icon: Icons.crown,
+      tag,
+      whatWhen: "Stake held · latest quarter",
+      shape: "value",
+      hero: fmtPct(pct, 1),
+      heroCls: tag.cls,
+      rows: [
+        delta == null ? "— q/q" : `${fmtPp(delta)} q/q`,
+        pledged == null ? "pledge —" : `${fmtPct(pledged, 1)} pledged${pledgeWord ? ` · ${pledgeWord}` : ""}`,
+      ],
+    };
+  };
+
+  // ── Insider — FLOW-shaped, DORMANT until the PIT feed wires ────────────────
+  const insiderCard = (events: InsiderEvent[]): FlowCard => {
+    const lane = current?.flowCategories.find((f) => f.category === "C_insider");
+    const dormant = events.length === 0 && (!lane || lane.categoryState !== "scored");
+    if (dormant) {
+      return {
+        key: "insider",
+        label: "Insider",
+        icon: Icons.eye,
+        tag: { word: "Dormant", cls: "text-ink3" },
+        whatWhen: "PIT disclosures",
+        shape: "dormant",
+        dormantLine: "Awaiting feed · activates once reported",
+      };
+    }
+    // Populated path — net ₹ over the disclosed window, computed FE-side.
+    const buys = events.filter((e) => e.transactionType === "buy");
+    const sells = events.filter((e) => e.transactionType === "sell");
+    const net =
+      buys.reduce((s, e) => s + (e.tradeValueCr ?? 0), 0) - sells.reduce((s, e) => s + (e.tradeValueCr ?? 0), 0);
+    const tag = net > 0 ? { word: "Net buyers", cls: "text-healthy" } : net < 0 ? { word: "Net sellers", cls: "text-high" } : { word: "Balanced", cls: "text-ink2" };
+    return {
+      key: "insider",
+      label: "Insider",
+      icon: Icons.eye,
+      tag,
+      whatWhen: "Net · last ~90d",
+      shape: "value",
+      hero: fmtSignedCr(net),
+      heroCls: tag.cls,
+      rows: [
+        `${buys.length} ${buys.length === 1 ? "buy" : "buys"} · ${fmtCr(buys.reduce((s, e) => s + (e.tradeValueCr ?? 0), 0))}`,
+        `${sells.length} ${sells.length === 1 ? "sell" : "sells"} · ${fmtCr(sells.reduce((s, e) => s + (e.tradeValueCr ?? 0), 0))}`,
+      ],
+    };
+  };
+
+  // ── Bulk/Block — FLOW-shaped, DORMANT until the bhavcopy feed wires ────────
+  const blockCard = (events: BlockEvent[]): FlowCard => {
+    const lane = current?.flowCategories.find((f) => f.category === "D_block");
+    const dormant = events.length === 0 && (!lane || lane.categoryState !== "scored");
+    if (dormant) {
+      return {
+        key: "block",
+        label: "Bulk / block",
+        icon: Icons.stack,
+        tag: { word: "Dormant", cls: "text-ink3" },
+        whatWhen: "NSE bhavcopy",
+        shape: "dormant",
+        dormantLine: "Awaiting feed · activates once reported",
+      };
+    }
+    // Populated path — last-period net value + deal count + notable counterparty.
+    const buys = events.filter((e) => e.transactionType === "buy");
+    const sells = events.filter((e) => e.transactionType === "sell");
+    const net = buys.reduce((s, e) => s + (e.valueCr ?? 0), 0) - sells.reduce((s, e) => s + (e.valueCr ?? 0), 0);
+    const tag = net > 0 ? { word: "Net buyers", cls: "text-healthy" } : net < 0 ? { word: "Net sellers", cls: "text-high" } : { word: "Balanced", cls: "text-ink2" };
+    const top = [...events].sort((a, b) => (b.valueCr ?? 0) - (a.valueCr ?? 0))[0];
+    return {
+      key: "block",
+      label: "Bulk / block",
+      icon: Icons.stack,
+      tag,
+      whatWhen: "Net · current window",
+      shape: "value",
+      hero: fmtSignedCr(net),
+      heroCls: tag.cls,
+      rows: [
+        `${events.length} ${events.length === 1 ? "deal" : "deals"}`,
+        top ? `${top.clientName}` : "—",
+      ],
+    };
+  };
+
+  const cards: FlowCard[] = [
+    holdingCard("fiiPct", "FII", Icons.building),
+    holdingCard("diiPct", "DII", Icons.coins),
+    promoterCard(),
+    insiderCard(events.insider),
+    blockCard(events.block),
   ];
 
   return (
     <section>
-      <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="4 lanes" />
-      <StaggerGroup className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {unscoredLanes.map(({ category, live }) => {
-          const Glyph = FLOW_ICON[category];
-          const delta = live ? derivedDelta(category) : null;
-          const chip = live ? dirChip(delta) : null;
-
+      <SectionEyebrow label="Ownership flow" icon={Icons.stack} accent="var(--p-own)" pill="5 lanes" />
+      <StaggerGroup className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {cards.map((c) => {
+          const Glyph = c.icon;
+          const dormant = c.shape === "dormant";
           return (
-            <StaggerItem key={category}>
+            <StaggerItem key={c.key}>
               <div
                 className={cn(
                   "h-full rounded-2xl border bg-surface-1 p-4",
-                  live ? "border-line" : "border-dashed border-line2",
+                  dormant ? "border-dashed border-line2" : "border-line",
                 )}
               >
                 <div className="flex items-center gap-2">
                   <span
                     className={cn(
                       "grid h-7 w-7 shrink-0 place-items-center rounded-lg",
-                      live ? "bg-p-own/10 text-p-own" : "bg-surface-3 text-ink3",
+                      dormant ? "bg-surface-3 text-ink3" : "bg-p-own/10 text-p-own",
                     )}
                   >
                     <Glyph weight="fill" className="h-3.5 w-3.5" />
                   </span>
-                  <span className="text-[12.5px] font-semibold text-ink">{FLOW_LABEL[category]}</span>
+                  <span className="text-[12.5px] font-semibold text-ink">{c.label}</span>
+                  <span className={cn("ml-auto text-[10.5px] font-medium", c.tag.cls)}>{c.tag.word}</span>
                 </div>
+                <p className="mt-1 text-[10.5px] text-ink3">{c.whatWhen}</p>
 
-                {live ? (
-                  <div className="mt-3">
-                    <div className={cn("flex items-baseline gap-1.5", chip!.cls)}>
-                      <span className="num text-[15px]">{chip!.glyph}</span>
-                      <span className="text-[13px] font-medium">{chip!.word}</span>
-                    </div>
-                    <p className="num mt-1 text-[11px] text-ink3">
-                      {delta == null ? "single quarter" : `${fmtPp(delta)} q/q holding`}
-                    </p>
-                  </div>
+                {c.shape === "dormant" ? (
+                  <p className="mt-3 text-[11px] italic text-ink3">{c.dormantLine}</p>
                 ) : (
-                  <p className="mt-3 text-[11px] italic text-ink3">Activates once scored</p>
+                  <div className="mt-2.5">
+                    <div className={cn("num text-[18px] font-semibold", c.heroCls)}>{c.hero}</div>
+                    <div className="mt-2 space-y-1 border-t border-line pt-2 text-[11px] text-ink2">
+                      <p className="num">{c.rows[0]}</p>
+                      <p className="num text-ink3">{c.rows[1]}</p>
+                    </div>
+                  </div>
                 )}
               </div>
             </StaggerItem>
@@ -365,8 +446,9 @@ function FlowGlanceStrip({
         })}
       </StaggerGroup>
       <p className="mt-2.5 text-[11px] italic text-ink3">
-        Promoter &amp; institutional direction is read from the quarterly holding split. Insider and block
-        lanes activate once the period is scored — shown dormant, never hidden.
+        FII &amp; DII direction is read from the quarterly holding split (no separate net-₹ flow is reported).
+        Promoter shows the wired stake &amp; pledge. Insider and bulk/block lanes activate once their disclosure
+        feeds report — shown dormant, never fabricated.
       </p>
     </section>
   );
@@ -948,11 +1030,17 @@ function DealsSection({ block, current }: { block: BlockEvent[]; current: Owners
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// §3.6 — Institutional ownership, quarterly (combined FII + DII; not split)
-// Sourced from the holding series — the institutional flow LANE exposes no net
-// value, so we plot the real combined position each quarter, honestly captioned.
+// §3.6 — Institutional ownership, quarterly
+// Sourced from the holding series. A mode toggle switches between the COMBINED
+// FII+DII position (default) and FII vs DII plotted as two separate lines — the
+// per-point fii/dii fields are already carried, so foreign/domestic divergence is
+// visible without any backend change. Honestly captioned per mode.
 // ════════════════════════════════════════════════════════════════════════════
+const INST_NAME: Record<string, string> = { inst: "FII + DII", fii: "FII", dii: "DII" };
+
 function InstitutionalSection({ series }: { series: OwnershipSeriesPoint[] }) {
+  const [mode, setMode] = useState<"combined" | "split">("combined");
+
   const points = series
     .filter(hasHolding)
     .map((p) => {
@@ -962,45 +1050,118 @@ function InstitutionalSection({ series }: { series: OwnershipSeriesPoint[] }) {
     })
     .filter((p) => p.inst != null);
 
+  const instFormatter = (v: number, name: string): [string, string] => [`${v.toFixed(2)}%`, INST_NAME[name] ?? name];
+
   return (
     <section>
-      <SectionEyebrow label="Institutional ownership" icon={Icons.building} accent="var(--p-found)" pill="quarterly · combined" />
+      <SectionEyebrow
+        label="Institutional ownership"
+        icon={Icons.building}
+        accent="var(--p-found)"
+        pill={`quarterly · ${mode === "combined" ? "combined" : "FII vs DII"}`}
+      />
       <Panel>
         {points.length >= 2 ? (
           <>
+            {/* mode toggle — Combined (default) vs FII vs DII */}
+            <div className="mb-3 flex justify-end">
+              <div className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5 text-[11px]">
+                {([
+                  { id: "combined", label: "Combined" },
+                  { id: "split", label: "FII vs DII" },
+                ] as const).map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setMode(m.id)}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 font-medium transition-colors",
+                      mode === m.id ? "bg-surface-3 text-ink" : "text-ink3 hover:text-ink2",
+                    )}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={points} margin={{ top: 10, right: 12, bottom: 0, left: -12 }}>
-                <defs>
-                  <linearGradient id="instFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--p-found)" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="var(--p-found)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="2 5" stroke="var(--line)" vertical={false} />
-                <XAxis dataKey="period" tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} width={38} domain={["auto", "auto"]} />
-                <Tooltip
-                  {...TOOLTIP_STYLE}
-                  formatter={(v: number, name) => [`${v.toFixed(2)}%`, name === "inst" ? "FII + DII" : name]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="inst"
-                  name="inst"
-                  stroke="var(--p-found)"
-                  strokeWidth={2}
-                  fill="url(#instFill)"
-                  dot={{ r: 2.5, fill: "var(--p-found)" }}
-                  activeDot={{ r: 4 }}
-                  isAnimationActive
-                  animationDuration={1000}
-                />
-              </AreaChart>
+              {mode === "combined" ? (
+                <AreaChart data={points} margin={{ top: 10, right: 12, bottom: 0, left: -12 }}>
+                  <defs>
+                    <linearGradient id="instFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--p-found)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="var(--p-found)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="2 5" stroke="var(--line)" vertical={false} />
+                  <XAxis dataKey="period" tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} width={38} domain={["auto", "auto"]} />
+                  <Tooltip {...TOOLTIP_STYLE} formatter={instFormatter} />
+                  <Area
+                    type="monotone"
+                    dataKey="inst"
+                    name="inst"
+                    stroke="var(--p-found)"
+                    strokeWidth={2}
+                    fill="url(#instFill)"
+                    dot={{ r: 2.5, fill: "var(--p-found)" }}
+                    activeDot={{ r: 4 }}
+                    isAnimationActive
+                    animationDuration={1000}
+                  />
+                </AreaChart>
+              ) : (
+                <LineChart data={points} margin={{ top: 10, right: 12, bottom: 0, left: -12 }}>
+                  <CartesianGrid strokeDasharray="2 5" stroke="var(--line)" vertical={false} />
+                  <XAxis dataKey="period" tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "var(--ink3)", fontSize: 10 }} axisLine={false} tickLine={false} width={38} domain={["auto", "auto"]} />
+                  <Tooltip {...TOOLTIP_STYLE} formatter={instFormatter} />
+                  <Legend
+                    iconType="plainline"
+                    wrapperStyle={{ fontSize: 11, color: "var(--ink3)" }}
+                    formatter={(name: string) => INST_NAME[name] ?? name}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="fii"
+                    name="fii"
+                    stroke="var(--p-found)"
+                    strokeWidth={2}
+                    dot={{ r: 2.5, fill: "var(--p-found)" }}
+                    activeDot={{ r: 4 }}
+                    connectNulls
+                    isAnimationActive
+                    animationDuration={1000}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="dii"
+                    name="dii"
+                    stroke="var(--p-own)"
+                    strokeWidth={2}
+                    dot={{ r: 2.5, fill: "var(--p-own)" }}
+                    activeDot={{ r: 4 }}
+                    connectNulls
+                    isAnimationActive
+                    animationDuration={1000}
+                  />
+                </LineChart>
+              )}
             </ResponsiveContainer>
             <p className="mt-3 text-[11px] italic text-ink3">
-              Combined FII + DII share of the company each quarter. Our feed reports institutional holding
-              quarterly and does not split foreign from domestic flow — this is a position over time, not a
-              monthly or FII-vs-DII flow read.
+              {mode === "combined" ? (
+                <>
+                  Combined FII + DII share of the company each quarter. Our feed reports institutional holding
+                  quarterly and does not split foreign from domestic flow — this is a position over time, not a
+                  monthly or FII-vs-DII flow read.
+                </>
+              ) : (
+                <>
+                  FII and DII share plotted separately each quarter, so foreign-versus-domestic divergence is
+                  visible. Quarterly holding positions over time — not a monthly flow read.
+                </>
+              )}
             </p>
           </>
         ) : (
@@ -1143,9 +1304,9 @@ export default function Activity() {
 
   return (
     <div className="mt-6 space-y-2">
-      {/* score-derived flow lanes — quiet-empties itself when unscored */}
+      {/* five per-lane-honest flow cards — quiet-empties itself when no holding data */}
       <Reveal>
-        <FlowGlanceStrip current={current} series={series} hasScoredPeriod={hasScoredPeriod} />
+        <FlowGlanceStrip current={current} series={series} events={events} />
       </Reveal>
 
       {/* data-backed sections — render whenever their underlying rows exist */}

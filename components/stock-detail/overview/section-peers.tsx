@@ -8,10 +8,13 @@
  *
  * FORBIDDEN (and absent here): ranking by price or market cap, "best/largest in group"
  * framing, P/E-premium verdicts, and a price/return column placed beside the health
- * column (the banned juxtaposition). Rows are ordered ALPHABETICALLY — crowns no winner.
- * Shows fundamental ratios + health standing only; the user reads where the stock sits.
+ * column (the banned juxtaposition). Rows default to ordering by HEALTH STANDING
+ * (strongest → weakest) — a factual sort by composite, so a row's position means
+ * something. No winner is declared. Ratio columns are family-aware (banks show bank
+ * ratios, non-financials show theirs) — the user reads where the stock sits.
  */
 
+import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
@@ -20,15 +23,35 @@ import { usePeerGroupHealth } from "@/lib/api/hooks/use-peer-group-health";
 import type { PeerGroupHealthView } from "@/types/peer-group";
 import { getMetricLabel } from "@/lib/health/metric-labels";
 import { Panel, BAND_META } from "../health/shared";
-import { Section, HonestEmpty, LoadingBlock, DASH, fmtByUnit } from "./shared";
+import { Section, HonestEmpty, LoadingBlock, fmtByUnit } from "./shared";
 
 const MAX_RATIO_COLS = 4;
 
+// Family-relevant ratio priority — the metric set already used across the Health
+// surfaces (getMetricLabel). Banking PGs carry named codes (Tier1/GNPA/ROA…),
+// non-financial PGs carry F-codes. Ordering by this priority (then falling back to
+// the backend order for anything unlisted) makes the columns meaningful for the
+// peer group's family instead of an arbitrary first-4. All scoring ratios — never
+// P/E or P/B, so no valuation lens leaks in.
+const FAMILY_RATIO_PRIORITY: string[] = [
+  // Banking (PG5 private / PG6 PSU)
+  "GNPA", "NNPA", "ROA", "Tier1", "PCR", "CASA", "CI",
+  // Non-financial (PG1–PG4, PG7–PG11)
+  "F1", "F2", "F1_OPM", "F4", "F5", "F3", "F8", "F9", "F10", "F7", "F6",
+];
+
 function ratioColumns(view: PeerGroupHealthView) {
-  // Foundation metric distributions → the ratio columns (these are scoring ratios:
-  // ROCE/ROE/leverage/GNPA… — NEVER P/E or P/B, so no valuation lens leaks in).
-  return view.metricDistributions
-    .filter((d) => d.pillar === "foundation")
+  // Foundation metric distributions are already family-shaped by the backend (a bank
+  // PG carries Tier1/GNPA/…, a non-financial PG carries F1–F10). Order them by the
+  // family-relevant priority so the most meaningful ratios head the table, then take
+  // the top columns — NOT an arbitrary first-4.
+  const foundation = view.metricDistributions.filter((d) => d.pillar === "foundation");
+  const rank = (key: string) => {
+    const i = FAMILY_RATIO_PRIORITY.indexOf(key);
+    return i === -1 ? FAMILY_RATIO_PRIORITY.length : i;
+  };
+  return [...foundation]
+    .sort((a, b) => rank(a.metricKey) - rank(b.metricKey))
     .slice(0, MAX_RATIO_COLS)
     .map((d) => {
       const meta = getMetricLabel(d.metricKey);
@@ -37,10 +60,20 @@ function ratioColumns(view: PeerGroupHealthView) {
     });
 }
 
+// A sortable column: the health-standing column (default) or a ratio column.
+type SortKey = { kind: "standing" } | { kind: "ratio"; metricKey: string };
+type SortDir = "asc" | "desc";
+
 export function PeersSection({ symbol }: { symbol: string }) {
   const { data: health } = useStockHealth(symbol);
   const peerGroupId = health?.identity.peerGroup?.id ?? "";
   const { data: pg, isLoading } = usePeerGroupHealth(peerGroupId);
+
+  // Default sort: HEALTH STANDING, strongest → weakest. This is a factual ordering,
+  // not a verdict — a row's position simply reflects its composite. Headers are
+  // clickable to re-sort; the standing default is the meaningful baseline.
+  const [sortKey, setSortKey] = useState<SortKey>({ kind: "standing" });
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   if (health && !peerGroupId) {
     return (
@@ -65,8 +98,44 @@ export function PeersSection({ symbol }: { symbol: string }) {
   }
 
   const cols = ratioColumns(pg);
-  // Alphabetical ordering — deliberately NOT ranked (crowns no winner).
-  const rows = [...pg.members].sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+  // Click a header to sort by it; clicking the active column flips direction.
+  // Standing toggles default-strongest-first; ratios default-highest-first.
+  const onSort = (key: SortKey) => {
+    const sameCol =
+      (key.kind === "standing" && sortKey.kind === "standing") ||
+      (key.kind === "ratio" && sortKey.kind === "ratio" && key.metricKey === sortKey.metricKey);
+    if (sameCol) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const ratioByKey = new Map(cols.map((c) => [c.metricKey, c.bySymbol]));
+  const valueFor = (m: (typeof pg.members)[number]): number | null => {
+    if (sortKey.kind === "standing") return m.composite;
+    return ratioByKey.get(sortKey.metricKey)?.get(m.symbol) ?? null;
+  };
+  // Sort by the active column. Default standing-desc = strongest → weakest, so a
+  // row's POSITION means something. Nulls always sink to the bottom; ties hold a
+  // stable symbol order. Ordering by standing is a factual sort, never a verdict.
+  const rows = [...pg.members].sort((a, b) => {
+    const va = valueFor(a);
+    const vb = valueFor(b);
+    if (va == null && vb == null) return a.symbol.localeCompare(b.symbol);
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (va === vb) return a.symbol.localeCompare(b.symbol);
+    return sortDir === "desc" ? vb - va : va - vb;
+  });
+
+  const isActive = (key: SortKey) =>
+    key.kind === "standing"
+      ? sortKey.kind === "standing"
+      : sortKey.kind === "ratio" && sortKey.metricKey === key.metricKey;
+  const sortGlyph = (key: SortKey) => (isActive(key) ? (sortDir === "desc" ? "↓" : "↑") : "");
 
   return (
     <Section id="overview-peers" label="Peer comparison" icon={Icons.compare} accent="var(--p-found)" pill={pg.identity.displayName}>
@@ -76,12 +145,37 @@ export function PeersSection({ symbol }: { symbol: string }) {
             <thead>
               <tr className="border-b border-line text-[11px] text-ink3">
                 <th className="px-4 py-3 font-medium">Company</th>
-                {cols.map((c) => (
-                  <th key={c.metricKey} className="px-3 py-3 text-right font-medium">
-                    {c.label}
-                  </th>
-                ))}
-                <th className="px-4 py-3 text-right font-medium">Health standing</th>
+                {cols.map((c) => {
+                  const key: SortKey = { kind: "ratio", metricKey: c.metricKey };
+                  return (
+                    <th key={c.metricKey} className="px-3 py-3 text-right font-medium">
+                      <button
+                        type="button"
+                        onClick={() => onSort(key)}
+                        className={cn(
+                          "inline-flex items-center gap-1 transition-colors hover:text-ink2",
+                          isActive(key) && "text-ink2",
+                        )}
+                      >
+                        {c.label}
+                        <span className="num w-2 text-[10px]">{sortGlyph(key)}</span>
+                      </button>
+                    </th>
+                  );
+                })}
+                <th className="px-4 py-3 text-right font-medium">
+                  <button
+                    type="button"
+                    onClick={() => onSort({ kind: "standing" })}
+                    className={cn(
+                      "inline-flex items-center gap-1 transition-colors hover:text-ink2",
+                      isActive({ kind: "standing" }) && "text-ink2",
+                    )}
+                  >
+                    Health standing
+                    <span className="num w-2 text-[10px]">{sortGlyph({ kind: "standing" })}</span>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -120,7 +214,7 @@ export function PeersSection({ symbol }: { symbol: string }) {
           </table>
         </div>
         <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3.5">
-          <p className="text-[11.5px] text-ink3">Where it sits among peers — fundamental ratios and health standing. No winner crowned.</p>
+          <p className="text-[11.5px] text-ink3">Where it sits among peers — ordered by health standing, with family-relevant ratios. A factual sort, not a verdict — no winner crowned.</p>
           <Link
             href={`/research/peer-groups/${peerGroupId}`}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"

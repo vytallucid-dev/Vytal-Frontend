@@ -13,6 +13,7 @@
 // backing data is `null` with the key PRESENT; values are already canonical.
 
 import type { IndustryFamily } from "./fundamentals";
+import type { InsiderEvent, BlockEvent } from "./research-tools";
 import type {
   LabelBand,
   PillarKey,
@@ -123,6 +124,8 @@ export interface Comparee {
     fiiPct: number | null;
     diiPct: number | null;
     pledgedPctOfPromoter: number | null;
+    /** Live market cap (₹ Cr) — scoring-independent, present for unscored stocks too. */
+    marketCap: number | null;
   };
   familySpecific: FamilyMetric[];
   /** Per-pillar metric breakdown, passed through from this entity's health view.
@@ -142,6 +145,9 @@ export interface Comparee {
   /** Composite trajectory delta (universal 0–100 movement). */
   trajectoryDelta: number | null;
   peerStanding: CompareePeerStanding | null;
+  /** Recent insider / block-deal activity — per entity, never row-paired. Empty today (feeds
+   *  wired-but-dormant) → render the honest "awaiting feed" state. Newest-first, capped 25. */
+  events: { insider: InsiderEvent[]; block: BlockEvent[] };
 }
 
 /** THE top-level read-model returned by GET /api/compare?a=…&b=…. */

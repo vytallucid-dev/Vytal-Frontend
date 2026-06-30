@@ -36,12 +36,14 @@ import {
   formatMetricValue,
   type CompareRow,
 } from "./shared";
+import { useStockPrice } from "@/lib/api/hooks/use-stock-price";
 import { PillarRadar } from "./pillar-radar";
 import { OwnershipBars } from "./ownership-bars";
 import { PillarMetricsSection } from "./pillar-metrics";
 import { TrajectoryOverlay } from "./trajectory-overlay";
 import { FindingColumns } from "./finding-columns";
 import { PriceTab } from "./price-tab";
+import { OwnershipActivity } from "./ownership-activity";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -82,6 +84,11 @@ const FUND_UNIVERSAL_KEYS = [
   "netWorth",
 ];
 const OWNERSHIP_KEYS = ["promoterPct", "fiiPct", "diiPct", "pledgedPctOfPromoter"];
+/** Scoring-INDEPENDENT returns — present from the price view regardless of scoring. */
+const RETURNS_KEYS = ["return1y", "return3y", "pctFrom52WHigh", "pctFrom52WLow"];
+/** Cash-flow keys carried inside familySpecific (non-fin / banking / NBFC). Broken out
+ *  into their own labeled side-by-side block, so they aren't buried in the family table. */
+const CF_KEYS = ["cashFromOperating", "cashFromInvesting", "cashFromFinancing"];
 
 export function ComparisonView({ view }: { view: ComparisonViewModel }) {
   const router = useRouter();
@@ -142,6 +149,7 @@ export function ComparisonView({ view }: { view: ComparisonViewModel }) {
 /* ------------------------------- Header -------------------------------- */
 
 function EntityCard({ entity, hue }: { entity: Comparee; hue: string }) {
+  const mcap = entity.universal.marketCap;
   return (
     <div className="flex-1 rounded-xl border border-line bg-surface-1 p-4">
       <div className="flex items-center gap-2">
@@ -151,8 +159,17 @@ function EntityCard({ entity, hue }: { entity: Comparee; hue: string }) {
       <p className="mt-1 truncate text-sm text-ink2">{entity.name}</p>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink3">
         {entity.identity.sector && <span>{entity.identity.sector.displayName}</span>}
-        <span className="rounded-full bg-line2 px-2 py-0.5 font-medium">
-          {entity.familyLabel}
+        <span className="rounded-full bg-line2 px-2 py-0.5 font-medium">{entity.familyLabel}</span>
+        {entity.identity.sectorClass && (
+          <span className="rounded-full bg-line2 px-2 py-0.5 font-medium">
+            {entity.identity.sectorClass}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-line pt-2">
+        <span className="text-[11px] text-ink3">Market cap</span>
+        <span className="num text-[13px] font-medium text-ink2">
+          {mcap !== null ? formatMetricValue(mcap, "cr") : "—"}
         </span>
       </div>
     </div>
@@ -225,6 +242,7 @@ function Header({ view }: { view: ComparisonViewModel }) {
                 ))}
               </ul>
             )}
+            {view.classContext && <ClassContextNote ctx={view.classContext} />}
           </div>
         </div>
       </div>
@@ -259,52 +277,6 @@ function CompositeBadge({ entity, hue }: { entity: Comparee; hue: string }) {
       <div className="mt-0.5 text-xs text-ink3">
         {band ? formatMetricValue(band, "band") : "Not scored"}
       </div>
-    </div>
-  );
-}
-
-/* A · Identity — both entities established side by side, A-hue / B-hue. The "what they do"
-   editorial isn't part of the compare payload (zero-new-fetch), so each column links to the
-   stock's full profile rather than fabricating one. */
-function IdentityColumn({ entity, hue }: { entity: Comparee; hue: string }) {
-  const id = entity.identity;
-  return (
-    <div className="flex-1 rounded-xl border border-line bg-surface-1 p-4">
-      <div className="flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: hue }} />
-        <span className="num text-base font-semibold text-ink">{entity.symbol}</span>
-        <span className="rounded-full bg-line2 px-2 py-0.5 text-[11px] font-medium text-ink3">
-          {entity.familyLabel}
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-ink2">{entity.name}</p>
-      <dl className="mt-3 space-y-1.5 text-xs">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-ink3">Sector</dt>
-          <dd className="truncate text-right text-ink2">{id.sector?.displayName ?? "—"}</dd>
-        </div>
-        {id.sectorClass && (
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-ink3">Class</dt>
-            <dd className="text-right font-medium text-ink2">{id.sectorClass}</dd>
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-ink3">Peer group</dt>
-          <dd className="truncate text-right text-ink2">{id.peerGroup?.displayName ?? "—"}</dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-ink3">As of</dt>
-          <dd className="num text-right text-ink2">{id.asOfDate || "—"}</dd>
-        </div>
-      </dl>
-      <Link
-        href={`/research/stock-screener/${entity.symbol}`}
-        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-ink2 transition-colors hover:text-ink"
-      >
-        Full profile
-        <Icons.arrowUpRight className="h-3 w-3" />
-      </Link>
     </div>
   );
 }
@@ -417,6 +389,51 @@ function ClassContextNote({ ctx }: { ctx: ClassContext }) {
   );
 }
 
+/* Size & market — a scoring-independent glance. Market cap rides on the compare payload
+   (forwarded from the price view); current price + day move are pulled from the per-stock
+   price read (already cached by the Price tab, react-query dedupes). Each value honest-
+   empties to "—" on its own — a pending fetch or a missing field never blanks the section,
+   and there is NO outperformer framing: two columns of facts, equally styled. */
+function SizeMarketSection({ a, b }: { a: Comparee; b: Comparee }) {
+  const aQ = useStockPrice(a.symbol);
+  const bQ = useStockPrice(b.symbol);
+  const rows: CompareRow[] = [
+    {
+      key: "marketCap",
+      label: "Market cap",
+      unit: "cr",
+      a: a.universal.marketCap ?? aQ.data?.current.marketCap ?? null,
+      b: b.universal.marketCap ?? bQ.data?.current.marketCap ?? null,
+    },
+    {
+      key: "price",
+      label: "Current price",
+      unit: "rupees",
+      a: aQ.data?.current.price ?? null,
+      b: bQ.data?.current.price ?? null,
+    },
+    {
+      key: "dayMove",
+      label: "Day move",
+      unit: "pct",
+      a: aQ.data?.current.dayChangePct ?? null,
+      b: bQ.data?.current.dayChangePct ?? null,
+    },
+  ];
+  return (
+    <div>
+      <SectionTitle
+        icon={Icons.chartBar}
+        accent="var(--p-mkt)"
+        hint="Size and the latest market read — market cap, with current price and day move where the price feed has them."
+      >
+        Size &amp; market
+      </SectionTitle>
+      <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={rows} />
+    </div>
+  );
+}
+
 function OverviewTab({
   view,
   setTab,
@@ -424,31 +441,69 @@ function OverviewTab({
   view: ComparisonViewModel;
   setTab: (tab: TabId) => void;
 }) {
-  const { a, b, comparability } = view;
-  const crossFamily = comparability === "cross_family";
+  const { a, b } = view;
   const hasPond = Boolean(a.pondMask || b.pondMask);
 
   return (
     <div className="space-y-8">
-      {/* A · Identity side by side */}
+      {/* Identity, family, size + comparability now live in the persistent header (shown on every
+          tab) — the Overview opens directly into substantive comparison sections, no duplication. */}
+
+      {/* INDEPENDENT (scoring-independent) sections — these stand on their own for ANY
+          pairing, scored or not, so a non-scored stock still reads as a real comparison
+          instead of a wall of empty health boxes. Each renders from fields present
+          regardless of scoring; the health sections below enrich it when both are scored. */}
+
+      {/* Size & market */}
+      <SizeMarketSection a={a} b={b} />
+
+      {/* Returns — trailing price returns + 52-week position, stated as fact. */}
       <div>
         <SectionTitle
-          icon={Icons.compass}
-          accent="var(--p-found)"
-          hint="The two businesses being compared, and how directly they line up."
+          icon={Icons.trendUp}
+          accent="var(--p-mkt)"
+          hint="Trailing price returns and distance from the 52-week range — facts for each, no outperformer call."
         >
-          What we&apos;re comparing
+          Returns
         </SectionTitle>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <IdentityColumn entity={a} hue={A_HUE} />
-          <IdentityColumn entity={b} hue={B_HUE} />
-        </div>
-        <p className="mt-2.5 text-xs text-ink3">
-          {crossFamily
-            ? `Different families (${a.familyLabel} vs ${b.familyLabel}) — universal measures compare directly; sector-specific ones are shown separately and aren't directly comparable.`
-            : `Same family (${a.familyLabel}) — financial metrics line up directly across both.`}
-        </p>
-        {view.classContext && <ClassContextNote ctx={view.classContext} />}
+        <CompareTable
+          aLabel={a.symbol}
+          bLabel={b.symbol}
+          rows={rowsFor(view.universalMetrics, RETURNS_KEYS)}
+        />
+      </div>
+
+      {/* Headline fundamentals — the scoring-independent set, as an Overview glance. The
+          full table lives in Fundamentals; this is a compact taste. */}
+      <div>
+        <SectionTitle
+          icon={Icons.coins}
+          accent="var(--p-found)"
+          hint="Scoring-independent fundamentals present for any company — a compact glance; the full set lives in the Fundamentals tab."
+        >
+          Headline fundamentals
+        </SectionTitle>
+        <CompareTable
+          aLabel={a.symbol}
+          bLabel={b.symbol}
+          rows={rowsFor(view.universalMetrics, FUND_UNIVERSAL_KEYS)}
+        />
+      </div>
+
+      {/* Ownership shape — who owns each, plus promoter pledge. */}
+      <div>
+        <SectionTitle
+          icon={Icons.sector}
+          accent="var(--p-own)"
+          hint="Who owns each — promoter, FII and DII holding, plus the share of the promoter stake pledged."
+        >
+          Ownership shape
+        </SectionTitle>
+        <CompareTable
+          aLabel={a.symbol}
+          bLabel={b.symbol}
+          rows={rowsFor(view.universalMetrics, OWNERSHIP_KEYS)}
+        />
       </div>
 
       {/* Health at a glance — the composite for each */}
@@ -632,6 +687,16 @@ function FundamentalsTab({ view }: { view: ComparisonViewModel }) {
   const { a, b, familyContext } = view;
   const universalRows = rowsFor(view.universalMetrics, FUND_UNIVERSAL_KEYS);
 
+  // Same-family family-specific rows, paired side by side. Cash flow (CFO / CFI / CFF) is
+  // split into its own labeled block below so it isn't buried among the ratios — both
+  // remain genuine side-by-side tables, gated by comparableDirectly.
+  const familyRows: CompareRow[] = familyContext.a.map((m) => {
+    const bm = familyContext.b.find((x) => x.key === m.key);
+    return { key: m.key, label: m.label, unit: m.unit, a: m.value, b: bm?.value ?? null };
+  });
+  const cfRows = familyRows.filter((r) => CF_KEYS.includes(r.key));
+  const familyDetailRows = familyRows.filter((r) => !CF_KEYS.includes(r.key));
+
   return (
     <div className="space-y-6">
       <div>
@@ -646,30 +711,34 @@ function FundamentalsTab({ view }: { view: ComparisonViewModel }) {
       </div>
 
       {familyContext.comparableDirectly ? (
-        // Same family → the family-specific set lines up directly, side by side.
-        <div>
-          <SectionTitle
-            icon={Icons.building}
-            accent="var(--p-found)"
-            hint={`${a.familyLabel}-specific measures — both companies are ${a.familyLabel}, so these line up directly.`}
-          >
-            {a.familyLabel} metrics
-          </SectionTitle>
-          <CompareTable
-            aLabel={a.symbol}
-            bLabel={b.symbol}
-            rows={familyContext.a.map((m) => {
-              const bm = familyContext.b.find((x) => x.key === m.key);
-              return {
-                key: m.key,
-                label: m.label,
-                unit: m.unit,
-                a: m.value,
-                b: bm?.value ?? null,
-              };
-            })}
-          />
-        </div>
+        // Same family → the family-specific set lines up directly, side by side. Cash flow
+        // is broken out into its own labeled block; the rest of the set stays in the main
+        // table. Both are honest side-by-side comparisons (same family, directly comparable).
+        <>
+          <div>
+            <SectionTitle
+              icon={Icons.building}
+              accent="var(--p-found)"
+              hint={`${a.familyLabel}-specific measures — both companies are ${a.familyLabel}, so these line up directly.`}
+            >
+              {a.familyLabel} metrics
+            </SectionTitle>
+            <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={familyDetailRows} />
+          </div>
+
+          {cfRows.length > 0 && (
+            <div>
+              <SectionTitle
+                icon={Icons.coins}
+                accent="var(--p-mom)"
+                hint={`Operating, investing and financing cash flows — both companies are ${a.familyLabel}, so these line up directly.`}
+              >
+                Cash flow
+              </SectionTitle>
+              <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={cfRows} />
+            </div>
+          )}
+        </>
       ) : (
         // Cross family → render each side's family metrics in SEPARATE labeled sections.
         // Explicitly NOT a side-by-side — the payload separated them; we honor it.
@@ -751,6 +820,9 @@ function OwnershipTab({ view }: { view: ComparisonViewModel }) {
           <HonestEmpty>Ownership data not available for these stocks.</HonestEmpty>
         )}
       </div>
+
+      {/* Recent insider / block-deal activity — per stock, dormant "awaiting feed" today. */}
+      <OwnershipActivity a={a} b={b} />
     </div>
   );
 }

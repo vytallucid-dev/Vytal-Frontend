@@ -3,11 +3,16 @@
 import { useRef, useState } from "react";
 import { Reveal } from "@/components/ui/reveal";
 import { Icons } from "@/lib/icons";
-import { SectionEyebrow, Panel } from "@/components/stock-detail/health/shared";
+import {
+  SectionEyebrow,
+  Panel,
+  PILLAR_META,
+  lensAccentVars,
+} from "@/components/stock-detail/health/shared";
 import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 import { getMetricLabel } from "@/lib/health/metric-labels";
-import { niceBounds } from "./lib";
-import type { PeerMetricDistribution } from "@/types/peer-group";
+import { niceBounds, fieldVerdictPhrase, clearingFigure } from "./lib";
+import type { PeerMetricDistribution, PeerGroupFieldLensVerdict } from "@/types/peer-group";
 import type { MetricBand, BarDirection } from "@/types/health";
 
 const METRIC_BAND_VAR: Record<MetricBand, string> = {
@@ -193,7 +198,45 @@ function Stat({ k, v }: { k: string; v: React.ReactNode }) {
   );
 }
 
-export function ExplorerSection({ metrics }: { metrics: PeerMetricDistribution[] }) {
+// ── per-metric field-state read — NAMES the distribution that's drawn, from the same
+//    aggregate.fieldLensVerdicts data the Field-Lens section uses. Descriptive, neutral. ──
+function FieldStateRead({ verdict }: { verdict: PeerGroupFieldLensVerdict | undefined }) {
+  if (!verdict) return null;
+  const phrase = fieldVerdictPhrase(verdict.verdict);
+
+  if (!phrase) {
+    return (
+      <div className="mb-4 rounded-lg border border-dashed border-line2 bg-surface-2 px-3.5 py-2.5 text-[12px] italic text-ink3">
+        Field not assessable — only {verdict.usableMembers}{" "}
+        {verdict.usableMembers === 1 ? "member" : "members"} report this metric with a bar.
+      </div>
+    );
+  }
+
+  const accent = lensAccentVars(verdict.verdict === "PG_STRONG" ? "ctx" : verdict.verdict === "PG_WEAK" ? "high" : "ctx");
+  const figure = clearingFigure(verdict);
+  const neutral = verdict.verdict === "mixed";
+
+  return (
+    <div
+      className="mb-4 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-lg border px-3.5 py-2.5 text-[12px]"
+      style={neutral ? undefined : { borderColor: accent.bd, background: accent.bg }}
+    >
+      <span className="font-medium" style={neutral ? { color: "var(--ink2)" } : { color: accent.color }}>
+        {phrase.explorer}
+      </span>
+      {figure && <span className="num text-[11px] text-ink3">· {figure}</span>}
+    </div>
+  );
+}
+
+export function ExplorerSection({
+  metrics,
+  fieldLensVerdicts,
+}: {
+  metrics: PeerMetricDistribution[];
+  fieldLensVerdicts: PeerGroupFieldLensVerdict[];
+}) {
   const [active, setActive] = useState(metrics[0]?.metricKey ?? "");
   const dist = metrics.find((m) => m.metricKey === active) ?? metrics[0];
 
@@ -216,34 +259,54 @@ export function ExplorerSection({ metrics }: { metrics: PeerMetricDistribution[]
   const hi = raws.length ? Math.max(...raws) : 0;
   const dirText = (dist.direction ?? "higher_better") === "higher_better" ? "Higher is healthier" : "Lower is healthier";
 
+  // Pillar-grouped options for the dropdown (PG distributions carry only F/M).
+  const byPillar: Record<"foundation" | "momentum", PeerMetricDistribution[]> = {
+    foundation: metrics.filter((m) => m.pillar === "foundation"),
+    momentum: metrics.filter((m) => m.pillar === "momentum"),
+  };
+  const selectedVerdict = fieldLensVerdicts.find((v) => v.metricKey === dist.metricKey);
+
   return (
     <section>
       <SectionEyebrow label="Metric distribution explorer" icon={Icons.chartBar} accent="var(--p-found)" pill="the substrate behind every bar" />
       <Reveal>
         <Panel>
-          {/* metric chips */}
-          <div className="mb-4 flex flex-wrap gap-1.5">
-            {metrics.map((m) => {
-              const lbl = getMetricLabel(m.metricKey);
-              const on = m.metricKey === dist.metricKey;
-              return (
-                <button
-                  key={m.metricKey}
-                  type="button"
-                  onClick={() => setActive(m.metricKey)}
-                  className={
-                    "rounded-lg border px-3 py-1.5 text-[12px] transition-colors " +
-                    (on
-                      ? "border-line3 bg-surface-3 font-medium text-ink"
-                      : "border-line2 bg-surface-2 text-ink2 hover:border-line3 hover:text-ink")
-                  }
-                >
-                  {lbl.label}
-                  <span className="num ml-1.5 text-[9px] text-ink3">{m.metricKey}</span>
-                </button>
-              );
-            })}
+          {/* pillar-grouped metric dropdown — closed control shows the selected metric WITH
+              its pillar, so context stays visible and pillar membership is taught. */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <label htmlFor="pg-explorer-metric" className="text-[11.5px] text-ink3">
+              Metric
+            </label>
+            <div className="relative">
+              <select
+                id="pg-explorer-metric"
+                value={dist.metricKey}
+                onChange={(e) => setActive(e.target.value)}
+                className="appearance-none rounded-lg border border-line2 bg-surface-2 py-1.5 pl-3 pr-8 text-[12px] font-medium text-ink transition-colors hover:border-line3 focus:border-line3 focus:outline-none"
+              >
+                {(["foundation", "momentum"] as const).map((pillar) =>
+                  byPillar[pillar].length > 0 ? (
+                    <optgroup key={pillar} label={`${PILLAR_META[pillar].label} metrics`}>
+                      {byPillar[pillar].map((m) => (
+                        <option key={m.metricKey} value={m.metricKey}>
+                          {getMetricLabel(m.metricKey).label} ({m.metricKey})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null,
+                )}
+              </select>
+              <Icons.caretDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink3" />
+            </div>
+            {/* selected-metric pillar context chip */}
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-line2 bg-surface-2 px-2 py-1 text-[10px] text-ink2">
+              <span className="size-1.5 rounded-full" style={{ background: PILLAR_META[dist.pillar].cssVar }} />
+              {PILLAR_META[dist.pillar].label}
+            </span>
           </div>
+
+          {/* per-metric field-state read — names the distribution drawn below */}
+          <FieldStateRead verdict={selectedVerdict} />
 
           <div className="grid items-center gap-6 lg:grid-cols-[1.6fr_1fr]">
             <div className="min-w-0">

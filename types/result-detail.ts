@@ -3,6 +3,8 @@
 // (src/scoring/read/result-detail.types.ts). Money ₹ Cr; growth/margins PERCENT.
 // Every block honest-empties independently; nothing here is an estimate or a verdict.
 
+import type { FindingsSection, LabelBand } from "./health";
+
 export interface ViewerQuarter {
   periodKey: string;
   quarter: string;
@@ -96,6 +98,52 @@ export interface PeriodRef {
   fiscalYear: string;
 }
 
+/** Scoring context for the viewed result. composite/band are FOR THE VIEWED PERIOD (from the
+ *  trajectory series), not the latest snapshot. compositeShift is a whole-snapshot move from the
+ *  prior in-force period — frame it as "composite moved ±X from {priorPeriodKey}", NOT caused by
+ *  this result. findings are the engine's CURRENT set (latest snapshot); they describe the viewed
+ *  result only when latestPeriodKey === the viewed period. All honest-empty (null) when unscored. */
+export interface ResultHealthBlock {
+  scored: boolean;
+  latestPeriodKey: string | null;
+  periodComposite: number | null;
+  periodBand: LabelBand | null;
+  compositeShift: { delta: number; priorPeriodKey: string } | null;
+  findings: FindingsSection | null;
+}
+
+/** Family tag for the annual block. */
+export type ResultFamily =
+  | "non_financial"
+  | "banking"
+  | "nbfc"
+  | "life_insurance"
+  | "general_insurance";
+
+/** One labeled annual line. value is ₹ Cr (unit "cr") or ₹ per-share (unit "rupees"). null when
+ *  the line is undisclosed in the filing — an honest "—". */
+export interface AnnualLine {
+  key: string;
+  label: string;
+  value: number | null;
+  unit: "cr" | "rupees";
+}
+
+/** Annual (full-year) CF + BS-headline for the viewed result — family-appropriate. Present only
+ *  when annualState === "available". `cashFlow` is null for insurers (their annual carries no
+ *  cash-flow statement — render "n/a for insurers", not an empty box). Per-line nulls → "—". */
+export interface AnnualResultBlock {
+  family: ResultFamily;
+  fiscalYear: string;
+  balanceSheet: AnnualLine[];
+  cashFlow: AnnualLine[] | null;
+  perShare: AnnualLine[];
+}
+
+/** available — block present (the family's annual FY matches this result); not_filed — no annual
+ *  row matches this result's FY yet (older quarter, or year-end annual not on file). */
+export type AnnualResultState = "available" | "not_filed";
+
 export interface ResultDetailData {
   symbol: string;
   name: string;
@@ -115,6 +163,10 @@ export interface ResultDetailData {
   corporateEvents: ViewerCorpEvent[];
   peers: ViewerPeer[];
   peerGroupName: string | null;
+
+  health: ResultHealthBlock | null;
+  annual: AnnualResultBlock | null;
+  annualState: AnnualResultState;
 }
 
 export interface ResultDetailResponse {

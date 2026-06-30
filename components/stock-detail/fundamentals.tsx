@@ -63,6 +63,7 @@ import type {
   GeneralInsuranceAnnual,
 } from "@/types/fundamentals";
 import { SectionEyebrow, Panel, shortPeriod, MiniSpark, sparkSeries } from "./health/shared";
+import { FinancialStatements } from "./financial-statements";
 import { WhereNext } from "./where-next";
 import { casaTier, casaContextLabel } from "@/lib/casa-display";
 
@@ -1524,6 +1525,9 @@ function BankingTab({ bk, view, onBasis, symbol }: { bk: BankingPayload; view: F
         <BankCashFlow annual={bk.annual} />
       </Reveal>
       <Reveal>
+        <FinancialStatements view={view} />
+      </Reveal>
+      <Reveal>
         <BankAiSummarySlot />
       </Reveal>
       <Reveal>
@@ -1981,6 +1985,9 @@ function NbfcTab({ nb, view, onBasis, symbol }: { nb: NbfcPayload; view: Fundame
       </Reveal>
       <Reveal>
         <NbfcCashFlow annual={nb.annual} />
+      </Reveal>
+      <Reveal>
+        <FinancialStatements view={view} />
       </Reveal>
       <Reveal>
         <NbfcAiSummarySlot />
@@ -2456,6 +2463,9 @@ function LifeInsuranceTab({ li, view, onBasis, symbol }: { li: LifeInsurancePayl
         <LiBalanceSheet annual={li.annual} />
       </Reveal>
       <Reveal>
+        <FinancialStatements view={view} />
+      </Reveal>
+      <Reveal>
         <LiAiSummarySlot />
       </Reveal>
       <Reveal>
@@ -2844,6 +2854,9 @@ function GeneralInsuranceTab({ gi, view, onBasis, symbol }: { gi: GeneralInsuran
         <GiBalanceSheet annual={gi.annual} />
       </Reveal>
       <Reveal>
+        <FinancialStatements view={view} />
+      </Reveal>
+      <Reveal>
         <GiAiSummarySlot />
       </Reveal>
       <Reveal>
@@ -2957,6 +2970,9 @@ export default function Fundamentals() {
       </Reveal>
       <Reveal>
         <YieldsSection yields={nf.yields} />
+      </Reveal>
+      <Reveal>
+        <FinancialStatements view={data} />
       </Reveal>
       <Reveal>
         <AiSummarySlot />

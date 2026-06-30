@@ -105,7 +105,7 @@ export function OwnershipBars({
             <Tooltip
               cursor={{ fill: "var(--line)", opacity: 0.3 }}
               contentStyle={{
-                background: "var(--surface-2)",
+                background: "var(--surface2)",
                 border: "1px solid var(--line2)",
                 borderRadius: 10,
                 fontSize: 12,

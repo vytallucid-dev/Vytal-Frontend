@@ -15,6 +15,7 @@ import type {
   TrajectoryMarker,
   DivergenceFlag,
   FlowCategoryState,
+  LensRead,
 } from "./health";
 
 export type BandDistribution = Record<LabelBand, number>;
@@ -72,6 +73,21 @@ export interface PeerGroupIdentity {
   asOfDate: string | null;
 }
 
+/** One metric's field-verdict rollup across the pond — L1-share based. HONEST-EMPTY:
+ *  verdict requires ≥5 usable members (scored + bar present); under that, verdict/share/
+ *  magnitude are null but the row is still present (with usableMembers). DESCRIPTIVE only. */
+export interface PeerGroupFieldLensVerdict {
+  metricKey: string;
+  pillar: "foundation" | "momentum";
+  /** Carries metricKey; resolve the human label via getMetricLabel(metricKey) as the
+   *  distributions do — the read layer carries no display-label catalog. */
+  label: string;
+  verdict: "PG_STRONG" | "PG_WEAK" | "mixed" | null;
+  shareClearingBar: number | null;
+  usableMembers: number;
+  magnitude: number | null;
+}
+
 export interface PeerGroupAggregate {
   scoredCount: number;
   medianComposite: number;
@@ -94,6 +110,9 @@ export interface PeerGroupAggregate {
   pillarMedians: Record<PillarKey, number>;
   redFlagMemberCount: number;
   descriptor: string;
+  /** Per-metric field-verdict rollup (foundation+momentum metrics the pond scores),
+   *  L1-share based with the ≥5-usable honest-empty rule. Additive; absent on legacy. */
+  fieldLensVerdicts?: PeerGroupFieldLensVerdict[];
 }
 
 export interface FiredFlag {
@@ -141,11 +160,26 @@ export interface PathologyCensusItem {
   displayState?: "active" | "pending_data_integration" | "dampened";
 }
 
+/** The named metric-level lens pattern (LM1–LM8) as carried PER MEMBER on the PG
+ *  payload — the {id,label,tone,fieldVerdict} face, minus the stock-detail-only
+ *  standing reconciliation. Verbatim from LM_CATALOG. null = no pattern / honest-empty. */
+export interface PgMetricLensPattern {
+  id: string;
+  label: string;
+  tone: string;
+  fieldVerdict: "PG_WEAK" | "PG_STRONG" | null;
+}
+
 export interface PeerMetricMemberPoint {
   symbol: string;
   rawValue: number;
   l1Band: MetricBand | null;
   scoreState: string;
+  /** S2 three-lens reads for this member's metric (l3 has no sparkline `series` on the
+   *  PG read). Present only on scored metrics; undefined otherwise (honest-empty). */
+  lens?: { l1: LensRead; l2: LensRead; l3: LensRead };
+  /** Fired LM pattern, or null when none fires. undefined on non-scored cells. */
+  lensPattern?: PgMetricLensPattern | null;
 }
 
 export interface PeerMetricDistribution {
