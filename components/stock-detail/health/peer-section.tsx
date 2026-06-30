@@ -21,8 +21,8 @@ function fieldRead(pillars: PillarView[]): { text: string; tone: string; fieldVe
     if (!lp) continue;
     const name = PILLAR_TITLE[pillar];
     if (lp.fieldVerdict === "PG_WEAK")
-      return { text: `Leads the field — but the field is weak on ${name} right now. Its relative strength is the pond being low, not the stock being strong.`, tone: lp.tone, fieldVerdict: lp.fieldVerdict };
-    return { text: `Trails the field — but this is an exceptional peer group on ${name}. The stock lags an elite field, not a weak one.`, tone: lp.tone, fieldVerdict: lp.fieldVerdict };
+      return { text: lp.verdict ?? `Leads the field — but the field is weak on ${name} right now. Its relative strength is the pond being low, not the stock being strong.`, tone: lp.tone, fieldVerdict: lp.fieldVerdict };
+    return { text: lp.verdict ?? `Trails the field — but this is an exceptional peer group on ${name}. The stock lags an elite field, not a weak one.`, tone: lp.tone, fieldVerdict: lp.fieldVerdict };
   }
   // 2) A notable (top-level) metric-level field-verdict (LM3 weak-field / LM4 elite-field).
   for (const pillar of ["foundation", "momentum"] as PillarKey[]) {
@@ -31,8 +31,8 @@ function fieldRead(pillars: PillarView[]): { text: string; tone: string; fieldVe
     if (!mt || !mt.lensPattern) continue;
     const label = getMetricLabel(mt.metricKey).label;
     if (mt.lensPattern.fieldVerdict === "PG_WEAK")
-      return { text: `Leads the field on ${label} despite sitting below its bar — the field is weak there, not uniquely this stock.`, tone: mt.lensPattern.tone, fieldVerdict: mt.lensPattern.fieldVerdict };
-    return { text: `Trails the field on ${label} despite clearing its bar — an elite field on that metric, not a weak stock.`, tone: mt.lensPattern.tone, fieldVerdict: mt.lensPattern.fieldVerdict };
+      return { text: mt.lensPattern.verdict ?? `Leads the field on ${label} despite sitting below its bar — the field is weak there, not uniquely this stock.`, tone: mt.lensPattern.tone, fieldVerdict: mt.lensPattern.fieldVerdict };
+    return { text: mt.lensPattern.verdict ?? `Trails the field on ${label} despite clearing its bar — an elite field on that metric, not a weak stock.`, tone: mt.lensPattern.tone, fieldVerdict: mt.lensPattern.fieldVerdict };
   }
   return null;
 }

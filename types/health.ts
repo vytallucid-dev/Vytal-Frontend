@@ -114,6 +114,15 @@ export interface L3SeriesPoint {
   rawValue: number;
 }
 
+/** Standing band from absolute rank in the PG (rank/N only — no z-score). */
+export type LensStandingBand = "top" | "upper" | "mid" | "lower" | "bottom";
+/** Rank second-check context (read-layer; CONFIRMATION ONLY — never changes firing). */
+export interface LensStandingContext {
+  rank: number;
+  n: number;
+  band: LensStandingBand;
+}
+
 /** A fired metric-level lens pattern (LM1–LM8). tone drives colour (§0.2); a field-
  *  verdict (PG_WEAK/PG_STRONG) is CONTEXT, never styled good/bad. */
 export interface MetricLensPattern {
@@ -122,6 +131,10 @@ export interface MetricLensPattern {
   tone: string;
   fieldVerdict: "PG_WEAK" | "PG_STRONG" | null;
   role: "top_level" | "supporting_detail";
+  /** S3.5 rank second-check; null when no PG standing. */
+  standingContext?: LensStandingContext | null;
+  /** Standing-reconciled verdict sentence, composed backend-side; render verbatim. */
+  verdict?: string;
 }
 
 /** A fired pillar-level lens pattern (LP1–LP6). */
@@ -131,6 +144,10 @@ export interface PillarLensPattern {
   tone: string;
   fieldVerdict: "PG_WEAK" | "PG_STRONG" | null;
   role: "top_level" | "supporting_detail";
+  /** S3.5 rank second-check; null when no PG standing. */
+  standingContext?: LensStandingContext | null;
+  /** Standing-reconciled verdict sentence, composed backend-side; render verbatim. */
+  verdict?: string;
 }
 
 /** The 5 band cuts + the active band + direction (the modal §2.1 ladder). */

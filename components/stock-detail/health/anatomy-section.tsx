@@ -96,7 +96,7 @@ function PillarVerdict({ p }: { p: PillarView }) {
         <p className="text-[12.5px] font-semibold leading-snug" style={{ color: v.color }}>
           {lead.label}
         </p>
-        <p className="mt-0.5 text-[11.5px] leading-snug text-ink2">{LP_DESC[lead.id] ?? ""}</p>
+        <p className="mt-0.5 text-[11.5px] leading-snug text-ink2">{lead.verdict ?? LP_DESC[lead.id] ?? ""}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {count && <span className="num text-[10.5px] text-ink3">{count}</span>}
           {others.map((o) => (
