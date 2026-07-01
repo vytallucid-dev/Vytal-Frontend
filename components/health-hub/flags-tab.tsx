@@ -107,7 +107,7 @@ function InvestigateButton({ members, title }: { members: string[]; title: strin
         <span className="num text-ink3">{members.length}</span>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm border-line2 bg-surface-1 text-ink">
+        <DialogContent className="max-w-[95%] sm:max-w-sm border-line2 bg-surface-1 text-ink">
           <DialogHeader>
             <DialogTitle className="text-[15px] font-medium">{title}</DialogTitle>
             <DialogDescription className="text-[12px] text-ink3">
@@ -160,6 +160,7 @@ function StateChip({ p }: { p: PreparedCensus }) {
 // ── red-flag card (real) ───────────────────────────────────────────────────────
 function RedFlagCard({ p }: { p: PreparedCensus }) {
   const a = accentVars(p.accent);
+  const chipStyle = accentChip(p.accent);
   return (
     <div
       className="rounded-xl border p-4"
@@ -169,7 +170,7 @@ function RedFlagCard({ p }: { p: PreparedCensus }) {
         background: `linear-gradient(180deg,${a.bg},transparent 70%),var(--surface)`,
       }}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <span className="grid size-8 shrink-0 place-items-center rounded-[9px]" style={{ background: a.bg, color: a.color }}>
           <Icons.warning className="size-4" />
         </span>
@@ -180,12 +181,18 @@ function RedFlagCard({ p }: { p: PreparedCensus }) {
           </span>
         </span>
         <span
-          className="ml-auto shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-          style={accentChip(p.accent)}
+          className="ml-auto hidden shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide sm:inline-flex"
+          style={chipStyle}
         >
           Watch with care
         </span>
       </div>
+      <span
+        className="mt-2 inline-flex shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide sm:hidden"
+        style={chipStyle}
+      >
+        Watch with care
+      </span>
       <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink2">{flagDescription(p.key)}</p>
       <div className="mt-2 flex items-center justify-between gap-3">
         <p className="text-[11.5px] italic text-ink3">
@@ -489,9 +496,9 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
   return (
     <Reveal>
       {/* header */}
-      <div className="mb-3 flex items-center gap-2.5">
+      <div className="mb-3 flex flex-wrap items-center gap-2.5">
         <span className="eyebrow shrink-0">Warnings console</span>
-        <span className="h-px flex-1 bg-line" />
+        <span className="h-px min-w-4 flex-1 bg-line" />
         <span className="shrink-0 rounded-full border border-line2 bg-surface-2 px-2.5 py-0.5 text-[11px] text-ink2">
           across the scored universe · {view.scoredUniverseSize} names
         </span>

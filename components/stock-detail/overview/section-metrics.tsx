@@ -156,7 +156,7 @@ export function MetricsSection({ symbol }: { symbol: string }) {
             <MetricCard key={m.label} m={m} />
           ))}
         </div>
-        <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
+        <div className="mt-5 grid gap-[0.8rem] sm:flex items-center justify-between border-t border-line pt-4">
           <p className="text-[11.5px] text-ink3">Latest annual ratios — the full statements live on the Fundamentals tab.</p>
           <Funnel tab="fundamentals" symbol={symbol} label="Fundamentals" />
         </div>

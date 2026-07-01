@@ -126,12 +126,13 @@ export default function Technical() {
         <EmptyState />
       ) : (
         <>
-          <Panel className="p-4">
+          <Panel className="p-2.5 sm:p-4">
             {/* row 1 · chart type + timeframe */}
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="mb-3 flex flex-wrap items-center gap-2 sm:justify-between">
               <Segmented<ChartType>
                 value={chartType}
                 onChange={setChartType}
+                iconOnlyOnMobile
                 options={CHART_TYPES.map((c) => ({ value: c.value, label: c.label, icon: c.icon }))}
               />
               <Segmented<Timeframe> value={timeframe} onChange={setTimeframe} options={TIMEFRAMES} />
@@ -324,7 +325,7 @@ function ToggleChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors",
+        "flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors sm:px-2.5 sm:py-1 sm:text-[12px]",
         on ? "border-line2 text-ink" : "border-line text-ink3 hover:text-ink2",
       )}
     >
@@ -386,13 +387,15 @@ function Segmented<T extends string>({
   value,
   onChange,
   options,
+  iconOnlyOnMobile,
 }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string; icon?: Icon }[];
+  iconOnlyOnMobile?: boolean;
 }) {
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-lg border border-line bg-surface-1 p-0.5">
+    <div className="inline-flex flex-wrap items-center gap-0.5 rounded-lg border border-line bg-surface-1 p-0.5">
       {options.map((o) => {
         const on = value === o.value;
         return (
@@ -401,13 +404,13 @@ function Segmented<T extends string>({
             type="button"
             onClick={() => onChange(o.value)}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-medium transition-colors sm:px-3 sm:py-1.5 sm:text-[12.5px]",
               on ? "text-ink" : "text-ink3 hover:text-ink",
             )}
             style={on ? tint(ACCENT) : undefined}
           >
             {o.icon && <o.icon weight={on ? "fill" : "regular"} className="h-3.5 w-3.5" />}
-            {o.label}
+            <span className={o.icon && iconOnlyOnMobile ? "hidden sm:inline" : undefined}>{o.label}</span>
           </button>
         );
       })}

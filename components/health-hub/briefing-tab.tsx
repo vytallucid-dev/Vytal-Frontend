@@ -39,7 +39,7 @@ function Distribution({ view }: { view: UniverseHealthView }) {
   const chartRef = useRef<HTMLDivElement>(null);
   const { tip, show, hide } = useChartTooltip(chartRef);
   return (
-    <div ref={chartRef} className="relative min-w-[280px] flex-[1.15]">
+    <div ref={chartRef} className="relative w-full min-w-0 flex-[1.3] sm:w-auto sm:min-w-[300px]">
       <ChartTooltip tip={tip} />
       <div className="flex items-end gap-1.5 overflow-hidden" style={{ height: COL_H }}>
         {LABEL_BAND_ORDER.map((band, i) => {
@@ -116,7 +116,7 @@ function Hero({ view }: { view: UniverseHealthView }) {
           <h2 className="font-display text-[24px] font-medium leading-[1.15]">
             <span className="num font-medium">{view.scoredUniverseSize}</span> names, this quarter
           </h2>
-          <p className="diagnosis mt-1.5 font-display text-[15px] italic leading-snug text-ink2">
+          <p className="diagnosis mt-1.5 max-w-[42em] text-xs sm:text-[13px] leading-relaxed text-ink2">
             {universeCharacter(view)}
           </p>
           {agg.medianDrift != null && (
@@ -479,9 +479,9 @@ function Attention({ view }: { view: UniverseHealthView }) {
   const a = attentionReads(view);
   return (
     <div className="col-span-12 lg:col-span-8">
-      <div className="eyebrow-row mb-3 mt-1 flex items-center gap-2.5">
+      <div className="eyebrow-row mb-3 mt-1 flex flex-wrap items-center gap-2.5">
         <span className="eyebrow shrink-0">What the quarter changed</span>
-        <span className="h-px flex-1 bg-line" />
+        <span className="h-px min-w-4 flex-1 bg-line" />
         <span className="shrink-0 rounded-full border border-line2 bg-surface-2 px-2.5 py-0.5 text-[11px] text-ink2">
           across the scored universe
         </span>
@@ -667,7 +667,7 @@ function ThresholdWatch({ view }: { view: UniverseHealthView }) {
                   </small>
                 </span>
                 <span
-                  className="absolute top-1/2 size-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
+                  className="absolute top-1/2 size-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px]"
                   style={{ left: `${pos}%`, background: meta.cssVar, borderColor: "var(--surface2)" }}
                 />
               </div>

@@ -59,7 +59,7 @@ const StockScreenerPage = () => {
   );
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6 py-12 pt-0">
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 sm:px-6 py-12 pt-0">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -72,7 +72,7 @@ const StockScreenerPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="font-display text-4xl font-semibold tracking-tight text-ink md:text-6xl"
+            className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl md:text-6xl"
           >
             Stock Analysis
           </motion.h1>
@@ -80,7 +80,7 @@ const StockScreenerPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mx-auto max-w-2xl text-lg text-ink2 md:text-xl"
+            className="mx-auto max-w-2xl text-sm text-ink2 sm:text-lg md:text-xl"
           >
             Search and analyse any stock in the universe to get its health score,
             diagnosis, and full pillar breakdown.
@@ -112,21 +112,21 @@ const StockScreenerPage = () => {
           className="space-y-6"
         >
           <div className="flex items-center justify-center gap-2 text-ink3">
-            <Icons.spark weight="duotone" className="h-4 w-4" />
-            <span className="text-sm font-medium">Top rated in the universe</span>
+            <Icons.spark weight="duotone" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs font-medium sm:text-sm">Top rated in the universe</span>
           </div>
 
           {isLoading ? (
-            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-4">
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-2 gap-y-3 sm:gap-x-3 sm:gap-y-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-9 w-28 animate-pulse rounded-full bg-surface-2"
+                  className="h-7 w-20 animate-pulse rounded-full bg-surface-2 sm:h-9 sm:w-28"
                 />
               ))}
             </div>
           ) : (
-            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-8">
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-2 gap-y-6 sm:gap-x-3 sm:gap-y-8">
               {recommendedStocks.map((stock, index) => (
                 <motion.button
                   key={stock.symbol}
@@ -140,13 +140,13 @@ const StockScreenerPage = () => {
                     damping: 20,
                   }}
                   onClick={() => router.push(`/research/stock-screener/${stock.symbol}`)}
-                  className="group relative rounded-full border border-line bg-surface-1 px-4 py-2 transition-all duration-300 hover:scale-105 hover:border-line3 hover:bg-surface-2"
+                  className="group relative rounded-full border border-line bg-surface-1 px-3 py-1.5 transition-all duration-300 hover:scale-105 hover:border-line3 hover:bg-surface-2 sm:px-4 sm:py-2"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-ink">{stock.symbol}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="text-xs font-semibold text-ink sm:text-sm">{stock.symbol}</span>
                     {stock.band && (
                       <span
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${BAND_CHIP[stock.band]}`}
+                        className={`rounded-full px-1 py-0.5 text-[9px] font-semibold sm:px-1.5 sm:text-[10px] ${BAND_CHIP[stock.band]}`}
                       >
                         {BAND_LABEL[stock.band]}
                       </span>

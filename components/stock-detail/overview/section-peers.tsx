@@ -213,11 +213,11 @@ export function PeersSection({ symbol }: { symbol: string }) {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3.5">
+        <div className="grid gap-[0.8rem] sm:flex items-center justify-between border-t border-line px-4 py-3.5">
           <p className="text-[11.5px] text-ink3">Where it sits among peers — ordered by health standing, with family-relevant ratios. A factual sort, not a verdict — no winner crowned.</p>
           <Link
             href={`/research/peer-groups/${peerGroupId}`}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"
           >
             Peer group
             <Icons.arrowUpRight className="h-3 w-3" />

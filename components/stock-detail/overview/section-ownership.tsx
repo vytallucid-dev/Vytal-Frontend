@@ -127,7 +127,7 @@ export function OwnershipSection({ symbol }: { symbol: string }) {
           </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
+        <div className="mt-5 grid gap-[0.8rem] sm:flex items-center justify-between border-t border-line pt-4">
           <p className="text-[11.5px] text-ink3">
             {ownership?.current?.asOfDate ? `As of ${ownership.current.asOfDate}.` : ""} Full ownership history is on the Activity tab.
           </p>

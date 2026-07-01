@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { QueryError } from "@/components/ui/query-error";
-import { Panel } from "@/components/stock-detail/health/shared";
+import { Panel, SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { StockAutocomplete } from "@/components/stock-autocomplete";
 import type { Stock } from "@/lib/indian-stocks-data";
 import { NameSwitcher } from "./name-switcher";
@@ -59,7 +59,7 @@ function PromotedReadBanner({
   const t = READ_TONE[read.tone];
   return (
     <div
-      className="mb-3.5 flex flex-wrap items-start gap-4 rounded-xl border p-4 sm:p-5"
+      className="mb-3.5 flex flex-wrap items-start gap-3 rounded-xl border p-4 sm:gap-4 sm:p-5"
       style={{
         borderColor: t.bd,
         background: `linear-gradient(100deg, ${t.bg}, transparent 70%), var(--surface)`,
@@ -72,10 +72,10 @@ function PromotedReadBanner({
         <ReadIcon tone={read.tone} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="diagnosis text-[19px] font-medium" style={{ color: t.fg }}>
+        <p className="diagnosis text-[16px] font-medium sm:text-[19px]" style={{ color: t.fg }}>
           {read.title}
         </p>
-        <p className="mt-1.5 max-w-[62ch] text-[13px] leading-relaxed text-ink2">{read.body}</p>
+        <p className="mt-1.5 max-w-[62ch] text-[12.5px] leading-relaxed text-ink2 sm:text-[13px]">{read.body}</p>
         {read.note && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-high">
             <Icons.warning weight="fill" className="size-3" />
@@ -83,9 +83,12 @@ function PromotedReadBanner({
           </p>
         )}
       </div>
+      {/* forced onto its own full-width row on mobile — sharing a row with the icon +
+          wrapping title otherwise starves the text column down to a sliver (min-w-0
+          lets it shrink to keep the link inline, instead of wrapping the link below). */}
       <a
         href={funnelBackHref}
-        className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"
+        className="inline-flex w-full basis-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3 sm:w-auto sm:basis-auto sm:justify-start"
       >
         Open health page
         <Icons.arrowUpRight className="size-3" />
@@ -223,10 +226,6 @@ export function ToolFrame({
     setActive({ index: null });
   }, [symbol, winKey]);
 
-  // Frame-owned chart-expand state (shared, so all three tools behave identically).
-  // false = today's 50/50 layout; true = chart near-hero, readout+summary reflow below.
-  const [expanded, setExpanded] = useState(false);
-
   const Tool = meta.Icon;
 
   // Scored universe → the StockAutocomplete shape, for the landing hero search.
@@ -249,7 +248,7 @@ export function ToolFrame({
       <div className="mb-4 flex flex-wrap items-center gap-4 border-b border-line pb-3 pt-1">
         <button
           onClick={onHome}
-          className="flex items-center gap-2.5 font-display text-base font-medium text-ink"
+          className="sm:hidden flex items-center gap-2.5 font-display text-base font-medium text-ink"
         >
           <Tool weight="duotone" className="size-[18px]" style={{ color: meta.accentVar }} />
           {meta.name}
@@ -270,15 +269,6 @@ export function ToolFrame({
             Across your scope
           </button>
         </div>
-        <span className="ml-auto text-[11.5px] text-ink3">
-          {symbol ? (
-            <>
-              viewing <b className="font-medium text-ink2">{symbol}</b> · Switch stock to change
-            </>
-          ) : (
-            "your scored universe"
-          )}
-        </span>
       </div>
 
       <NameSwitcher
@@ -309,13 +299,7 @@ export function ToolFrame({
             </div>
           </div>
 
-          <div className="mb-3.5 flex items-center gap-2.5">
-            <span className="eyebrow shrink-0">{meta.landingEyebrow}</span>
-            <span className="h-px flex-1 bg-line" />
-            <span className="shrink-0 rounded-full border border-line2 bg-surface-2 px-2.5 py-0.5 text-[11px] text-ink2">
-              {meta.scopeTag}
-            </span>
-          </div>
+          <SectionEyebrow label={meta.landingEyebrow} icon={Tool} accent={meta.accentVar} pill={meta.scopeTag} />
 
           {landing.isError ? (
             <QueryError message="Couldn't load the scan for your scope." onRetry={landing.onRetry} />
@@ -345,8 +329,6 @@ export function ToolFrame({
           onWindowChange={onWindowChange}
           active={active}
           setActive={setActive}
-          expanded={expanded}
-          onToggleExpand={() => setExpanded((v) => !v)}
         />
       )}
     </div>
@@ -359,16 +341,12 @@ function SingleView({
   onWindowChange,
   active,
   setActive,
-  expanded,
-  onToggleExpand,
 }: {
   single: ToolFrameProps["single"];
   window: ToolWindow;
   onWindowChange: (w: ToolWindow) => void;
   active: ActiveDatapoint;
   setActive: (a: ActiveDatapoint) => void;
-  expanded: boolean;
-  onToggleExpand: () => void;
 }) {
   if (!single) return null;
 
@@ -405,12 +383,12 @@ function SingleView({
     <div>
       {/* header */}
       <div className="mb-3.5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="hero-name text-[27px] text-ink">{single.identity.name}</div>
+        <div className="min-w-0 flex-1">
+          <div className="hero-name break-words text-[20px] mb-3 sm:mb-0 sm:text-[27px] text-ink">{single.identity.name}</div>
           <div className="num mt-1 text-[12.5px] text-ink2">{single.identity.sub}</div>
         </div>
         {/* chips — identity, right-aligned (the timeframe control now lives by the chart) */}
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           {single.chips.map((c, i) => (
             <span
               key={i}
@@ -445,46 +423,21 @@ function SingleView({
         </Panel>
       ) : (
         <>
-          {/* chart toolbar — the timeframe control + expand toggle sit WITH the chart */}
+          {/* chart toolbar — the timeframe control sits WITH the chart */}
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <WindowSwitcher value={window} onChange={onWindowChange} dailyBounds={single.dailyBounds} />
-            <button
-              type="button"
-              onClick={onToggleExpand}
-              aria-pressed={expanded}
-              title={expanded ? "Minimize chart" : "Expand chart"}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1.5 text-[11.5px] text-ink2 transition-colors hover:border-line3 hover:text-ink"
-            >
-              {expanded ? (
-                <Icons.arrowsInSimple className="size-3.5" />
-              ) : (
-                <Icons.arrowsOutSimple className="size-3.5" />
-              )}
-              {expanded ? "Minimize" : "Expand"}
-            </button>
           </div>
 
-          {expanded ? (
-            // EXPANDED: chart near-hero (full width), readout + summary reflow BELOW.
-            <div className="flex flex-col gap-3">
-              {single.renderChart(active, setActive)}
-              <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
-                {single.renderReadout(active)}
-                {single.renderSummary()}
-              </div>
+          {/* desktop 50/50, mobile single column */}
+          <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+            {/* left — centerpiece chart, sized to the column */}
+            {single.renderChart(active, setActive)}
+            {/* right — live readout (top) + static summary (bottom) */}
+            <div className="grid gap-3">
+              {single.renderReadout(active)}
+              {single.renderSummary()}
             </div>
-          ) : (
-            // MINIMIZED (default): desktop 50/50, mobile single column.
-            <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
-              {/* left — centerpiece chart, sized to the column */}
-              {single.renderChart(active, setActive)}
-              {/* right — live readout (top) + static summary (bottom) */}
-              <div className="grid gap-3">
-                {single.renderReadout(active)}
-                {single.renderSummary()}
-              </div>
-            </div>
-          )}
+          </div>
         </>
       )}
 

@@ -265,7 +265,7 @@ export function StandingSection({ symbol }: { symbol: string }) {
         )}
 
         {/* The doesn't-mean boundary + funnel */}
-        <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+        <div className="mt-5 grid gap-[0.8rem] sm:flex items-center justify-between  border-t border-line pt-4">
           <p className="text-[11.5px] italic text-ink3">{DOESNT_MEAN}</p>
           <Funnel tab="health" symbol={symbol} label="Full health" />
         </div>

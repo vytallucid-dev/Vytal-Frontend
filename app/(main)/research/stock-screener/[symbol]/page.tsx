@@ -141,15 +141,15 @@ const StockDetailPage = () => {
     <div className="min-h-screen pb-12">
       {/* HEADER */}
       <div className="border-b border-line bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-6 py-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="mx-auto max-w-7xl px-0 sm:px-6 py-4">
+          <div className="flex flex-col gap-4 px-4 sm:px-0 lg:flex-row lg:items-start lg:justify-between">
             {/* Left: Company Info */}
             <div className="flex flex-col gap-3">
-              <div className="flex items-baseline gap-3">
-                <h1 className="font-display text-3xl font-semibold text-ink">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h1 className="font-display text-xl font-semibold text-ink sm:text-2xl lg:text-3xl">
                   {stock.symbol}
                 </h1>
-                <span className="text-lg text-ink2">{stock.name}</span>
+                <span className="text-sm text-ink2 sm:text-base lg:text-lg">{stock.name}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -171,7 +171,7 @@ const StockDetailPage = () => {
             </div>
 
             {/* Right: Action Buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => router.push("/research/stock-screener")}
                 className="inline-flex items-center gap-1.5 text-xs cursor-pointer text-ink3 underline-offset-4 transition-colors hover:text-ink hover:underline"
@@ -182,22 +182,26 @@ const StockDetailPage = () => {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                  >
                     Quick Actions
-                    <ChevronDown className="ml-2 h-4 w-4" />
+                    <ChevronDown className="ml-1 h-3.5 w-3.5 sm:ml-2 sm:h-4 sm:w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Plus className="mr-2 h-4 w-4" />
+                <DropdownMenuContent align="end" className="min-w-[7rem] sm:min-w-[8rem]">
+                  <DropdownMenuItem className="text-xs sm:text-sm">
+                    <Plus className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Add to Portfolio
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Star className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem className="text-xs sm:text-sm">
+                    <Star className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Watchlist
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Bell className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem className="text-xs sm:text-sm">
+                    <Bell className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Set Alert
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -208,7 +212,7 @@ const StockDetailPage = () => {
 
         {/* TAB NAVIGATION */}
         <div className="mx-auto max-w-7xl px-6">
-          <div className="flex overflow-x-auto border-b border-line">
+          <div className="hidden-scrollbar flex overflow-x-auto border-b border-line">
             {[
               { id: "overview", label: "Overview" },
               { id: "health", label: "Health Score" },
@@ -240,7 +244,7 @@ const StockDetailPage = () => {
       </div>
 
       {/* TAB CONTENT */}
-      <div className="mx-auto max-w-7xl px-6 py-8 pt-0">
+      <div className="mx-auto max-w-7xl px-0 sm:px-6 py-8 pt-0">
         {activeTab === "overview" && <Overview symbol={symbol} />}
         {activeTab === "health" && <HealthScore />}
         {activeTab === "fundamentals" && <Fundamentals />}

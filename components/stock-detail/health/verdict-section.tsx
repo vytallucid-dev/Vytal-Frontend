@@ -41,7 +41,7 @@ export function VerdictHero({
         : { text: "Tight alignment", cls: "text-healthy bg-healthy/10 border-healthy/30" };
 
   return (
-    <section className="card-hero relative overflow-hidden rounded-2xl border border-line2 p-7 sm:p-8">
+    <section className="card-hero relative overflow-hidden rounded-2xl border border-line2 p-5 sm:p-8">
       {/* soft corner glow */}
       <div
         aria-hidden

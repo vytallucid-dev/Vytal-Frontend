@@ -108,7 +108,7 @@ function SourceLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] font-medium text-ink transition-colors hover:border-line3 hover:bg-surface-3"
+      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] font-medium text-ink transition-colors hover:border-line3 hover:bg-surface-3"
       style={{ color: accent }}
     >
       <Glyph className="h-3.5 w-3.5" />
@@ -212,7 +212,7 @@ function NewsRow({ item }: { item: StockNewsItem }) {
         )}
 
         {/* footer: article link · Phase-2 stub */}
-        <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-line pt-3.5">
+        <div className="mt-4 grid sm:flex flex-wrap items-center gap-2.5 border-t border-line pt-3.5">
           {item.externalUrl && (
             <SourceLink
               href={item.externalUrl}
@@ -221,7 +221,7 @@ function NewsRow({ item }: { item: StockNewsItem }) {
               accent={accent}
             />
           )}
-          <span className="ml-auto">
+          <span className="mx-auto sm:ml-auto">
             <SentimentStub />
           </span>
         </div>
@@ -297,7 +297,7 @@ export default function News({ symbol }: { symbol: string }) {
       {/* controls: stream toggle (primary) + the ONE real filter */}
       <div className="flex flex-wrap items-center gap-3">
         {/* stream segmented toggle */}
-        <div className="inline-flex rounded-xl border border-line bg-surface-1 p-1">
+        <div className="inline-flex rounded-xl border border-line bg-surface-1 p-1 max-sm:w-full">
           {(Object.keys(STREAMS) as NewsSourceType[]).map((key) => {
             const s = STREAMS[key];
             const active = stream === key;
@@ -306,14 +306,14 @@ export default function News({ symbol }: { symbol: string }) {
               <button
                 key={key}
                 onClick={() => setStream(key)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[12.5px] font-medium transition-colors ${
+                className={`inline-flex w-full justify-center items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[12.5px] font-medium transition-colors ${
                   active ? "text-ink" : "text-ink3 hover:text-ink"
                 }`}
                 style={active ? tint(s.accent, 12, 30) : undefined}
               >
                 <Glyph className="h-3.5 w-3.5" />
                 {s.label}
-                <span className="text-[11px] text-ink3">· {s.sub}</span>
+                <span className=" max-sm:hidden text-[11px] text-ink3">· {s.sub}</span>
               </button>
             );
           })}

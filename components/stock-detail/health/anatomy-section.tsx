@@ -347,7 +347,7 @@ function MarketSubRow({ s }: { s: MarketSubView }) {
   const band = s.band ? METRIC_BAND_META[s.band] : null;
   return (
     <div className="flex items-center justify-between gap-3 border-t border-line py-2.5 first:border-t-0">
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex flex-wrap min-w-0 items-center gap-2">
         <span className="flex shrink-0 items-baseline gap-1">
           <span className="text-[11.5px] font-medium text-ink2">{getMarketSubLabel(s.subComponent).label}</span>
           <span className="num text-[9.5px] text-ink3">{s.subComponent}</span>
@@ -406,7 +406,7 @@ function OwnershipBlock({ o }: { o: OwnershipDetail }) {
   ].filter(Boolean) as { k: string; v: number }[];
 
   return (
-    <div className="space-y-2.5 text-[12px]">
+    <div className="mt-2.5 space-y-2.5 text-[12px]">
       <div className="flex justify-between text-ink2">
         <span>Baseline · {humanizeKey(o.baselineReason)}</span>
         <span className="num">{fmt(o.baseline)}</span>
@@ -445,9 +445,9 @@ function OwnershipBlock({ o }: { o: OwnershipDetail }) {
 function PillarBody({ p, pillarLabel, twoCol }: { p: PillarView; pillarLabel: string; twoCol?: boolean }) {
   if (p.metrics && p.metrics.length) {
     return twoCol ? (
-      <div className="grid grid-cols-2 gap-x-6 divide-x divide-line">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:divide-x sm:divide-line">
         <div>{p.metrics.filter((_, i) => i % 2 === 0).map((m) => <MetricRow key={m.metricKey} m={m} pillarLabel={pillarLabel} />)}</div>
-        <div className="pl-6">{p.metrics.filter((_, i) => i % 2 === 1).map((m) => <MetricRow key={m.metricKey} m={m} pillarLabel={pillarLabel} />)}</div>
+        <div className="sm:pl-6">{p.metrics.filter((_, i) => i % 2 === 1).map((m) => <MetricRow key={m.metricKey} m={m} pillarLabel={pillarLabel} />)}</div>
       </div>
     ) : (
       <div>{p.metrics.map((m) => <MetricRow key={m.metricKey} m={m} pillarLabel={pillarLabel} />)}</div>
@@ -472,7 +472,7 @@ function PillarCard({ p, featured, open, onToggle, change }: { p: PillarView; fe
         <PillarGauge score={p.subtotal} color={meta.cssVar} size={featured ? 70 : 62} />
         <div className="min-w-0 flex-1">
           {/* header row — label + weight on the left, per-pillar change chip on the right */}
-          <div className="flex items-start justify-between gap-2">
+          <div className="grid sm:flex items-start justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13.5px] font-semibold">
               <span className="flex items-center gap-2">
                 <span className={cn("h-1.5 w-1.5 rounded-sm", meta.dot)} />

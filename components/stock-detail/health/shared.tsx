@@ -105,7 +105,7 @@ export function SectionEyebrow({
   accent?: string;
 }) {
   return (
-    <div className="mb-4 mt-8 flex items-center gap-2.5">
+    <div className="mb-4 mt-8 flex flex-wrap items-center gap-2.5">
       {Glyph ? (
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border" style={tint(accent)}>
           <Glyph weight="duotone" className="h-4 w-4" />
@@ -114,9 +114,9 @@ export function SectionEyebrow({
         <span className="h-3.5 w-[3px] shrink-0 rounded-full" style={{ background: accent }} />
       )}
       <span className="eyebrow shrink-0">{label}</span>
-      <span className="h-px flex-1" style={{ background: `color-mix(in oklch, ${accent} 20%, var(--line))` }} />
+      <span className="h-px min-w-4 flex-1" style={{ background: `color-mix(in oklch, ${accent} 20%, var(--line))` }} />
       {pill && (
-        <span className="num shrink-0 rounded-full border px-2.5 py-1 text-[11px] tracking-normal" style={tint(accent, 10, 26)}>
+        <span className="num shrink-0 rounded-full border w-full px-2.5 py-1 text-[11px] tracking-normal" style={tint(accent, 10, 26)}>
           {pill}
         </span>
       )}

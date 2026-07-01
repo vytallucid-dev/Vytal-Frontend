@@ -65,9 +65,15 @@ export function OwnershipReadout({
                   style={{ width: `${barW}%`, background: lane.color }}
                 />
                 {redW > 0 && (
+                  // hazard-hatch, not a flat block — reads as a flagged portion of the
+                  // promoter bar underneath it, never a separate holder.
                   <span
                     className="absolute inset-y-0 left-0 rounded-l"
-                    style={{ width: `${redW}%`, background: "var(--crit)" }}
+                    style={{
+                      width: `${redW}%`,
+                      background:
+                        "repeating-linear-gradient(45deg, var(--crit) 0 2px, color-mix(in oklch, var(--crit) 30%, transparent) 2px 4px)",
+                    }}
                   />
                 )}
               </span>

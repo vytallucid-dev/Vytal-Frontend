@@ -72,7 +72,7 @@ export function HealthGlanceSection({ symbol }: { symbol: string }) {
           </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
+        <div className="mt-5 grid gap-[0.8rem] sm:flex items-center justify-between border-t border-line pt-4">
           <p className="text-[11.5px] text-ink3">Four pillars, one composite — the full breakdown lives on the Health tab.</p>
           <Funnel tab="health" symbol={symbol} label="Full health" />
         </div>

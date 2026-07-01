@@ -714,7 +714,7 @@ function Segmented<T extends string>({
             type="button"
             onClick={() => onChange(o.value)}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+              "flex w-full justify-center items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors",
               on ? "text-ink" : "text-ink3 hover:text-ink",
             )}
             style={on ? tint(o.accent ?? "var(--p-found)") : undefined}

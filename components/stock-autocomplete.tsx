@@ -152,7 +152,7 @@ export function StockAutocomplete({
   return (
     <div className="relative w-full max-w-2xl mx-auto">
       <div className="relative group">
-        <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-6 h-6 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
+        <Search className="absolute left-4 sm:left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
         <Input
           ref={inputRef}
           type="text"
@@ -165,7 +165,7 @@ export function StockAutocomplete({
               setIsOpen(true);
             }
           }}
-          className="w-full h-16 pl-16 pr-6 text-lg rounded-2xl border-2 border-border bg-background/50 backdrop-blur-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-300 placeholder:text-muted-foreground/50 shadow-lg"
+          className="w-full h-12 pl-11 pr-4 text-xs rounded-xl border-2 border-border bg-background/50 backdrop-blur-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-300 placeholder:text-muted-foreground/50 shadow-lg sm:h-16 sm:pl-16 sm:pr-6 sm:text-lg sm:rounded-2xl"
         />
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
       </div>

@@ -652,7 +652,7 @@ export function PriceChart({
       <div ref={containerRef} className="w-full" style={{ height: chartHeight }} />
 
       {legend && (
-        <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-surface-1/80 px-3 py-2 text-[11px] backdrop-blur-sm">
+        <div className="pointer-events-none absolute left-1.5 top-1.5 z-10 flex max-w-[calc(100%-12px)] flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-line bg-surface-1/80 px-2 py-1.5 text-[10px] backdrop-blur-sm sm:left-3 sm:top-3 sm:max-w-none sm:gap-x-3 sm:px-3 sm:py-2 sm:text-[11px]">
           <span className="num text-ink2">{fmtDate(legend.bar.time)}</span>
           <Stat label="O" value={fmtPrice(legend.bar.open)} />
           <Stat label="H" value={fmtPrice(legend.bar.high)} />

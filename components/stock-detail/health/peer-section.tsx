@@ -107,13 +107,16 @@ export function PeerSection({
         {/* ── distribution + neighbours ── */}
         <div>
           <div className="kicker mb-3">Where it sits — by composite</div>
-          <div ref={chartRef} className="relative">
-          <ChartTooltip tip={tip} />
-          <svg viewBox="0 0 1000 92" preserveAspectRatio="none" className="block h-auto w-full">
-            {/* band separators within domain */}
-            {BAND_CUTS.filter((b) => b.v > lo && b.v < hi).map((b) => (
-              <g key={b.v}>
+          {/* Fixed-height wrapper: dots + labels render as HTML overlays (not SVG-scaled),
+              so they stay perfectly round and legibly sized regardless of container width —
+              an SVG stretched to a narrow mobile width would otherwise shrink both together. */}
+          <div ref={chartRef} className="relative h-28 sm:h-24">
+            <ChartTooltip tip={tip} />
+            <svg viewBox="0 0 1000 92" preserveAspectRatio="none" className="absolute inset-0 block h-full w-full">
+              {/* band separators within domain */}
+              {BAND_CUTS.filter((b) => b.v > lo && b.v < hi).map((b) => (
                 <line
+                  key={b.v}
                   x1={x(b.v)}
                   y1={18}
                   x2={x(b.v)}
@@ -123,45 +126,65 @@ export function PeerSection({
                   strokeDasharray="2 4"
                   opacity={0.4}
                 />
-                <text x={x(b.v)} y={12} textAnchor="middle" className="num" style={{ fill: b.cssVar, fontSize: 11 }}>
-                  {b.label}
-                </text>
-              </g>
+              ))}
+              {/* baseline */}
+              <line x1={24} y1={44} x2={976} y2={44} stroke="var(--line2)" strokeWidth={1} />
+            </svg>
+
+            {/* band-cut number labels */}
+            {BAND_CUTS.filter((b) => b.v > lo && b.v < hi).map((b) => (
+              <span
+                key={b.v}
+                className="num absolute top-0 -translate-x-1/2 text-[11px] sm:text-[10.5px]"
+                style={{ left: `${x(b.v) / 10}%`, color: b.cssVar }}
+              >
+                {b.label}
+              </span>
             ))}
-            {/* baseline */}
-            <line x1={24} y1={44} x2={976} y2={44} stroke="var(--line2)" strokeWidth={1} />
+
             {/* neighbours */}
-            {above && <circle cx={x(above.composite)} cy={44} r={5} fill={compositeColour(above.composite)} opacity={0.75} />}
-            {below && <circle cx={x(below.composite)} cy={44} r={5} fill={compositeColour(below.composite)} opacity={0.75} />}
-            {/* me */}
-            <circle cx={x(me)} cy={44} r={9} fill={compositeColour(me)} stroke="var(--ink)" strokeWidth={2} />
-            <text x={x(me)} y={74} textAnchor="middle" className="num" style={{ fill: "var(--ink)", fontSize: 12, fontWeight: 600 }}>
-              {identity.symbol} · {fmt(me)}
-            </text>
-            <text x={x(me)} y={88} textAnchor="middle" className="num" style={{ fill: "var(--ink3)", fontSize: 10 }}>
-              #{peer.rank} of {peer.memberCount}
-            </text>
-            {/* hover hit-targets */}
             {above && (
-              <circle
-                cx={x(above.composite)} cy={44} r={16} fill="transparent" style={{ cursor: "pointer" }}
+              <div
+                className="absolute top-[47.8%] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full opacity-75"
+                style={{ left: `${x(above.composite) / 10}%`, width: 12, height: 12, background: compositeColour(above.composite) }}
                 onMouseMove={(e) => show(e, <TipBody title={above.symbol} rows={[{ label: "Composite", value: fmt(above.composite) }, { label: "vs this stock", value: "just above" }]} />)}
                 onMouseLeave={hide}
               />
             )}
             {below && (
-              <circle
-                cx={x(below.composite)} cy={44} r={16} fill="transparent" style={{ cursor: "pointer" }}
+              <div
+                className="absolute top-[47.8%] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full opacity-75"
+                style={{ left: `${x(below.composite) / 10}%`, width: 12, height: 12, background: compositeColour(below.composite) }}
                 onMouseMove={(e) => show(e, <TipBody title={below.symbol} rows={[{ label: "Composite", value: fmt(below.composite) }, { label: "vs this stock", value: "just below" }]} />)}
                 onMouseLeave={hide}
               />
             )}
-            <circle
-              cx={x(me)} cy={44} r={16} fill="transparent" style={{ cursor: "pointer" }}
+
+            {/* me */}
+            <div
+              className="absolute top-[47.8%] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2"
+              style={{
+                left: `${x(me) / 10}%`,
+                width: 20,
+                height: 20,
+                background: compositeColour(me),
+                borderColor: "var(--ink)",
+              }}
               onMouseMove={(e) => show(e, <TipBody title={identity.symbol} rows={[{ label: "Composite", value: fmt(me) }, { label: "Rank", value: `#${peer.rank} of ${peer.memberCount}` }, { label: "Percentile", value: `${peer.percentile.toFixed(0)}th` }]} />)}
               onMouseLeave={hide}
             />
-          </svg>
+            <div
+              className="num pointer-events-none absolute top-[80%] -translate-x-1/2 whitespace-nowrap text-[13px] font-semibold sm:text-[13.5px]"
+              style={{ left: `${x(me) / 10}%`, color: "var(--ink)" }}
+            >
+              {identity.symbol} · {fmt(me)}
+            </div>
+            <div
+              className="num pointer-events-none absolute top-[97%] -translate-x-1/2 whitespace-nowrap text-[11px] sm:text-[11.5px]"
+              style={{ left: `${x(me) / 10}%`, color: "var(--ink3)" }}
+            >
+              #{peer.rank} of {peer.memberCount}
+            </div>
           </div>
           <p className="mt-2 text-[10.5px] italic text-ink3">
             Nearest names shown — the read carries rank &amp; percentile, not the full roster.
@@ -231,6 +254,10 @@ export function PeerSection({
                       <span className="num font-medium">#{r.rank}</span>
                     </div>
                     <div className="relative h-1.5 rounded bg-surface-3">
+                      <span
+                        className={cn("absolute inset-y-0 left-0 rounded", meta.dot)}
+                        style={{ width: `${clampPct(pos)}%` }}
+                      />
                       <span
                         className={cn("absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-surface-1", meta.dot)}
                         style={{ left: `calc(${clampPct(pos)}% - 5px)` }}

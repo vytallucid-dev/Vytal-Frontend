@@ -49,7 +49,7 @@ export function MetricTile({
   return (
     <div className="rounded-xl border border-line bg-surface-2 p-3.5">
       <div className="truncate text-[11px] text-ink3">{label}</div>
-      <div className="num mt-1 text-[18px] font-semibold text-ink">{value}</div>
+      <div className="num mt-1 text-[14px] sm:text-[18px] font-semibold text-ink">{value}</div>
       {(yoy !== undefined || qoq !== undefined) && (
         <div className="mt-1.5 flex flex-col gap-0.5">
           {yoy !== undefined && (

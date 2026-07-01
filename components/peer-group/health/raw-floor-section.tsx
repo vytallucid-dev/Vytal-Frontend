@@ -72,7 +72,7 @@ export function RawFloorSection({
 }: {
   metrics: PeerMetricDistribution[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [filter, setFilter] = useState<FloorFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("metric");
   const [sortDir, setSortDir] = useState<1 | -1>(1);

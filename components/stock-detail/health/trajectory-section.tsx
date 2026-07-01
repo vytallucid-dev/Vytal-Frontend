@@ -35,26 +35,12 @@ const LINES: { key: LineKey; label: string; color: string; width: number }[] = [
   { key: "ownership", label: "Ownership", color: PILLAR_META.ownership.cssVar, width: 2 },
 ];
 
-// ── held-aware cadence model ──────────────────────────────────────────────────────
+// ── cadence model ──────────────────────────────────────────────────────────────────
 // Market & Ownership recompute daily/event-driven (their SCORE changes day-to-day);
-// Foundation & Momentum step only per quarter. On a DAILY timeframe the chart x-axis is
-// finer than F/M's quarterly clock, so those two lines render HELD (dashed) — flat between
-// quarter steps, which is TRUE, not interpolated. On the QUARTERLY timeframe every pillar
-// is measured at each point, so no line is held. The held legend-key un-hides only when a
-// line is actually held (i.e. on a daily timeframe).
+// Foundation & Momentum step only per quarter, so on a daily timeframe they read flat
+// between quarter steps — true, not interpolated (explained via the cadence note below
+// the timeframe control, not via dashing the line).
 type Cadence = "quarterly" | "daily";
-const CADENCE_RANK: Record<Cadence, number> = { quarterly: 1, daily: 2 }; // higher = finer
-// Each pillar's OWN update clock (independent of the chart's current x-axis).
-const PILLAR_CADENCE: Record<LineKey, Cadence> = {
-  composite: "daily", // moves daily (Market + Ownership both feed it)
-  foundation: "quarterly",
-  momentum: "quarterly",
-  market: "daily",
-  ownership: "daily",
-};
-/** A line is HELD when the chart x-axis is finer than the line's own update clock. */
-const isHeld = (k: LineKey, chartCadence: Cadence): boolean =>
-  CADENCE_RANK[chartCadence] > CADENCE_RANK[PILLAR_CADENCE[k]];
 
 // ── timeframe selector ──
 // Quarterly timeframes read the per-quarter series; daily timeframes read the daily series.
@@ -139,6 +125,15 @@ export function TrajectorySection({
   const [tf, setTf] = useState<TfKey>("4Q");
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
+  // legend doubles as a toggle — click a pillar to hide/show its line on the chart.
+  const [hiddenLines, setHiddenLines] = useState<Set<LineKey>>(new Set());
+  const toggleLine = (key: LineKey) =>
+    setHiddenLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const r1 = (n: number) => Math.round(n * 10) / 10;
   const allPoints = trajectory.series.map((pt) => ({
@@ -216,7 +211,6 @@ export function TrajectorySection({
   const clampedEarlier = isCustom && !!customStart && !!dailyFirst && customStart < dailyFirst;
   const tooShort = points.length < 2;
   const yDomain = adaptiveYDomain(points as YPoint[]);
-  const anyHeld = LINES.some((l) => isHeld(l.key, chartCadence));
   const pillLabel = activeTf.kind === "daily" ? `${points.length} days` : `${points.length} quarters`;
   // Result-day markers that fall inside the current daily window (x-values that exist in `points`).
   const winXs = new Set(points.map((p) => p.x));
@@ -231,9 +225,9 @@ export function TrajectorySection({
       <Panel className="px-4 py-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <span className="kicker">Composite &amp; pillars over time</span>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
             {/* timeframe segmented control — daily timeframes active once daily history exists */}
-            <div className="inline-flex shrink-0 rounded-lg border border-line2 bg-surface-2 p-0.5 text-[11px]">
+            <div className="inline-flex w-full flex-wrap gap-1 rounded-lg border border-line2 bg-surface-2 p-1 text-[11px] sm:w-auto sm:flex-nowrap sm:shrink-0 sm:gap-0 sm:p-0.5">
               {TIMEFRAMES.map((t) => {
                 const disabled = t.kind === "daily" && !hasDaily;
                 return (
@@ -261,7 +255,7 @@ export function TrajectorySection({
               // Live CTA → the dedicated Trajectory tool (scrub, windows, journey read).
               <Link
                 href={`/research/trajectory?symbol=${symbol}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1 text-[11.5px] text-ink2 transition-colors hover:border-line3 hover:text-ink"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1 text-[11.5px] text-ink2 transition-colors hover:border-line3 hover:text-ink sm:w-auto"
               >
                 Study full history
                 <Icons.arrowUpRight className="h-3 w-3" />
@@ -402,9 +396,7 @@ export function TrajectorySection({
                   name={l.label}
                   stroke={l.color}
                   strokeWidth={l.width}
-                  // held-aware: dashed when this line's clock is coarser than the chart's.
-                  // On a daily timeframe, Foundation/Momentum are held (flat between quarters).
-                  strokeDasharray={isHeld(l.key, chartCadence) ? "4 4" : undefined}
+                  hide={hiddenLines.has(l.key)}
                   dot={{ r: 2.5, fill: l.color }}
                   activeDot={{ r: 4 }}
                   isAnimationActive
@@ -416,23 +408,32 @@ export function TrajectorySection({
           </ResponsiveContainer>
         )}
 
-        {/* legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-[11.5px] text-ink2">
-          {LINES.map((l) => (
-            <span key={l.key} className="inline-flex items-center gap-2">
-              <span className="inline-block h-[3px] w-4 rounded" style={{ background: l.color }} />
-              {l.label}
-            </span>
-          ))}
-          {/* held-key — shown only when a coarser pillar (F/M on a daily timeframe) is held */}
-          {anyHeld && (
-            <span className="inline-flex items-center gap-1.5 text-ink3">
-              <span className="inline-block h-[3px] w-4 rounded bg-ink3" />
-              measured
-              <span className="ml-1 inline-block h-[3px] w-4 rounded border-t border-dashed border-ink3" />
-              held
-            </span>
-          )}
+        {/* legend — doubles as a toggle: tap a pillar to hide/show its line */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+          {LINES.map((l) => {
+            const off = hiddenLines.has(l.key);
+            return (
+              <button
+                key={l.key}
+                type="button"
+                onClick={() => toggleLine(l.key)}
+                aria-pressed={!off}
+                title={off ? `Show ${l.label}` : `Hide ${l.label}`}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 transition-colors",
+                  off
+                    ? "border-line2 bg-surface-1 text-ink3/60"
+                    : "border-line2 bg-surface-2 text-ink2 hover:border-line3 hover:text-ink",
+                )}
+              >
+                <span
+                  className="inline-block h-[3px] w-4 rounded"
+                  style={{ background: off ? "var(--ink3)" : l.color, opacity: off ? 0.5 : 1 }}
+                />
+                {l.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* corporate events overlay (listed, since dates don't map cleanly to quarters) */}

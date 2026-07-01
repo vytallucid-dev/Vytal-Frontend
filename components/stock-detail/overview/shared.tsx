@@ -156,7 +156,7 @@ export function StatTile({
   return (
     <div className="rounded-xl border border-line bg-surface-2 p-3.5">
       <div className="text-[11px] text-ink3">{label}</div>
-      <div className={cn("num mt-1 text-[18px] font-semibold", accentClass ?? "text-ink")}>{value}</div>
+      <div className={cn("num mt-1 text-[14px] sm:text-[18px] font-semibold", accentClass ?? "text-ink")}>{value}</div>
       {sub && <div className="num mt-0.5 text-[11px] text-ink3">{sub}</div>}
     </div>
   );
@@ -167,7 +167,7 @@ export function Funnel({ tab, symbol, label }: { tab: string; symbol: string; la
   return (
     <Link
       href={`/research/stock-screener/${symbol}?tab=${tab}`}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"
+      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"
     >
       {label}
       <Icons.arrowUpRight className="h-3 w-3" />

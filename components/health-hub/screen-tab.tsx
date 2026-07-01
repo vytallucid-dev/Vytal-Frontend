@@ -52,15 +52,15 @@ function Census({
         <span className="eyebrow">The scored universe — census</span>
         <span className="num text-[11px] text-ink2">{view.scoredUniverseSize} names</span>
       </div>
-      <div className="flex flex-wrap items-center gap-6">
-        <div className="min-w-[220px] flex-1">
+      <div className="grid sm:flex flex-wrap items-center gap-6">
+        <div className="w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
           <h2 className="font-display text-[21px] font-medium">Where the market sits</h2>
           <p className="mt-1.5 text-[12.5px] leading-snug text-ink2">
             The crowded middle is where the score says least — the edges are where to look.
           </p>
           <p className="mt-2 text-[10.5px] text-ink3">Tip: click any band to filter the table below.</p>
         </div>
-        <div className="min-w-[300px] flex-[1.3]">
+        <div className="w-full min-w-0 flex-[1.3] sm:w-auto sm:min-w-[300px]">
           <div ref={chartRef} className="relative flex h-24 items-end gap-1.5">
             <ChartTooltip tip={tip} />
             {LABEL_BAND_ORDER.map((band, i) => {

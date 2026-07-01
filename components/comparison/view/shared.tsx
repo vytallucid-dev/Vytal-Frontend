@@ -142,7 +142,7 @@ export function SectionTitle({
         />
         {pill && (
           <span
-            className="num shrink-0 rounded-full border px-2.5 py-1 text-[11px] tracking-normal"
+            className="num shrink-0 rounded-full border px-2.5 py-1 w-full text-[11px] tracking-normal"
             style={tint(accent, 10, 26)}
           >
             {pill}
