@@ -15,8 +15,15 @@ import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import type { DivergenceScanItem, DivergenceConfig } from "@/types/research-tools";
 import { ToolFrame } from "../tool-frame";
-import type { SingleViewSlots, ToolMeta, ToolWindow } from "../tool-frame.types";
-import { DivergenceChart } from "./divergence-chart";
+import {
+  DEFAULT_WINDOW,
+  windowQuarters,
+  type SingleViewSlots,
+  type ToolMeta,
+  type ToolWindow,
+} from "../tool-frame.types";
+import { sliceWindow, dailyBoundsOf } from "../window-slice";
+import { DivergenceChart, DivergenceEmpty } from "./divergence-chart";
 import { DivergenceReadout } from "./divergence-readout";
 import { DivergenceSummary } from "./divergence-summary";
 import { DivergenceScanCard } from "./divergence-card";
@@ -48,36 +55,72 @@ export function DivergenceTool() {
   const params = useSearchParams();
   const symbol = params.get("symbol")?.toUpperCase() || null;
 
-  const [window, setWindow] = useState<ToolWindow>(12);
+  const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
   const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
   if (lastSymbol !== symbol) {
     setLastSymbol(symbol);
-    setWindow(12);
+    setWindow(DEFAULT_WINDOW);
   }
 
   const stocksQ = useScoredStocks();
   const scanQ = useStockScan<DivergenceScanItem>("divergence", !symbol);
-  const healthQ = useStockHealth(symbol ?? "", window);
+  const healthQ = useStockHealth(symbol ?? "", windowQuarters(window));
 
   const data = healthQ.data;
   const verdict = data?.verdict ?? null;
   const trajectory = data?.trajectory ?? null;
   const pillars = useMemo(() => data?.pillars ?? [], [data]);
 
-  // The spread is pure arithmetic over the existing trajectory series — no new read.
+  // The window sliced to the selected cadence (quarterly / daily / custom) — the daily
+  // block is already on the payload, so a short window is a pure client-side re-slice.
+  const sliced = useMemo(
+    () =>
+      trajectory
+        ? sliceWindow(window, trajectory.series, trajectory.dailySeries, trajectory.resultDays)
+        : null,
+    [trajectory, window],
+  );
+  const dailyBounds = dailyBoundsOf(trajectory?.dailySeries);
+
+  // The spread is the SAME pillar-spread arithmetic — now over the sliced window's points,
+  // so on a daily window the gap moves day by day. No new read; no lens primitive.
   const pair = useMemo(() => (pillars.length ? pickScoredPair(pillars) : null), [pillars]);
   const spread = useMemo(
-    () => (trajectory && pair ? buildSpread(trajectory.series, pair.high, pair.low) : []),
+    () => (sliced && pair ? buildSpread(sliced.points, pair.high, pair.low) : []),
+    [sliced, pair],
+  );
+  // The full-quarterly spread — a window-INDEPENDENT basis. Gates building-history and
+  // backs the promoted read / chips when the current window is too thin to read (so an
+  // empty custom range never fabricates an "aligned" read from zero points).
+  const quarterlySpread = useMemo(
+    () =>
+      trajectory && pair
+        ? buildSpread(
+            trajectory.series.map((pt) => ({
+              x: "", asOfDate: null, periodKey: null,
+              composite: pt.composite, foundation: pt.foundation, momentum: pt.momentum,
+              market: pt.market, ownership: pt.ownership,
+            })),
+            pair.high,
+            pair.low,
+          )
+        : [],
     [trajectory, pair],
   );
+  const hasQuarterlySpread = quarterlySpread.length >= 2;
 
-  const gap = spread.length ? spread[spread.length - 1].gap : 0;
+  // Read basis: the current window when it has ≥2 points (so the read describes what's on
+  // screen), else the full quarterly spread (stable + honest on an empty/thin window).
+  const readSpread = spread.length >= 2 ? spread : quarterlySpread;
+  const gap = readSpread.length ? readSpread[readSpread.length - 1].gap : 0;
   const flag = divergenceFlag(gap);
   const baseConfig: DivergenceConfig = pair ? divergenceConfig(pair.high, pair.low) : "none";
   // Honest "no notable divergence" → an aligned read, never a manufactured tension.
   const readConfig: DivergenceConfig = flag === "none" ? "none" : baseConfig;
   const direction =
-    spread.length >= 2 ? directionOf(spread[0].gap, spread[spread.length - 1].gap) : "steady";
+    readSpread.length >= 2
+      ? directionOf(readSpread[0].gap, readSpread[readSpread.length - 1].gap)
+      : "steady";
 
   const noPair = !!data && !!trajectory && pair === null;
 
@@ -95,10 +138,12 @@ export function DivergenceTool() {
                     `Coverage state: ${data.identity?.coverageState ?? "not yet scored"}`),
               }
             : null,
-        // single period, OR too few comparable periods after dropping unavailable-pillar quarters
+        // Window-independent building-history: no readable quarterly spread AND no usable
+        // daily history. An empty CURRENT window (e.g. a custom range with no points) is
+        // handled by the chart's own empty state, not by blanking the whole grid.
         buildingHistory:
-          (!!trajectory && trajectory.series.length <= 1) ||
-          (!!pair && !!trajectory && spread.length < 2),
+          !!trajectory && !!pair && !hasQuarterlySpread && !dailyBounds,
+        dailyBounds,
         identity: {
           name: data?.identity?.name ?? symbol,
           ticker: symbol,
@@ -119,9 +164,16 @@ export function DivergenceTool() {
               highPillar={pair.high}
               lowPillar={pair.low}
               direction={direction}
+              isDaily={sliced?.isDaily ?? false}
+              resultMarks={sliced?.resultMarks ?? []}
+              clampedEarlier={sliced?.clampedEarlier ?? false}
               active={active}
               onActiveChange={setActive}
             />
+          ) : pair ? (
+            // honest empty state — the current window sliced to <2 comparable points
+            // (empty custom range, or sparse daily history after the ≤0-pillar guard).
+            <DivergenceEmpty isDaily={sliced?.isDaily ?? false} highPillar={pair.high} lowPillar={pair.low} />
           ) : null,
         renderReadout: (active) =>
           pair && spread.length ? (

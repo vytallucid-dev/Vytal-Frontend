@@ -20,6 +20,31 @@ const X1 = 596;
 const Y0 = 16;
 const Y1 = 320;
 
+/** The pledged fraction of the promoter band, in the SAME stacked-% units as the
+ *  lanes: promoterPct × (pledgedPctOfPromoter/100). Null/0 pledge → null (no slice). */
+const pledgedLevel = (p: HoldingPoint): number | null => {
+  const frac = p.pledgedPctOfPromoter;
+  if (frac == null || frac <= 0 || p.promoter <= 0) return null;
+  return p.promoter * (frac / 100);
+};
+
+/** Contiguous runs of periods that carry real pledge data — so a null/zero period
+ *  breaks the red sub-band honestly (never bridges a gap with a fabricated slice). */
+function pledgedRuns(points: HoldingPoint[]): number[][] {
+  const runs: number[][] = [];
+  let run: number[] = [];
+  points.forEach((p, i) => {
+    if (pledgedLevel(p) != null) {
+      run.push(i);
+    } else if (run.length) {
+      runs.push(run);
+      run = [];
+    }
+  });
+  if (run.length) runs.push(run);
+  return runs;
+}
+
 export function OwnershipChart({
   points,
   active,
@@ -113,6 +138,33 @@ export function OwnershipChart({
           );
         })}
 
+        {/* pledged sub-band — a red RE-COLOUR of the pledged slice INSIDE the promoter
+            band (bottom 0 → pledged level). Adds no stack height; other lanes are unmoved.
+            Drawn per contiguous run so null/zero periods leave the band honestly gold. */}
+        {pledgedRuns(points).map((run, k) => {
+          if (run.length === 1) {
+            // isolated pledged period between gaps — a thin standing slice at that x.
+            const i = run[0];
+            const lvl = pledgedLevel(points[i])!;
+            const w = n > 1 ? Math.min(6, ((X1 - X0) / (n - 1)) * 0.5) : 6;
+            return (
+              <rect
+                key={`pledge-${k}`}
+                x={xOf(i) - w / 2}
+                y={yOf(lvl)}
+                width={w}
+                height={yOf(0) - yOf(lvl)}
+                fill="var(--crit)"
+                opacity={0.82}
+              />
+            );
+          }
+          const up = run.map((i) => `${xOf(i).toFixed(1)},${yOf(pledgedLevel(points[i])!).toFixed(1)}`);
+          const dn = run.map((i) => `${xOf(i).toFixed(1)},${yOf(0).toFixed(1)}`);
+          const poly = up.concat([...dn].reverse()).join(" ");
+          return <polygon key={`pledge-${k}`} points={poly} fill="var(--crit)" opacity={0.82} />;
+        })}
+
         {/* x labels */}
         {points.map((p, i) => {
           const step = n > 6 ? 2 : 1;
@@ -142,7 +194,7 @@ export function OwnershipChart({
       </svg>
 
       {/* legend — lanes + latest values */}
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {HOLD_LANES.map((lane) => (
           <span
             key={lane.key}
@@ -153,6 +205,13 @@ export function OwnershipChart({
             <span className="num font-medium text-ink">{points[n - 1][lane.key].toFixed(0)}%</span>
           </span>
         ))}
+        {/* pledged sub-band key — subordinate, shown only when any period carries pledging */}
+        {points.some((p) => pledgedLevel(p) != null) && (
+          <span className="inline-flex items-center gap-1.5 self-center text-[11px] text-ink3">
+            <span className="size-2.5 rounded-sm" style={{ background: "var(--crit)" }} />
+            pledged (of promoter)
+          </span>
+        )}
       </div>
     </Panel>
   );

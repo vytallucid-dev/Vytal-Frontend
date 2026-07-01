@@ -22,8 +22,8 @@ import { ScreenTab } from "./screen-tab";
 type TabId = "brief" | "flags" | "screen";
 const TABS: { id: TabId; label: string; icon: React.ReactNode; soon: boolean }[] = [
   { id: "brief", label: "Briefing", icon: <Icons.results className="size-[15px]" />, soon: false },
-  { id: "flags", label: "Flags & Patterns", icon: <Icons.warning className="size-[15px]" />, soon: true },
-  { id: "screen", label: "Screen", icon: <Icons.screener className="size-[15px]" />, soon: true },
+  { id: "flags", label: "Flags & Patterns", icon: <Icons.warning className="size-[15px]" />, soon: false },
+  { id: "screen", label: "Screen", icon: <Icons.screener className="size-[15px]" />, soon: false },
 ];
 
 type ScopeId = "portfolio" | "watchlist" | "universe";

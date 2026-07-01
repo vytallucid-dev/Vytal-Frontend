@@ -17,12 +17,22 @@ import { StockAutocomplete } from "@/components/stock-autocomplete";
 import type { Stock } from "@/lib/indian-stocks-data";
 import { NameSwitcher } from "./name-switcher";
 import {
-  WINDOW_OPTIONS,
+  QUARTER_OPTIONS,
+  DAY_OPTIONS,
+  windowKey,
   type ActiveDatapoint,
   type PromotedRead,
   type ToolFrameProps,
   type ToolWindow,
 } from "./tool-frame.types";
+
+/** Today as "YYYY-MM-DD" (local) — the custom-range date-input max bound. */
+function todayISO(): string {
+  const n = new Date();
+  const mm = String(n.getMonth() + 1).padStart(2, "0");
+  const dd = String(n.getDate()).padStart(2, "0");
+  return `${n.getFullYear()}-${mm}-${dd}`;
+}
 
 const READ_TONE: Record<PromotedRead["tone"], { fg: string; bg: string; bd: string }> = {
   rec: { fg: "var(--rec)", bg: "var(--rec-bg)", bd: "var(--rec-bd)" },
@@ -84,33 +94,109 @@ function PromotedReadBanner({
   );
 }
 
+const NEEDS_DAILY = "no daily score history yet";
+
 function WindowSwitcher({
   value,
   onChange,
+  dailyBounds,
 }: {
   value: ToolWindow;
   onChange: (w: ToolWindow) => void;
+  /** undefined → the tool doesn't do daily (group hidden); null → does, but this stock
+   *  has no daily history yet (group shown disabled); object → daily enabled. */
+  dailyBounds?: { first: string; last: string } | null;
 }) {
+  // A tool opts INTO daily by passing the prop at all (even null). Ownership omits it.
+  const supportsDaily = dailyBounds !== undefined;
+  const hasDaily = !!dailyBounds;
+  const isCustom = value.mode === "custom";
+  const btn = (on: boolean, disabled?: boolean) =>
+    cn(
+      "rounded-md border px-3 py-1 text-[11px] transition-colors",
+      disabled
+        ? "cursor-not-allowed border-line2 bg-surface-2 text-ink3/40"
+        : on
+          ? "border-line3 bg-surface-3 font-medium text-ink"
+          : "border-line2 bg-surface-2 text-ink2 hover:border-line3 hover:text-ink",
+    );
+
   return (
-    <div className="inline-flex gap-1 rounded-lg" role="group" aria-label="History window">
-      {WINDOW_OPTIONS.map((o) => {
-        const on = o.value === value;
-        return (
-          <button
-            key={o.value}
-            onClick={() => onChange(o.value)}
-            aria-pressed={on}
-            className={cn(
-              "rounded-md border px-3 py-1 text-[11px] transition-colors",
-              on
-                ? "border-line3 bg-surface-3 font-medium text-ink"
-                : "border-line2 bg-surface-2 text-ink2 hover:border-line3 hover:text-ink",
-            )}
-          >
-            {o.label}
-          </button>
-        );
-      })}
+    <div className="flex flex-col items-start gap-1.5">
+      <div className="flex flex-wrap items-center gap-1" role="group" aria-label="History window">
+        {QUARTER_OPTIONS.map((o) => {
+          const on = value.mode === "quarterly" && value.quarters === o.value;
+          return (
+            <button
+              key={`q${o.value}`}
+              onClick={() => onChange({ mode: "quarterly", quarters: o.value })}
+              aria-pressed={on}
+              className={btn(on)}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+        {supportsDaily && (
+          <>
+            <span className="mx-0.5 h-4 w-px bg-line2" aria-hidden />
+            {DAY_OPTIONS.map((o) => {
+              const on = value.mode === "daily" && value.days === o.value;
+              return (
+                <button
+                  key={`d${o.value}`}
+                  disabled={!hasDaily}
+                  title={hasDaily ? undefined : NEEDS_DAILY}
+                  onClick={() => hasDaily && onChange({ mode: "daily", days: o.value })}
+                  aria-pressed={on}
+                  className={btn(on, !hasDaily)}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+            <button
+              disabled={!hasDaily}
+              title={hasDaily ? undefined : NEEDS_DAILY}
+              onClick={() =>
+                hasDaily && onChange({ mode: "custom", start: dailyBounds!.first, end: dailyBounds!.last })
+              }
+              aria-pressed={isCustom}
+              className={btn(isCustom, !hasDaily)}
+            >
+              Custom
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* custom range picker — arbitrary start–end, clamped to available daily history */}
+      {isCustom && dailyBounds && (
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink2">
+          <label className="inline-flex items-center gap-1.5">
+            <span className="text-ink3">From</span>
+            <input
+              type="date"
+              value={value.start}
+              min={dailyBounds.first}
+              max={value.end || dailyBounds.last}
+              onChange={(e) => onChange({ mode: "custom", start: e.target.value, end: value.end })}
+              className="rounded-md border border-line2 bg-surface-2 px-2 py-1 text-[11px] text-ink outline-none focus:border-line3"
+            />
+          </label>
+          <label className="inline-flex items-center gap-1.5">
+            <span className="text-ink3">To</span>
+            <input
+              type="date"
+              value={value.end}
+              min={value.start || dailyBounds.first}
+              max={dailyBounds.last || todayISO()}
+              onChange={(e) => onChange({ mode: "custom", start: value.start, end: e.target.value })}
+              className="rounded-md border border-line2 bg-surface-2 px-2 py-1 text-[11px] text-ink outline-none focus:border-line3"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
@@ -131,10 +217,15 @@ export function ToolFrame({
 
   // The frame-owned shared scrub state — chart SETS it, readout READS it.
   // Reset to resting whenever the stock or window changes (new series).
+  const winKey = windowKey(window);
   const [active, setActive] = useState<ActiveDatapoint>({ index: null });
   useEffect(() => {
     setActive({ index: null });
-  }, [symbol, window]);
+  }, [symbol, winKey]);
+
+  // Frame-owned chart-expand state (shared, so all three tools behave identically).
+  // false = today's 50/50 layout; true = chart near-hero, readout+summary reflow below.
+  const [expanded, setExpanded] = useState(false);
 
   const Tool = meta.Icon;
 
@@ -254,6 +345,8 @@ export function ToolFrame({
           onWindowChange={onWindowChange}
           active={active}
           setActive={setActive}
+          expanded={expanded}
+          onToggleExpand={() => setExpanded((v) => !v)}
         />
       )}
     </div>
@@ -266,12 +359,16 @@ function SingleView({
   onWindowChange,
   active,
   setActive,
+  expanded,
+  onToggleExpand,
 }: {
   single: ToolFrameProps["single"];
   window: ToolWindow;
   onWindowChange: (w: ToolWindow) => void;
   active: ActiveDatapoint;
   setActive: (a: ActiveDatapoint) => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
 }) {
   if (!single) return null;
 
@@ -312,25 +409,23 @@ function SingleView({
           <div className="hero-name text-[27px] text-ink">{single.identity.name}</div>
           <div className="num mt-1 text-[12.5px] text-ink2">{single.identity.sub}</div>
         </div>
-        <div className="flex flex-col items-end gap-2.5">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {single.chips.map((c, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1.5 rounded-lg border bg-surface-1 px-2.5 py-1.5 text-[11.5px]"
-                style={{
-                  color: c.color ?? "var(--ink2)",
-                  borderColor: c.color ? `color-mix(in oklab, ${c.color} 33%, transparent)` : "var(--line2)",
-                }}
-              >
-                {c.dot && (
-                  <span className="size-[7px] rounded-full" style={{ background: c.dot }} />
-                )}
-                {c.label}
-              </span>
-            ))}
-          </div>
-          <WindowSwitcher value={window} onChange={onWindowChange} />
+        {/* chips — identity, right-aligned (the timeframe control now lives by the chart) */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {single.chips.map((c, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1.5 rounded-lg border bg-surface-1 px-2.5 py-1.5 text-[11.5px]"
+              style={{
+                color: c.color ?? "var(--ink2)",
+                borderColor: c.color ? `color-mix(in oklab, ${c.color} 33%, transparent)` : "var(--line2)",
+              }}
+            >
+              {c.dot && (
+                <span className="size-[7px] rounded-full" style={{ background: c.dot }} />
+              )}
+              {c.label}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -349,16 +444,48 @@ function SingleView({
           </p>
         </Panel>
       ) : (
-        // THE frame-owned grid: desktop 50/50, mobile single column.
-        <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
-          {/* left — centerpiece chart, sized to the column */}
-          {single.renderChart(active, setActive)}
-          {/* right — live readout (top) + static summary (bottom) */}
-          <div className="grid gap-3">
-            {single.renderReadout(active)}
-            {single.renderSummary()}
+        <>
+          {/* chart toolbar — the timeframe control + expand toggle sit WITH the chart */}
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+            <WindowSwitcher value={window} onChange={onWindowChange} dailyBounds={single.dailyBounds} />
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-pressed={expanded}
+              title={expanded ? "Minimize chart" : "Expand chart"}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1.5 text-[11.5px] text-ink2 transition-colors hover:border-line3 hover:text-ink"
+            >
+              {expanded ? (
+                <Icons.arrowsInSimple className="size-3.5" />
+              ) : (
+                <Icons.arrowsOutSimple className="size-3.5" />
+              )}
+              {expanded ? "Minimize" : "Expand"}
+            </button>
           </div>
-        </div>
+
+          {expanded ? (
+            // EXPANDED: chart near-hero (full width), readout + summary reflow BELOW.
+            <div className="flex flex-col gap-3">
+              {single.renderChart(active, setActive)}
+              <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+                {single.renderReadout(active)}
+                {single.renderSummary()}
+              </div>
+            </div>
+          ) : (
+            // MINIMIZED (default): desktop 50/50, mobile single column.
+            <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+              {/* left — centerpiece chart, sized to the column */}
+              {single.renderChart(active, setActive)}
+              {/* right — live readout (top) + static summary (bottom) */}
+              <div className="grid gap-3">
+                {single.renderReadout(active)}
+                {single.renderSummary()}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* funnel-back */}

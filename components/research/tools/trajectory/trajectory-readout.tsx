@@ -9,7 +9,7 @@
 import { Panel, PILLAR_META } from "@/components/stock-detail/health/shared";
 import { healthLabel } from "@/lib/format";
 import type { ActiveDatapoint } from "../tool-frame.types";
-import type { ChartPoint } from "./trajectory-data";
+import type { WindowPoint } from "../window-slice";
 
 const PILLARS: ("foundation" | "momentum" | "market" | "ownership")[] = [
   "foundation",
@@ -20,9 +20,11 @@ const PILLARS: ("foundation" | "momentum" | "market" | "ownership")[] = [
 
 export function TrajectoryReadout({
   points,
+  isDaily,
   active,
 }: {
-  points: ChartPoint[];
+  points: WindowPoint[];
+  isDaily: boolean;
   active: ActiveDatapoint;
 }) {
   const n = points.length;
@@ -40,7 +42,7 @@ export function TrajectoryReadout({
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
         <div className="shrink-0">
-          <div className="num text-[12px] tracking-wide text-ink3">{p.period}</div>
+          <div className="num text-[12px] tracking-wide text-ink3">{p.x}</div>
           <div className="mt-1 flex items-baseline gap-2.5">
             <span className="num text-[38px] font-medium leading-none text-ink">
               {p.composite.toFixed(0)}
@@ -49,7 +51,7 @@ export function TrajectoryReadout({
           </div>
           <div className="num mt-1.5 text-[11.5px]" style={{ color: deltaColor }}>
             {delta >= 0 ? "+" : ""}
-            {delta.toFixed(1)} over window
+            {delta.toFixed(1)} over {isDaily ? "range" : "window"}
           </div>
         </div>
 

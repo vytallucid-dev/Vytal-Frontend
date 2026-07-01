@@ -16,9 +16,12 @@ const signed = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(1)}`;
 export function OwnershipReadout({
   points,
   active,
+  r1 = false,
 }: {
   points: HoldingPoint[];
   active: ActiveDatapoint;
+  /** R1 pledge red flag firing (current period) — escalates the pledge treatment. */
+  r1?: boolean;
 }) {
   const n = points.length;
   const i = active.index ?? n - 1;
@@ -29,6 +32,9 @@ export function OwnershipReadout({
   const instDelta = instPrev != null ? instNow - instPrev : null;
   const fiiDelta = prev ? p.fii - prev.fii : null;
   const diiDelta = prev ? p.dii - prev.dii : null;
+  // pledged slice of the promoter bar (% of the promoter bar's own length).
+  const pledgedPct =
+    p.pledgedPctOfPromoter != null && p.pledgedPctOfPromoter > 0 ? p.pledgedPctOfPromoter : null;
 
   return (
     <Panel className="px-4 py-4">
@@ -42,17 +48,28 @@ export function OwnershipReadout({
       <div className="flex flex-col gap-2.5">
         {HOLD_LANES.map((lane) => {
           const v = p[lane.key];
+          // On the PROMOTER row, split the bar: gold with a red pledged sub-portion at its
+          // base (red length = pledgedPct% of the promoter bar). Mirrors the chart's red.
+          const isPromoter = lane.key === "promoter";
+          const barW = Math.max(0, Math.min(100, v));
+          const redW = isPromoter && pledgedPct != null ? barW * (pledgedPct / 100) : 0;
           return (
             <div key={lane.key} className="flex items-center gap-2.5 text-[12.5px]">
               <span className="flex w-20 shrink-0 items-center gap-2">
                 <span className="size-2.5 rounded-sm" style={{ background: lane.color }} />
                 {lane.label}
               </span>
-              <span className="h-1.5 flex-1 overflow-hidden rounded bg-surface-3">
+              <span className="relative h-1.5 flex-1 overflow-hidden rounded bg-surface-3">
                 <span
                   className="block h-full rounded transition-[width] duration-150"
-                  style={{ width: `${Math.max(0, Math.min(100, v))}%`, background: lane.color }}
+                  style={{ width: `${barW}%`, background: lane.color }}
                 />
+                {redW > 0 && (
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-l"
+                    style={{ width: `${redW}%`, background: "var(--crit)" }}
+                  />
+                )}
               </span>
               <span className="num w-9 shrink-0 text-right text-ink">{v.toFixed(1)}</span>
             </div>
@@ -83,10 +100,27 @@ export function OwnershipReadout({
           </div>
         )}
 
-        <div className="mt-1 text-[11.5px] text-ink3">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-ink3">
           pledge ·{" "}
-          {p.pledgedPctOfPromoter != null && p.pledgedPctOfPromoter > 0 ? (
-            <span className="num text-high">{p.pledgedPctOfPromoter.toFixed(1)}% of promoter holding</span>
+          {pledgedPct != null ? (
+            r1 ? (
+              // R1 firing — escalate to the crit treatment used across the tool.
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--crit)", background: "color-mix(in oklab, var(--crit) 14%, transparent)" }}
+                >
+                  R1
+                </span>
+                <span className="num font-medium" style={{ color: "var(--crit)" }}>
+                  {pledgedPct.toFixed(1)}% of promoter holding pledged — above its mark
+                </span>
+              </span>
+            ) : (
+              <span className="num" style={{ color: "var(--high)" }}>
+                {pledgedPct.toFixed(1)}% of promoter holding pledged
+              </span>
+            )
           ) : (
             <span className="text-ink2">none</span>
           )}

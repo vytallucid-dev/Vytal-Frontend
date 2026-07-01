@@ -30,43 +30,52 @@ import type {
   GeneralInsuranceQuarter,
   GeneralInsuranceAnnual,
 } from "@/types/fundamentals";
-
-// ── formatters (self-contained — no cross-import from fundamentals.tsx) ───────
-const DASH = "—";
-const fmtPct = (v: number | null | undefined, dp = 1) =>
-  v == null ? DASH : `${v.toFixed(dp)}%`;
-const fmtX = (v: number | null | undefined, dp = 2) =>
-  v == null ? DASH : `${v.toFixed(dp)}×`;
-
-function fmtCr(v: number | null | undefined) {
-  if (v == null) return DASH;
-  const sign = v < 0 ? "−" : "";
-  const a = Math.abs(v);
-  return `${sign}₹${a.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`;
-}
-
-// ── statement row ─────────────────────────────────────────────────────────────
-type StmtRow = {
-  label: string;
-  values: string[];
-  indent?: boolean;   // sub-row (indented label, text-ink3)
-  isMargin?: boolean; // %-type row → text-ink2, not competing with money
-  isBold?: boolean;   // total / headline row
-};
+// The statement row-structure (labels, ordering, grouped hierarchy, indent/bold treatment)
+// + the cell formatters live in the SHARED statement-lines module — the single source of
+// truth reused by the comparison Fundamentals tab. This component owns only the table
+// CHROME (tabs, windowing, show-all) and wires the shared line-defs into it.
+import {
+  DASH,
+  type StmtRow,
+  type AnnualLine,
+  nfPlQuarterRows,
+  nfPlLines,
+  nfBsLines,
+  nfCfLines,
+  bkPlQuarterRows,
+  bkPlLines,
+  bkBsLines,
+  bkCfLines,
+  nbfcPlQuarterRows,
+  nbfcPlLines,
+  nbfcBsLines,
+  nbfcCfLines,
+  liPlQuarterRows,
+  liPlLines,
+  liBsLines,
+  giPlQuarterRows,
+  giPlLines,
+  giBsLines,
+} from "./statement-lines";
 
 // ── generic multi-period statement table (periods as columns) ─────────────────
+// `highlightPeriod` (optional) marks ONE column — the Result Viewer's anchor period — so
+// the viewed filing's column stands out (same calm bg-surface-2 the spine's current row uses).
 function StmtTable({
   periods,
   rows,
   note,
+  highlightPeriod,
 }: {
   periods: string[];
   rows: StmtRow[];
   note?: string;
+  highlightPeriod?: string;
 }) {
   if (periods.length === 0) {
     return <p className="py-6 text-center text-[12px] text-ink3">No data available for this statement.</p>;
   }
+  const hlIdx = highlightPeriod ? periods.indexOf(highlightPeriod) : -1;
   return (
     <div>
       {note && <p className="mb-2 text-[11px] text-ink3 italic">{note}</p>}
@@ -77,10 +86,13 @@ function StmtTable({
               <th className="min-w-[168px] px-2 py-2 text-left text-[9.5px] font-semibold uppercase tracking-wide text-ink3">
                 Line item
               </th>
-              {periods.map((p) => (
+              {periods.map((p, j) => (
                 <th
                   key={p}
-                  className="min-w-[88px] px-2 py-2 text-right text-[9.5px] font-semibold uppercase tracking-wide text-ink3"
+                  className={cn(
+                    "min-w-[88px] px-2 py-2 text-right text-[9.5px] font-semibold uppercase tracking-wide",
+                    j === hlIdx ? "bg-surface-2 text-ink2" : "text-ink3",
+                  )}
                 >
                   {p}
                 </th>
@@ -106,6 +118,7 @@ function StmtTable({
                       "num px-2 py-[7px] text-right",
                       v === DASH ? "text-ink3" : row.isMargin ? "text-ink2" : "text-ink",
                       row.isBold && "font-semibold",
+                      j === hlIdx && "bg-surface-2",
                     )}
                   >
                     {v}
@@ -123,6 +136,21 @@ function StmtTable({
 // ── windowing constants ───────────────────────────────────────────────────────
 const MAX_Q = 8;
 const MAX_YEARS = 5;
+
+// ── quarterly P&L anchor helper (Result Viewer) ───────────────────────────────
+// Given the full quarters (oldest→newest) + an anchor periodKey, decide whether the anchor
+// falls outside the default last-MAX_Q window (→ start expanded) and return the anchor's
+// display label for column highlighting. Shared by every family's quarterly P&L branch.
+function quarterlyAnchor(
+  quarters: { periodKey: string }[],
+  anchorPeriodKey?: string,
+): { startExpanded: boolean; highlightLabel?: string } {
+  if (!anchorPeriodKey) return { startExpanded: false };
+  const exists = quarters.some((q) => q.periodKey === anchorPeriodKey);
+  if (!exists) return { startExpanded: false }; // viewed period not in the series → no anchor
+  const inWindow = quarters.slice(-MAX_Q).some((q) => q.periodKey === anchorPeriodKey);
+  return { startExpanded: !inWindow, highlightLabel: shortPeriod(anchorPeriodKey) };
+}
 
 // ── show-all toggle (quarters or years) ───────────────────────────────────────
 function ShowAllToggle({
@@ -154,15 +182,7 @@ function ShowAllToggle({
 // Each year of the (oldest→newest) series becomes a COLUMN, exactly like the quarterly
 // table does with quarters: last MAX_YEARS visible, show-all expands the rest. A
 // single-year stock renders one column. Honest "—" per null cell (the line-def's value()
-// returns DASH for that year).
-type AnnualLine<T> = {
-  label: string;
-  value: (a: T) => string;
-  indent?: boolean;
-  isMargin?: boolean;
-  isBold?: boolean;
-};
-
+// returns DASH for that year). AnnualLine<T> is imported from the shared statement-lines module.
 function buildAnnualRows<T>(items: T[], lines: AnnualLine<T>[]): StmtRow[] {
   return lines.map((ln) => ({
     label: ln.label,
@@ -177,19 +197,34 @@ function AnnualStmtTable<T extends { fiscalYear: string }>({
   series,
   lines,
   note,
+  highlightYear,
 }: {
   series: T[]; // oldest → newest
   lines: AnnualLine<T>[];
   note?: string;
+  /** Result Viewer anchor: the viewed result's fiscalYear. When it falls outside the default
+   *  last-MAX_YEARS window, the table opens expanded so the anchored year is visible. */
+  highlightYear?: string;
 }) {
-  const [showAll, setShowAll] = useState(false);
+  // Anchored year outside the default window → start expanded so it's on screen.
+  const anchorOutOfWindow =
+    highlightYear != null &&
+    series.length > MAX_YEARS &&
+    series.slice(-MAX_YEARS).every((a) => a.fiscalYear !== highlightYear) &&
+    series.some((a) => a.fiscalYear === highlightYear);
+  const [showAll, setShowAll] = useState(anchorOutOfWindow);
   if (series.length === 0) {
     return <p className="py-6 text-center text-[12px] text-ink3">No annual figures available.</p>;
   }
   const visible = showAll ? series : series.slice(-MAX_YEARS);
   return (
     <div>
-      <StmtTable periods={visible.map((a) => a.fiscalYear)} rows={buildAnnualRows(visible, lines)} note={note} />
+      <StmtTable
+        periods={visible.map((a) => a.fiscalYear)}
+        rows={buildAnnualRows(visible, lines)}
+        note={note}
+        highlightPeriod={highlightYear}
+      />
       <ShowAllToggle total={series.length} max={MAX_YEARS} unit="years" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
     </div>
   );
@@ -260,97 +295,50 @@ function PeriodToggle({
 function NfPL({
   quarters,
   annualSeries,
+  anchorPeriodKey,
+  anchorFiscalYear,
 }: {
   quarters: QuarterPoint[];
   annualSeries: AnnualSnapshot[];
+  anchorPeriodKey?: string;
+  anchorFiscalYear?: string;
 }) {
+  const anchor = quarterlyAnchor(quarters, anchorPeriodKey);
   const [mode, setMode] = useState<"q" | "a">("q");
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(anchor.startExpanded);
 
   if (mode === "q") {
     const qVisible = showAll ? quarters : quarters.slice(-MAX_Q);
-    const rows: StmtRow[] = [
-      { label: "Revenue", values: qVisible.map((q) => fmtCr(q.revenue)) },
-      { label: "Expenses", values: qVisible.map((q) => fmtCr(q.expenses)) },
-      { label: "Operating Profit", values: qVisible.map((q) => fmtCr(q.operatingProfit)), isBold: true },
-      { label: "OPM%", values: qVisible.map((q) => fmtPct(q.operatingMargin)), isMargin: true },
-      { label: "Other Income", values: qVisible.map((q) => fmtCr(q.otherIncome)) },
-      { label: "Interest", values: qVisible.map((q) => fmtCr(q.interest)) },
-      { label: "Depreciation", values: qVisible.map((q) => fmtCr(q.depreciation)) },
-      { label: "Profit Before Tax", values: qVisible.map((q) => fmtCr(q.profitBeforeTax)), isBold: true },
-      { label: "Tax", values: qVisible.map((q) => fmtCr(q.tax)) },
-      { label: "Net Profit", values: qVisible.map((q) => fmtCr(q.netProfit)), isBold: true },
-      { label: "Net Margin%", values: qVisible.map((q) => fmtPct(q.netMargin)), isMargin: true },
-    ];
     return (
       <div>
         <PeriodToggle active={mode} onChange={setMode} />
-        <StmtTable periods={qVisible.map((q) => shortPeriod(q.periodKey))} rows={rows} />
+        <StmtTable periods={qVisible.map((q) => shortPeriod(q.periodKey))} rows={nfPlQuarterRows(qVisible)} highlightPeriod={anchor.highlightLabel} />
         <ShowAllToggle total={quarters.length} max={MAX_Q} unit="quarters" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
       </div>
     );
   }
 
-  const lines: AnnualLine<AnnualSnapshot>[] = [
-    { label: "Revenue", value: (a) => fmtCr(a.revenue) },
-    { label: "Other Income", value: (a) => fmtCr(a.otherIncome) },
-    { label: "Total Expenses", value: (a) => fmtCr(a.expenses), isBold: true },
-    { label: "Employee Benefits", value: (a) => fmtCr(a.employeeBenefitExpense), indent: true },
-    { label: "Finance Costs", value: (a) => fmtCr(a.financeCosts), indent: true },
-    { label: "Depreciation", value: (a) => fmtCr(a.depreciation), indent: true },
-    { label: "EBITDA", value: (a) => fmtCr(a.ebitda), isBold: true },
-    { label: "Operating Margin%", value: (a) => fmtPct(a.operatingMargin), isMargin: true },
-    { label: "Profit Before Tax", value: (a) => fmtCr(a.profitBeforeTax), isBold: true },
-    { label: "Tax", value: (a) => fmtCr(a.tax) },
-    { label: "Net Profit", value: (a) => fmtCr(a.netProfit), isBold: true },
-    { label: "Net Margin%", value: (a) => fmtPct(a.netMargin), isMargin: true },
-  ];
   return (
     <div>
       <PeriodToggle active={mode} onChange={setMode} />
-      <AnnualStmtTable series={annualSeries} lines={lines} />
+      <AnnualStmtTable series={annualSeries} lines={nfPlLines} highlightYear={anchorFiscalYear} />
     </div>
   );
 }
 
-function NfBS({ annualSeries }: { annualSeries: AnnualSnapshot[] }) {
-  const lines: AnnualLine<AnnualSnapshot>[] = [
-    { label: "Equity & Liabilities", value: () => DASH, isBold: true },
-    { label: "Equity Share Capital", value: (a) => fmtCr(a.equityShareCapital), indent: true },
-    { label: "Other Equity (Reserves)", value: (a) => fmtCr(a.otherEquity), indent: true },
-    { label: "Total Equity", value: (a) => fmtCr(a.totalEquity), isBold: true },
-    { label: "Borrowings — Current", value: (a) => fmtCr(a.borrowingsCurrent), indent: true },
-    { label: "Borrowings — Non-current", value: (a) => fmtCr(a.borrowingsNoncurrent), indent: true },
-    { label: "Total Debt", value: (a) => fmtCr(a.totalDebt), isBold: true },
-    { label: "Current Liabilities", value: (a) => fmtCr(a.currentLiabilities), indent: true },
-    { label: "Assets", value: () => DASH, isBold: true },
-    { label: "Property, Plant & Equipment", value: (a) => fmtCr(a.propertyPlantAndEquipment), indent: true },
-    { label: "Capital Work in Progress", value: (a) => fmtCr(a.capitalWorkInProgress), indent: true },
-    { label: "Non-current Investments", value: (a) => fmtCr(a.noncurrentInvestments), indent: true },
-    { label: "Current Investments", value: (a) => fmtCr(a.currentInvestments), indent: true },
-    { label: "Inventories", value: (a) => fmtCr(a.inventories), indent: true },
-    { label: "Current Assets", value: (a) => fmtCr(a.currentAssets), indent: true },
-    { label: "Cash & Cash Equivalents", value: (a) => fmtCr(a.cashAndCashEquivalents), indent: true },
-    { label: "Total Assets", value: (a) => fmtCr(a.totalAssets), isBold: true },
-  ];
+function NfBS({ annualSeries, anchorFiscalYear }: { annualSeries: AnnualSnapshot[]; anchorFiscalYear?: string }) {
   return (
     <AnnualStmtTable
       series={annualSeries}
-      lines={lines}
+      lines={nfBsLines}
       note={'"—" means not separately disclosed in the filing.'}
+      highlightYear={anchorFiscalYear}
     />
   );
 }
 
-function NfCF({ annualSeries }: { annualSeries: AnnualSnapshot[] }) {
-  const lines: AnnualLine<AnnualSnapshot>[] = [
-    { label: "Cash from Operating", value: (a) => fmtCr(a.cashFromOperating), isBold: true },
-    { label: "Cash from Investing", value: (a) => fmtCr(a.cashFromInvesting) },
-    { label: "Cash from Financing", value: (a) => fmtCr(a.cashFromFinancing) },
-    { label: "Free Cash Flow", value: (a) => fmtCr(a.fcf), isBold: true },
-    { label: "Capex", value: (a) => fmtCr(a.capex) },
-  ];
-  return <AnnualStmtTable series={annualSeries} lines={lines} />;
+function NfCF({ annualSeries, anchorFiscalYear }: { annualSeries: AnnualSnapshot[]; anchorFiscalYear?: string }) {
+  return <AnnualStmtTable series={annualSeries} lines={nfCfLines} highlightYear={anchorFiscalYear} />;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -360,74 +348,43 @@ function NfCF({ annualSeries }: { annualSeries: AnnualSnapshot[] }) {
 function BkPL({
   quarters,
   annualSeries,
+  anchorPeriodKey,
+  anchorFiscalYear,
 }: {
   quarters: BankingQuarter[];
   annualSeries: BankingAnnual[];
+  anchorPeriodKey?: string;
+  anchorFiscalYear?: string;
 }) {
+  const anchor = quarterlyAnchor(quarters, anchorPeriodKey);
   const [mode, setMode] = useState<"q" | "a">("q");
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(anchor.startExpanded);
 
   if (mode === "q") {
     const qVisible = showAll ? quarters : quarters.slice(-MAX_Q);
-    const rows: StmtRow[] = [
-      { label: "Interest Earned", values: qVisible.map((q) => fmtCr(q.interestEarned)) },
-      { label: "Interest Expended", values: qVisible.map((q) => fmtCr(q.interestExpended)) },
-      { label: "Net Interest Income", values: qVisible.map((q) => fmtCr(q.nii)), isBold: true },
-      { label: "Other Income", values: qVisible.map((q) => fmtCr(q.otherIncome)) },
-      { label: "Total Income", values: qVisible.map((q) => fmtCr(q.totalIncome)), isBold: true },
-      { label: "PPOP", values: qVisible.map((q) => fmtCr(q.ppop)) },
-      { label: "Provisions", values: qVisible.map((q) => fmtCr(q.provisions)) },
-      { label: "Net Profit", values: qVisible.map((q) => fmtCr(q.netProfit)), isBold: true },
-      { label: "Net Margin%", values: qVisible.map((q) => fmtPct(q.netMargin)), isMargin: true },
-    ];
     return (
       <div>
         <PeriodToggle active={mode} onChange={setMode} />
-        <StmtTable periods={qVisible.map((q) => shortPeriod(q.periodKey))} rows={rows} />
+        <StmtTable periods={qVisible.map((q) => shortPeriod(q.periodKey))} rows={bkPlQuarterRows(qVisible)} highlightPeriod={anchor.highlightLabel} />
         <ShowAllToggle total={quarters.length} max={MAX_Q} unit="quarters" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
       </div>
     );
   }
 
-  const lines: AnnualLine<BankingAnnual>[] = [
-    { label: "Interest Earned", value: (a) => fmtCr(a.interestEarned), isBold: true },
-    { label: "Interest on Advances", value: (a) => fmtCr(a.interestOnAdvances), indent: true },
-    { label: "Revenue on Investments", value: (a) => fmtCr(a.revenueOnInvestments), indent: true },
-  ];
   return (
     <div>
       <PeriodToggle active={mode} onChange={setMode} />
-      <AnnualStmtTable
-        series={annualSeries}
-        lines={lines}
-        note="Banking annual P&L shows the earnings mix (interest-income breakdown) across reported years."
-      />
+      <AnnualStmtTable series={annualSeries} lines={bkPlLines} highlightYear={anchorFiscalYear} />
     </div>
   );
 }
 
-function BkBS({ annualSeries }: { annualSeries: BankingAnnual[] }) {
-  const lines: AnnualLine<BankingAnnual>[] = [
-    { label: "Capital", value: (a) => fmtCr(a.capital) },
-    { label: "Reserves & Surplus", value: (a) => fmtCr(a.reservesAndSurplus) },
-    { label: "Net Worth", value: (a) => fmtCr(a.netWorth), isBold: true },
-    { label: "Deposits", value: (a) => fmtCr(a.deposits), isBold: true },
-    { label: "Advances", value: (a) => fmtCr(a.advances), isBold: true },
-    { label: "Investments", value: (a) => fmtCr(a.investments) },
-    { label: "Borrowings", value: (a) => fmtCr(a.borrowings) },
-    { label: "Cash & Balances with RBI", value: (a) => fmtCr(a.cashAndBalancesWithRbi) },
-    { label: "Total Assets", value: (a) => fmtCr(a.totalAssets), isBold: true },
-  ];
-  return <AnnualStmtTable series={annualSeries} lines={lines} />;
+function BkBS({ annualSeries, anchorFiscalYear }: { annualSeries: BankingAnnual[]; anchorFiscalYear?: string }) {
+  return <AnnualStmtTable series={annualSeries} lines={bkBsLines} highlightYear={anchorFiscalYear} />;
 }
 
-function BkCF({ annualSeries }: { annualSeries: BankingAnnual[] }) {
-  const lines: AnnualLine<BankingAnnual>[] = [
-    { label: "Cash from Operating", value: (a) => fmtCr(a.cashFromOperating), isBold: true },
-    { label: "Cash from Investing", value: (a) => fmtCr(a.cashFromInvesting) },
-    { label: "Cash from Financing", value: (a) => fmtCr(a.cashFromFinancing) },
-  ];
-  return <AnnualStmtTable series={annualSeries} lines={lines} />;
+function BkCF({ annualSeries, anchorFiscalYear }: { annualSeries: BankingAnnual[]; anchorFiscalYear?: string }) {
+  return <AnnualStmtTable series={annualSeries} lines={bkCfLines} highlightYear={anchorFiscalYear} />;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -437,164 +394,159 @@ function BkCF({ annualSeries }: { annualSeries: BankingAnnual[] }) {
 function NbfcPL({
   quarters,
   annualSeries,
+  anchorPeriodKey,
+  anchorFiscalYear,
 }: {
   quarters: NbfcQuarter[];
   annualSeries: NbfcAnnual[];
+  anchorPeriodKey?: string;
+  anchorFiscalYear?: string;
 }) {
+  const anchor = quarterlyAnchor(quarters, anchorPeriodKey);
   const [mode, setMode] = useState<"q" | "a">("q");
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(anchor.startExpanded);
 
   if (mode === "q") {
     const qVisible = showAll ? quarters : quarters.slice(-MAX_Q);
-    const rows: StmtRow[] = [
-      { label: "Revenue (Total Income)", values: qVisible.map((q) => fmtCr(q.revenue)) },
-      { label: "Interest Income", values: qVisible.map((q) => fmtCr(q.interestIncome)), indent: true },
-      { label: "Fee & Commission Income", values: qVisible.map((q) => fmtCr(q.feeAndCommissionIncome)), indent: true },
-      { label: "Finance Costs", values: qVisible.map((q) => fmtCr(q.financeCosts)) },
-      { label: "Impairment on Fin. Instruments", values: qVisible.map((q) => fmtCr(q.impairmentOnFinancialInstruments)) },
-      { label: "Net Interest Income", values: qVisible.map((q) => fmtCr(q.nii)), isBold: true },
-      { label: "Net Profit", values: qVisible.map((q) => fmtCr(q.netProfit)), isBold: true },
-      { label: "Net Margin%", values: qVisible.map((q) => fmtPct(q.netMargin)), isMargin: true },
-    ];
     return (
       <div>
         <PeriodToggle active={mode} onChange={setMode} />
-        <StmtTable periods={qVisible.map((q) => shortPeriod(q.periodKey))} rows={rows} />
+        <StmtTable periods={qVisible.map((q) => shortPeriod(q.periodKey))} rows={nbfcPlQuarterRows(qVisible)} highlightPeriod={anchor.highlightLabel} />
         <ShowAllToggle total={quarters.length} max={MAX_Q} unit="quarters" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
       </div>
     );
   }
 
-  const lines: AnnualLine<NbfcAnnual>[] = [
-    { label: "Interest Income", value: (a) => fmtCr(a.interestIncome) },
-    { label: "Fee & Commission Income", value: (a) => fmtCr(a.feeAndCommissionIncome) },
-    { label: "Net Profit", value: (a) => fmtCr(a.netProfit), isBold: true },
-    { label: "Net Margin%", value: (a) => fmtPct(a.netMargin), isMargin: true },
-  ];
   return (
     <div>
       <PeriodToggle active={mode} onChange={setMode} />
-      <AnnualStmtTable series={annualSeries} lines={lines} />
+      <AnnualStmtTable series={annualSeries} lines={nbfcPlLines} highlightYear={anchorFiscalYear} />
     </div>
   );
 }
 
-function NbfcBS({ annualSeries }: { annualSeries: NbfcAnnual[] }) {
-  const lines: AnnualLine<NbfcAnnual>[] = [
-    { label: "Total Equity", value: (a) => fmtCr(a.totalEquity), isBold: true },
-    { label: "Net Worth", value: (a) => fmtCr(a.netWorth) },
-    { label: "Loans (AUM)", value: (a) => fmtCr(a.loans), isBold: true },
-    { label: "Debt Securities", value: (a) => fmtCr(a.debtSecurities), indent: true },
-    { label: "Borrowings", value: (a) => fmtCr(a.borrowings), indent: true },
-    { label: "Deposits (Liabilities)", value: (a) => fmtCr(a.depositsLiabilities), indent: true },
-    { label: "Investments", value: (a) => fmtCr(a.investments) },
-    { label: "Cash & Cash Equivalents", value: (a) => fmtCr(a.cashAndCashEquivalents) },
-    { label: "Total Assets", value: (a) => fmtCr(a.totalAssets), isBold: true },
-  ];
+function NbfcBS({ annualSeries, anchorFiscalYear }: { annualSeries: NbfcAnnual[]; anchorFiscalYear?: string }) {
   return (
     <AnnualStmtTable
       series={annualSeries}
-      lines={lines}
+      lines={nbfcBsLines}
       note={'Non-deposit-taking NBFCs show "—" for deposits liabilities.'}
+      highlightYear={anchorFiscalYear}
     />
   );
 }
 
-function NbfcCF({ annualSeries }: { annualSeries: NbfcAnnual[] }) {
-  const lines: AnnualLine<NbfcAnnual>[] = [
-    { label: "Cash from Operating", value: (a) => fmtCr(a.cashFromOperating), isBold: true },
-    { label: "Cash from Investing", value: (a) => fmtCr(a.cashFromInvesting) },
-    { label: "Cash from Financing", value: (a) => fmtCr(a.cashFromFinancing) },
-  ];
-  return <AnnualStmtTable series={annualSeries} lines={lines} />;
+function NbfcCF({ annualSeries, anchorFiscalYear }: { annualSeries: NbfcAnnual[]; anchorFiscalYear?: string }) {
+  return <AnnualStmtTable series={annualSeries} lines={nbfcCfLines} highlightYear={anchorFiscalYear} />;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // Life Insurance statements
 // ════════════════════════════════════════════════════════════════════════════
 
-function LiPL({ quarters }: { quarters: LifeInsuranceQuarter[] }) {
-  const [showAll, setShowAll] = useState(false);
-  const qVisible = showAll ? quarters : quarters.slice(-MAX_Q);
-  const rows: StmtRow[] = [
-    { label: "Net Premium Income", values: qVisible.map((q) => fmtCr(q.netPremiumIncome)) },
-    { label: "Gross Premium Income", values: qVisible.map((q) => fmtCr(q.grossPremiumIncome)) },
-    { label: "Income from Investments", values: qVisible.map((q) => fmtCr(q.incomeFromInvestments)) },
-    { label: "Benefits Paid (Net)", values: qVisible.map((q) => fmtCr(q.benefitsPaidNet)) },
-    { label: "Change in Val. of Liabilities", values: qVisible.map((q) => fmtCr(q.changeInValuationOfLiabilities)) },
-    { label: "Net Profit", values: qVisible.map((q) => fmtCr(q.netProfit)), isBold: true },
-    { label: "Net Margin%", values: qVisible.map((q) => fmtPct(q.netMargin)), isMargin: true },
-    { label: "Solvency Ratio", values: qVisible.map((q) => fmtX(q.solvencyRatio)), isMargin: true },
-  ];
+function LiPL({
+  quarters,
+  annualSeries,
+  anchorPeriodKey,
+  anchorFiscalYear,
+}: {
+  quarters: LifeInsuranceQuarter[];
+  annualSeries: LifeInsuranceAnnual[];
+  anchorPeriodKey?: string;
+  anchorFiscalYear?: string;
+}) {
+  const anchor = quarterlyAnchor(quarters, anchorPeriodKey);
+  const [mode, setMode] = useState<"q" | "a">("q");
+  const [showAll, setShowAll] = useState(anchor.startExpanded);
+
+  if (mode === "q") {
+    const qVisible = showAll ? quarters : quarters.slice(-MAX_Q);
+    return (
+      <div>
+        <PeriodToggle active={mode} onChange={setMode} />
+        <StmtTable
+          periods={qVisible.map((q) => shortPeriod(q.periodKey))}
+          rows={liPlQuarterRows(qVisible)}
+          note="Income from investments and change in valuation of liabilities can be negative (mark-to-market)."
+          highlightPeriod={anchor.highlightLabel}
+        />
+        <ShowAllToggle total={quarters.length} max={MAX_Q} unit="quarters" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
+      </div>
+    );
+  }
+
   return (
     <div>
-      <StmtTable
-        periods={qVisible.map((q) => shortPeriod(q.periodKey))}
-        rows={rows}
+      <PeriodToggle active={mode} onChange={setMode} />
+      <AnnualStmtTable
+        series={annualSeries}
+        lines={liPlLines}
         note="Income from investments and change in valuation of liabilities can be negative (mark-to-market)."
+        highlightYear={anchorFiscalYear}
       />
-      <ShowAllToggle total={quarters.length} max={MAX_Q} unit="quarters" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
     </div>
   );
 }
 
-function LiBS({ annualSeries }: { annualSeries: LifeInsuranceAnnual[] }) {
-  const lines: AnnualLine<LifeInsuranceAnnual>[] = [
-    { label: "Policyholders' Funds", value: (a) => fmtCr(a.policyholdersFunds), isBold: true },
-    { label: "Assets for Linked Liabilities", value: (a) => fmtCr(a.assetsHeldToCoverLinkedLiabilities) },
-    { label: "Investments — Shareholders", value: (a) => fmtCr(a.investmentsShareholders) },
-    { label: "Investments — Policyholders", value: (a) => fmtCr(a.investmentsPolicyholders) },
-    { label: "Share Capital", value: (a) => fmtCr(a.shareCapital) },
-    { label: "Reserves & Surplus", value: (a) => fmtCr(a.reservesAndSurplus) },
-    { label: "Net Worth", value: (a) => fmtCr(a.netWorth), isBold: true },
-    { label: "Total Assets", value: (a) => fmtCr(a.totalAssets), isBold: true },
-  ];
-  return <AnnualStmtTable series={annualSeries} lines={lines} />;
+function LiBS({ annualSeries, anchorFiscalYear }: { annualSeries: LifeInsuranceAnnual[]; anchorFiscalYear?: string }) {
+  return <AnnualStmtTable series={annualSeries} lines={liBsLines} highlightYear={anchorFiscalYear} />;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // General Insurance statements
 // ════════════════════════════════════════════════════════════════════════════
 
-function GiPL({ quarters }: { quarters: GeneralInsuranceQuarter[] }) {
-  const [showAll, setShowAll] = useState(false);
-  const qVisible = showAll ? quarters : quarters.slice(-MAX_Q);
-  const rows: StmtRow[] = [
-    { label: "Gross Premiums Written", values: qVisible.map((q) => fmtCr(q.grossPremiumsWritten)) },
-    { label: "Net Premium", values: qVisible.map((q) => fmtCr(q.netPremium)) },
-    { label: "Premium Earned", values: qVisible.map((q) => fmtCr(q.premiumEarned)) },
-    { label: "Incurred Claims", values: qVisible.map((q) => fmtCr(q.incurredClaims)) },
-    { label: "Net Commission", values: qVisible.map((q) => fmtCr(q.netCommission)) },
-    { label: "Underwriting Profit / Loss", values: qVisible.map((q) => fmtCr(q.underwritingProfitOrLoss)), isBold: true },
-    { label: "Net Profit", values: qVisible.map((q) => fmtCr(q.netProfit)), isBold: true },
-    { label: "Net Margin%", values: qVisible.map((q) => fmtPct(q.netMargin)), isMargin: true },
-    { label: "Combined Ratio%", values: qVisible.map((q) => fmtPct(q.combinedRatio)), isMargin: true },
-  ];
+function GiPL({
+  quarters,
+  annualSeries,
+  anchorPeriodKey,
+  anchorFiscalYear,
+}: {
+  quarters: GeneralInsuranceQuarter[];
+  annualSeries: GeneralInsuranceAnnual[];
+  anchorPeriodKey?: string;
+  anchorFiscalYear?: string;
+}) {
+  const anchor = quarterlyAnchor(quarters, anchorPeriodKey);
+  const [mode, setMode] = useState<"q" | "a">("q");
+  const [showAll, setShowAll] = useState(anchor.startExpanded);
+
+  if (mode === "q") {
+    const qVisible = showAll ? quarters : quarters.slice(-MAX_Q);
+    return (
+      <div>
+        <PeriodToggle active={mode} onChange={setMode} />
+        <StmtTable
+          periods={qVisible.map((q) => shortPeriod(q.periodKey))}
+          rows={giPlQuarterRows(qVisible)}
+          note="Combined ratio above 100% = underwriting loss before investment income. Underwriting profit/loss can be negative."
+          highlightPeriod={anchor.highlightLabel}
+        />
+        <ShowAllToggle total={quarters.length} max={MAX_Q} unit="quarters" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
+      </div>
+    );
+  }
+
   return (
     <div>
-      <StmtTable
-        periods={qVisible.map((q) => shortPeriod(q.periodKey))}
-        rows={rows}
+      <PeriodToggle active={mode} onChange={setMode} />
+      <AnnualStmtTable
+        series={annualSeries}
+        lines={giPlLines}
         note="Combined ratio above 100% = underwriting loss before investment income. Underwriting profit/loss can be negative."
+        highlightYear={anchorFiscalYear}
       />
-      <ShowAllToggle total={quarters.length} max={MAX_Q} unit="quarters" showAll={showAll} onToggle={() => setShowAll((s) => !s)} />
     </div>
   );
 }
 
-function GiBS({ annualSeries }: { annualSeries: GeneralInsuranceAnnual[] }) {
-  const lines: AnnualLine<GeneralInsuranceAnnual>[] = [
-    { label: "Investments", value: (a) => fmtCr(a.investments), isBold: true },
-    { label: "Share Capital", value: (a) => fmtCr(a.shareCapital) },
-    { label: "Reserves & Surplus", value: (a) => fmtCr(a.reservesAndSurplus) },
-    { label: "Net Worth", value: (a) => fmtCr(a.netWorth), isBold: true },
-    { label: "Total Assets", value: (a) => fmtCr(a.totalAssets), isBold: true },
-  ];
+function GiBS({ annualSeries, anchorFiscalYear }: { annualSeries: GeneralInsuranceAnnual[]; anchorFiscalYear?: string }) {
   return (
     <AnnualStmtTable
       series={annualSeries}
-      lines={lines}
+      lines={giBsLines}
       note="Investments is its own line — not reconciled against total assets (GI convention)."
+      highlightYear={anchorFiscalYear}
     />
   );
 }
@@ -603,35 +555,45 @@ function GiBS({ annualSeries }: { annualSeries: GeneralInsuranceAnnual[] }) {
 // Family dispatcher
 // ════════════════════════════════════════════════════════════════════════════
 
-function StmtContent({ view, stmt }: { view: FundamentalsView; stmt: StmtType }) {
+function StmtContent({
+  view,
+  stmt,
+  anchorPeriodKey,
+  anchorFiscalYear,
+}: {
+  view: FundamentalsView;
+  stmt: StmtType;
+  anchorPeriodKey?: string;
+  anchorFiscalYear?: string;
+}) {
   if (view.family === "non_financial" && view.nonFinancial) {
     const nf = view.nonFinancial;
-    if (stmt === "pl") return <NfPL quarters={nf.quarters} annualSeries={nf.annualSeries} />;
-    if (stmt === "bs") return <NfBS annualSeries={nf.annualSeries} />;
-    return <NfCF annualSeries={nf.annualSeries} />;
+    if (stmt === "pl") return <NfPL quarters={nf.quarters} annualSeries={nf.annualSeries} anchorPeriodKey={anchorPeriodKey} anchorFiscalYear={anchorFiscalYear} />;
+    if (stmt === "bs") return <NfBS annualSeries={nf.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
+    return <NfCF annualSeries={nf.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
   }
   if (view.family === "banking" && view.banking) {
     const bk = view.banking;
-    if (stmt === "pl") return <BkPL quarters={bk.quarters} annualSeries={bk.annualSeries} />;
-    if (stmt === "bs") return <BkBS annualSeries={bk.annualSeries} />;
-    return <BkCF annualSeries={bk.annualSeries} />;
+    if (stmt === "pl") return <BkPL quarters={bk.quarters} annualSeries={bk.annualSeries} anchorPeriodKey={anchorPeriodKey} anchorFiscalYear={anchorFiscalYear} />;
+    if (stmt === "bs") return <BkBS annualSeries={bk.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
+    return <BkCF annualSeries={bk.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
   }
   if (view.family === "nbfc" && view.nbfc) {
     const nb = view.nbfc;
-    if (stmt === "pl") return <NbfcPL quarters={nb.quarters} annualSeries={nb.annualSeries} />;
-    if (stmt === "bs") return <NbfcBS annualSeries={nb.annualSeries} />;
-    return <NbfcCF annualSeries={nb.annualSeries} />;
+    if (stmt === "pl") return <NbfcPL quarters={nb.quarters} annualSeries={nb.annualSeries} anchorPeriodKey={anchorPeriodKey} anchorFiscalYear={anchorFiscalYear} />;
+    if (stmt === "bs") return <NbfcBS annualSeries={nb.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
+    return <NbfcCF annualSeries={nb.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
   }
   if (view.family === "life_insurance" && view.lifeInsurance) {
     const li = view.lifeInsurance;
-    if (stmt === "pl") return <LiPL quarters={li.quarters} />;
-    if (stmt === "bs") return <LiBS annualSeries={li.annualSeries} />;
+    if (stmt === "pl") return <LiPL quarters={li.quarters} annualSeries={li.annualSeries} anchorPeriodKey={anchorPeriodKey} anchorFiscalYear={anchorFiscalYear} />;
+    if (stmt === "bs") return <LiBS annualSeries={li.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
     return <p className="py-6 text-center text-[12px] text-ink3">Cash flow is not served for life insurance.</p>;
   }
   if (view.family === "general_insurance" && view.generalInsurance) {
     const gi = view.generalInsurance;
-    if (stmt === "pl") return <GiPL quarters={gi.quarters} />;
-    if (stmt === "bs") return <GiBS annualSeries={gi.annualSeries} />;
+    if (stmt === "pl") return <GiPL quarters={gi.quarters} annualSeries={gi.annualSeries} anchorPeriodKey={anchorPeriodKey} anchorFiscalYear={anchorFiscalYear} />;
+    if (stmt === "bs") return <GiBS annualSeries={gi.annualSeries} anchorFiscalYear={anchorFiscalYear} />;
     return <p className="py-6 text-center text-[12px] text-ink3">Cash flow is not served for general insurance.</p>;
   }
   return (
@@ -648,7 +610,19 @@ function StmtContent({ view, stmt }: { view: FundamentalsView; stmt: StmtType })
 const ACCENT = "var(--p-found)";
 const HAS_CF = new Set(["non_financial", "banking", "nbfc"]);
 
-export function FinancialStatements({ view }: { view: FundamentalsView }) {
+export function FinancialStatements({
+  view,
+  anchorPeriodKey,
+  anchorFiscalYear,
+}: {
+  view: FundamentalsView;
+  /** Result Viewer only: the viewed filing's periodKey (highlights that quarterly column and
+   *  opens the quarterly window to include it). Omitted on the per-stock page → latest-default. */
+  anchorPeriodKey?: string;
+  /** Result Viewer only: the viewed filing's fiscalYear (highlights that year's column in the
+   *  annual P&L/BS/CF and opens the window to include it). */
+  anchorFiscalYear?: string;
+}) {
   const [open, setOpen] = useState(true);
   const [stmt, setStmt] = useState<StmtType>("pl");
 
@@ -700,9 +674,17 @@ export function FinancialStatements({ view }: { view: FundamentalsView }) {
           <p className="mb-4 text-[11.5px] text-ink3">
             The reported figures, as filed — verify the analysis above against the source. "—" means
             not separately disclosed in the filing.
+            {anchorPeriodKey && (
+              <> The period you&apos;re viewing is highlighted.</>
+            )}
           </p>
           <StmtTabs active={activeStmt} onChange={setStmt} tabs={tabs} />
-          <StmtContent view={view} stmt={activeStmt} />
+          <StmtContent
+            view={view}
+            stmt={activeStmt}
+            anchorPeriodKey={anchorPeriodKey}
+            anchorFiscalYear={anchorFiscalYear}
+          />
         </Panel>
       )}
     </section>

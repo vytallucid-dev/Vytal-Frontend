@@ -7,6 +7,13 @@ import { HealthRing } from "@/components/ui/health-ring";
 import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Icons } from "@/lib/icons";
 import { healthColorVar } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -16,8 +23,10 @@ import type { UniverseHealthView, UniverseMemberView } from "@/types/universe-vi
 import {
   bestWorstPillar,
   compositeBand,
+  flagLabel,
   isRedistributed,
   memberVerdict,
+  recoveryMovers,
   PILLAR_LABEL,
 } from "./lib";
 
@@ -104,15 +113,204 @@ function Census({
   );
 }
 
-// ── mode switcher ──────────────────────────────────────────────────────────────
-type Mode = "overview" | "divergence" | "recovery" | "ride" | "composition";
-const MODES: { id: Mode; label: string; icon: React.ReactNode; live: boolean }[] = [
-  { id: "overview", label: "Overview", icon: <Icons.results className="size-3.5" />, live: true },
-  { id: "divergence", label: "Divergence", icon: <Icons.compare className="size-3.5" />, live: false },
-  { id: "recovery", label: "Recovery", icon: <Icons.trendUp className="size-3.5" />, live: false },
-  { id: "ride", label: "Risk / ride", icon: <Icons.pulse className="size-3.5" />, live: false },
-  { id: "composition", label: "Composition", icon: <Icons.chartBar className="size-3.5" />, live: false },
-];
+// ── condition filters (the mode row, reworked) ───────────────────────────────────
+// A UNIFORM taxonomy: every filter is the same KIND of thing — a SPECIFIC, named
+// per-member condition (a fired flag/pattern, a trajectory state, a wide spread, a
+// recovery) that a member either satisfies or doesn't. The set is DATA-DRIVEN: built
+// from what actually fires on real members this snapshot, so there are never dead
+// filters — a condition with zero members simply doesn't appear.
+interface ScreenFilter {
+  id: string;
+  label: string;
+  /** one-line honest note of what the condition means (neutral, no verdict). */
+  note: string;
+  count: number;
+  match: (m: UniverseMemberView) => boolean;
+}
+
+// The specific P-series pattern filters now live inside the "Patterns ▾" dropdown, not
+// the row — so there's no crowding cap: the menu holds ALL distinct firing patterns.
+
+// Structural pattern keys the pattern-filter builder MUST skip — they duplicate a
+// dedicated filter (Recovery / Wide divergence) or are too generic/structural to be a
+// clean, decision-useful pattern button (their signal already lives in the trajectory /
+// divergence conditions). Editable: add/remove keys here to tune the row manually.
+const SUPPRESSED_PATTERN_KEYS: ReadonlySet<string> = new Set([
+  // dup of the Recovery filter
+  "trajectory_D_recovery",
+  // dup of the Wide divergence filter
+  "divergence_C1_price_ahead",
+  "divergence_C2_ownership_vs_fundamentals",
+  "divergence_C3_floor_trajectory_split",
+  "divergence_C_over_time_widening",
+  "divergence_consolidated",
+  // structural / trajectory — covered by the dedicated Slipping/Firming conditions or too generic
+  "trajectory_B_deterioration",
+  "trajectory_G_convergence",
+  "trajectory_I_band_transition",
+  "trajectory_F2_composition_shift",
+  "composition_F1_atypical",
+]);
+
+function buildConditionFilters(view: UniverseHealthView): {
+  core: ScreenFilter[];
+  patterns: ScreenFilter[];
+} {
+  const members = view.members;
+  const recoverySet = new Set(recoveryMovers(view).map((r) => r.symbol));
+  const stamp = (f: Omit<ScreenFilter, "count">): ScreenFilter => ({
+    ...f,
+    count: members.filter(f.match).length,
+  });
+
+  // ── CORE — the fixed, always-shown buttons (stable, repeatedly reached-for). "Red flags"
+  // collapses ALL fired flags into one condition (any auto-tier flag firing). ──
+  const coreDefs: Omit<ScreenFilter, "count">[] = [
+    {
+      id: "red_flags",
+      label: "Red flags",
+      note: "Any auto-tier red flag firing (overrides the composite until it clears)",
+      match: (m) => m.firedFlags.length > 0,
+    },
+    {
+      id: "wide_divergence",
+      label: "Divergence",
+      note: "Two pillars ≥ 25 pts apart",
+      match: (m) => m.divergence.flag === "wide",
+    },
+    {
+      id: "recovery",
+      label: "Recovery",
+      note: "Rising from a weak base (prior composite below Steady)",
+      match: (m) => recoverySet.has(m.symbol),
+    },
+    {
+      id: "slipping",
+      label: "Slipping",
+      note: "Composite deteriorating quarter-on-quarter",
+      match: (m) => m.trajectoryMarker === "deteriorating",
+    },
+    {
+      id: "firming",
+      label: "Firming",
+      note: "Composite improving quarter-on-quarter",
+      match: (m) => m.trajectoryMarker === "improving",
+    },
+  ];
+  const core: ScreenFilter[] = coreDefs.map(stamp);
+
+  // ── PATTERNS — data-driven, collapsed into the dropdown. Every distinct fired P-series
+  // key (structural duplicates suppressed), reach-sorted. No cap — a menu, not a row. ──
+  const patternCounts = new Map<string, number>();
+  for (const m of members)
+    for (const p of m.firedPatterns) {
+      if (SUPPRESSED_PATTERN_KEYS.has(p.patternKey)) continue;
+      patternCounts.set(p.patternKey, (patternCounts.get(p.patternKey) ?? 0) + 1);
+    }
+  const patterns: ScreenFilter[] = [...patternCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([key]) =>
+      stamp({
+        id: `pattern:${key}`,
+        label: flagLabel(key),
+        note: `${flagLabel(key)} — a scored pattern firing on these names`,
+        match: (m) => m.firedPatterns.some((p) => p.patternKey === key),
+      }),
+    )
+    .filter((f) => f.count > 0);
+
+  return { core, patterns };
+}
+
+// ── one condition-filter button (uniform with the old mode-row styling) ──────────
+function ConditionButton({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors",
+        active
+          ? "border-line3 bg-surface-3 font-medium text-ink"
+          : "border-line2 bg-surface-1 text-ink2 hover:border-line3 hover:text-ink",
+      )}
+    >
+      {label}
+      <span className="num text-ink3">{count}</span>
+    </button>
+  );
+}
+
+// ── "Patterns ▾" dropdown — collapses the variable P-series pattern filters into one
+// control. Data-driven contents (all firing patterns, reach-sorted). The trigger label
+// reflects the active pick so the single-select state is visible even when tucked away. ─
+function PatternsMenu({
+  patterns,
+  active,
+  onSelect,
+}: {
+  patterns: ScreenFilter[];
+  active: ScreenFilter | null;
+  onSelect: (id: string) => void;
+}) {
+  // Honest-empty: no P-series patterns firing → a disabled, non-opening control.
+  if (patterns.length === 0) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="No patterns firing this snapshot"
+        className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-line2 bg-surface-1 px-3 py-1.5 text-[12px] text-ink3/50"
+      >
+        Patterns
+        <Icons.caretDown className="size-3 opacity-50" />
+      </button>
+    );
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors",
+            active
+              ? "border-line3 bg-surface-3 font-medium text-ink"
+              : "border-line2 bg-surface-1 text-ink2 hover:border-line3 hover:text-ink",
+          )}
+        >
+          {active ? `Pattern: ${active.label}` : "Patterns"}
+          <Icons.caretDown className="size-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[240px] border-line2 bg-surface-1">
+        {patterns.map((p) => (
+          <DropdownMenuItem
+            key={p.id}
+            onSelect={() => onSelect(p.id)}
+            className={cn(
+              "flex cursor-pointer items-center justify-between gap-6 text-[12.5px] text-ink2 focus:bg-surface-3 focus:text-ink",
+              active?.id === p.id && "bg-surface-3 text-ink",
+            )}
+          >
+            <span>{p.label}</span>
+            <span className="num text-ink3">{p.count}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 // ── pillar cell ────────────────────────────────────────────────────────────────
 function PillarCell({ value }: { value: number }) {
@@ -291,6 +489,7 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
   const [query, setQuery] = useState("");
   const [sector, setSector] = useState<string>("All");
   const [bandFilter, setBandFilter] = useState<LabelBand | null>(null);
+  const [condition, setCondition] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("composite");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -300,6 +499,15 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
     for (const m of view.members) if (m.sector) set.add(m.sector.displayName);
     return ["All", ...Array.from(set).sort()];
   }, [view.members]);
+
+  // The live condition-filter set (data-driven). `core` are the fixed buttons; `patterns`
+  // populate the dropdown. One `condition` string drives single-select across both.
+  const filters = useMemo(() => buildConditionFilters(view), [view]);
+  // Guard: if the active id is no longer live (data refetched), fall back to Overview.
+  const activeFilter = condition
+    ? [...filters.core, ...filters.patterns].find((f) => f.id === condition) ?? null
+    : null;
+  const activePattern = filters.patterns.find((f) => f.id === condition) ?? null;
 
   const onSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -312,6 +520,7 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = view.members.filter((m) => {
+      if (activeFilter && !activeFilter.match(m)) return false;
       if (sector !== "All" && m.sector?.displayName !== sector) return false;
       if (bandFilter && compositeBand(m.composite) !== bandFilter) return false;
       if (q && !m.symbol.toLowerCase().includes(q) && !m.name.toLowerCase().includes(q)) return false;
@@ -324,16 +533,45 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
           ? m.trajectoryDelta ?? -Infinity
           : m.pillars[sortKey];
     return [...filtered].sort((a, b) => (sortDir === "desc" ? val(b) - val(a) : val(a) - val(b)));
-  }, [view.members, query, sector, bandFilter, sortKey, sortDir]);
+  }, [view.members, query, sector, bandFilter, sortKey, sortDir, activeFilter]);
 
   return (
     <div className="flex flex-col gap-3.5">
+      {/* condition lens — fixed core buttons + a "Patterns ▾" dropdown for the variable
+          P-series patterns. One condition active at a time (buttons + dropdown mutually
+          exclusive); each binds to a real per-member condition that fires this snapshot. */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ConditionButton
+            label="All"
+            count={view.members.length}
+            active={!activeFilter}
+            onClick={() => setCondition(null)}
+          />
+          {filters.core.map((f) => (
+            <ConditionButton
+              key={f.id}
+              label={f.label}
+              count={f.count}
+              active={condition === f.id}
+              onClick={() => setCondition(condition === f.id ? null : f.id)}
+            />
+          ))}
+          <PatternsMenu patterns={filters.patterns} active={activePattern} onSelect={setCondition} />
+        </div>
+        {activeFilter && (
+          <p className="text-[11px] text-ink3">
+            <span className="text-ink2">{activeFilter.label}</span> — {activeFilter.note}.
+          </p>
+        )}
+      </div>
+
       <Census view={view} bandFilter={bandFilter} onBand={setBandFilter} />
 
-      {/* controls — row 1: search (left) + health-band capsules (right) */}
-      <div className="flex flex-col gap-2.5">
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-xs">
+      {/* controls — search + sector dropdown (left) · health-band capsules (right) */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-64">
             <Icons.search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink3" />
             <input
               value={query}
@@ -342,34 +580,28 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
               className="h-10 w-full rounded-xl border border-line2 bg-surface-2 pl-9 pr-3 text-sm text-ink outline-none transition-colors placeholder:text-ink3 focus:border-pristine/40"
             />
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            <BandCapsule band={null} active={!bandFilter} onClick={() => setBandFilter(null)} />
-            {[...LABEL_BAND_ORDER].reverse().map((b) => (
-              <BandCapsule
-                key={b}
-                band={b}
-                active={bandFilter === b}
-                onClick={() => setBandFilter(bandFilter === b ? null : b)}
-              />
-            ))}
-          </div>
+          <Select value={sector} onValueChange={setSector}>
+            <SelectTrigger className="h-10 w-full rounded-xl border-line2 bg-surface-2 text-sm text-ink sm:w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {sectors.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s === "All" ? "All sectors" : s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        {/* row 2: sector filters */}
         <div className="flex flex-wrap gap-1.5">
-          {sectors.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSector(s)}
-              className={cn(
-                "rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all",
-                sector === s
-                  ? "bg-surface-3 text-ink ring-1 ring-line3"
-                  : "border border-line2 bg-surface-1 text-ink2 hover:text-ink",
-              )}
-            >
-              {s}
-            </button>
+          <BandCapsule band={null} active={!bandFilter} onClick={() => setBandFilter(null)} />
+          {[...LABEL_BAND_ORDER].reverse().map((b) => (
+            <BandCapsule
+              key={b}
+              band={b}
+              active={bandFilter === b}
+              onClick={() => setBandFilter(bandFilter === b ? null : b)}
+            />
           ))}
         </div>
       </div>
@@ -478,52 +710,10 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
   );
 }
 
-function ModeSoon({ label }: { label: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-line2 px-8 py-16 text-center">
-      <Icons.spark className="mx-auto mb-3.5 size-7 text-ink3 opacity-60" />
-      <h3 className="font-display text-[19px] font-medium text-ink2">{label} view — coming soon</h3>
-      <p className="mx-auto mt-1.5 max-w-md text-[13px] text-ink3">
-        This mode re-shapes the same census around {label.toLowerCase()}. The Overview table is the
-        live workbench today; the other lenses light up as the read-models land.
-      </p>
-    </div>
-  );
-}
-
 export function ScreenTab({ view }: { view: UniverseHealthView }) {
-  const [mode, setMode] = useState<Mode>("overview");
   return (
     <Reveal>
-      <div className="mb-3.5 flex flex-wrap gap-1.5">
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setMode(m.id)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors",
-              mode === m.id
-                ? "border-line3 bg-surface-3 font-medium text-ink"
-                : "border-line2 bg-surface-1 text-ink2 hover:border-line3 hover:text-ink",
-            )}
-          >
-            {m.icon}
-            {m.label}
-            {!m.live && (
-              <span className="rounded-[4px] border border-line2 px-1.5 py-px text-[8.5px] uppercase tracking-wider text-ink3">
-                soon
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {mode === "overview" ? (
-        <OverviewTable view={view} />
-      ) : (
-        <ModeSoon label={MODES.find((m) => m.id === mode)!.label} />
-      )}
+      <OverviewTable view={view} />
     </Reveal>
   );
 }

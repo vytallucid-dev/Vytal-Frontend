@@ -9,10 +9,11 @@
  */
 
 import { useMemo, useRef } from "react";
-import { Panel, PILLAR_META } from "@/components/stock-detail/health/shared";
+import { Panel, PILLAR_META, shortPeriod } from "@/components/stock-detail/health/shared";
 import type { PillarKey } from "@/types/health";
 import type { ActiveDatapoint } from "../tool-frame.types";
 import type { DivergenceDirection } from "@/types/research-tools";
+import type { ResultMark } from "../window-slice";
 import { DIRECTION_META, type SpreadPoint } from "./divergence-data";
 
 const VBW = 640;
@@ -24,11 +25,42 @@ const Y1 = 312;
 const BAND_CUTS = [55, 62, 68, 74];
 const THRESHOLDS = [15, 25]; // notable / wide — derived gap crossings
 
+/** Honest empty state — the current window sliced to <2 comparable points. */
+export function DivergenceEmpty({
+  isDaily,
+  highPillar,
+  lowPillar,
+}: {
+  isDaily: boolean;
+  highPillar: PillarKey;
+  lowPillar: PillarKey;
+}) {
+  return (
+    <Panel className="px-4 py-4">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="kicker">
+          The spread ·{" "}
+          <span style={{ color: PILLAR_META[highPillar].cssVar }}>{PILLAR_META[highPillar].label}</span> vs{" "}
+          <span style={{ color: PILLAR_META[lowPillar].cssVar }}>{PILLAR_META[lowPillar].label}</span>
+        </span>
+      </div>
+      <p className="py-14 text-center text-[12px] text-ink3">
+        {isDaily
+          ? "Fewer than two comparable daily points in this range. Widen the dates or pick a shorter fixed window."
+          : "Not enough scored quarters in this window."}
+      </p>
+    </Panel>
+  );
+}
+
 export function DivergenceChart({
   spread,
   highPillar,
   lowPillar,
   direction,
+  isDaily,
+  resultMarks,
+  clampedEarlier,
   active,
   onActiveChange,
 }: {
@@ -36,6 +68,9 @@ export function DivergenceChart({
   highPillar: PillarKey;
   lowPillar: PillarKey;
   direction: DivergenceDirection;
+  isDaily: boolean;
+  resultMarks: ResultMark[];
+  clampedEarlier: boolean;
   active: ActiveDatapoint;
   onActiveChange: (a: ActiveDatapoint) => void;
 }) {
@@ -47,9 +82,19 @@ export function DivergenceChart({
 
   const { lo, hi } = useMemo(() => {
     const vals = spread.flatMap((p) => [p.high, p.low]);
+    // Adaptive floored domain — a wide pillar spread reads wide; a trivial one stays small.
+    let plo = Math.min(...vals) - 4;
+    let phi = Math.max(...vals) + 4;
+    const MIN_SPAN = 12;
+    const span = phi - plo;
+    if (span < MIN_SPAN) {
+      const grow = (MIN_SPAN - span) / 2;
+      plo -= grow;
+      phi += grow;
+    }
     return {
-      lo: Math.max(0, Math.floor(Math.min(...vals) - 4)),
-      hi: Math.min(100, Math.ceil(Math.max(...vals) + 4)),
+      lo: Math.max(0, Math.floor(plo)),
+      hi: Math.min(100, Math.ceil(phi)),
     };
   }, [spread]);
 
@@ -75,6 +120,19 @@ export function DivergenceChart({
   }, [spread, n]);
 
   const midI = Math.floor((n - 1) / 2);
+
+  // result-day markers positioned onto the spread window (daily/custom only). Matched by
+  // the point's own label against `spread` (which may have dropped ≤0-pillar points), so a
+  // marker only draws where its day survived the guard — never evenly-spaced onto a gap.
+  const resultXi = useMemo(() => {
+    if (!isDaily) return [] as { i: number; label: string }[];
+    return resultMarks
+      .map((r) => ({
+        i: spread.findIndex((p) => p.period === r.x),
+        label: `Result — ${shortPeriod(r.periodKey)}`,
+      }))
+      .filter((r) => r.i >= 0);
+  }, [resultMarks, spread, isDaily]);
 
   const handlePointer = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
@@ -102,6 +160,16 @@ export function DivergenceChart({
           <span style={{ color: loCol }}>{PILLAR_META[lowPillar].label}</span>
         </span>
       </div>
+
+      {/* cadence note — on a short/custom window, a result re-scores all four pillars and
+          can SNAP the gap; the marker explains that discontinuity. */}
+      {isDaily && (
+        <p className="mb-2 text-[10.5px] text-ink3">
+          Foundation &amp; Momentum update on quarterly results, so a fundamentals leg can look flat
+          over shorter periods; a result in this window is marked — a rescore can snap the gap.
+          {clampedEarlier && <span className="text-ink3/80"> Range clamped to available daily history.</span>}
+        </p>
+      )}
 
       <svg
         ref={svgRef}
@@ -140,6 +208,24 @@ export function DivergenceChart({
           />
         ))}
 
+        {/* result-day markers (daily) — a rescore steps all four pillars and can snap the gap */}
+        {resultXi.map((r, k) => (
+          <g key={`result-${k}`}>
+            <line
+              x1={xOf(r.i)}
+              y1={Y0}
+              x2={xOf(r.i)}
+              y2={Y1}
+              stroke="var(--ink3)"
+              strokeDasharray="3 3"
+              strokeOpacity={0.55}
+            />
+            <text x={xOf(r.i) + 4} y={Y0 + 9} className="num" fill="var(--ink3)" fontSize="9">
+              {r.label}
+            </text>
+          </g>
+        ))}
+
         {/* the gap, shaded by direction */}
         <polygon points={gapPoly} fill={fill} opacity={0.14} />
 
@@ -160,9 +246,9 @@ export function DivergenceChart({
           gap {spread[midI].gap.toFixed(0)}
         </text>
 
-        {/* x labels */}
+        {/* x labels — denser stepping on a daily window (more points) */}
         {spread.map((p, i) => {
-          const step = n > 6 ? 2 : 1;
+          const step = n > 16 ? Math.ceil(n / 8) : n > 6 ? 2 : 1;
           if (i % step !== 0 && i !== n - 1) return null;
           return (
             <text

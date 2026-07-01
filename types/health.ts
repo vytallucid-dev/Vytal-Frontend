@@ -326,9 +326,29 @@ export interface CorporateEventView {
   impactLevel: string;
 }
 
+export interface DailyTrajectoryPoint {
+  asOfDate: string;
+  periodKey: string;
+  composite: number;
+  labelBand: LabelBand;
+  foundation: number;
+  momentum: number;
+  market: number;
+  ownership: number;
+}
+
+export interface ResultDayMarker {
+  asOfDate: string;
+  periodKey: string;
+}
+
 export interface TrajectorySection {
   windowQuarters: number;
   series: TrajectoryPoint[];
+  /** Sub-quarterly series (one point per calendar day, trailing ~60D). Powers 60D/30D/15D. */
+  dailySeries: DailyTrajectoryPoint[];
+  /** Result-landing days inside the daily window (periodKey transitions). */
+  resultDays: ResultDayMarker[];
   crossings: CrossingEvent[];
   events: CorporateEventView[];
 }

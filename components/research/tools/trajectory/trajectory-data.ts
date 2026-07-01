@@ -37,16 +37,6 @@ export const TRAJECTORY_LINES: {
   { key: "ownership", label: "Ownership", color: PILLAR_META.ownership.cssVar, width: 2, togglable: true },
 ];
 
-/** One plotted period — period label + composite + four pillar subtotals. */
-export interface ChartPoint {
-  period: string;
-  composite: number;
-  foundation: number;
-  momentum: number;
-  market: number;
-  ownership: number;
-}
-
 export const MARKER_TONE: Record<
   NonNullable<VerdictSection["trajectoryMarker"]>,
   { word: string; color: string }

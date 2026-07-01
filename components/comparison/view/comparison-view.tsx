@@ -44,6 +44,7 @@ import { TrajectoryOverlay } from "./trajectory-overlay";
 import { FindingColumns } from "./finding-columns";
 import { PriceTab } from "./price-tab";
 import { OwnershipActivity } from "./ownership-activity";
+import { SameFamilyStatements, CrossFamilyStatements } from "./comparison-statements";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -82,6 +83,16 @@ const FUND_UNIVERSAL_KEYS = [
   "bookValuePerShare",
   "totalAssets",
   "netWorth",
+];
+/** The BS + CF enrichment of the universal set — cross-family common ground beyond P&L.
+ *  Insurers' CF rows dash (no cash-flow statement). Shown in the cross-family universal
+ *  table (the Overview keeps the compact FUND_UNIVERSAL_KEYS taste). */
+const FUND_UNIVERSAL_BSCF_KEYS = [
+  "totalDebt",
+  "cashAndCashEquivalents",
+  "cashFromOperating",
+  "cashFromInvesting",
+  "cashFromFinancing",
 ];
 const OWNERSHIP_KEYS = ["promoterPct", "fiiPct", "diiPct", "pledgedPctOfPromoter"];
 /** Scoring-INDEPENDENT returns — present from the price view regardless of scoring. */
@@ -685,11 +696,11 @@ function HealthTab({ view }: { view: ComparisonViewModel }) {
 
 function FundamentalsTab({ view }: { view: ComparisonViewModel }) {
   const { a, b, familyContext } = view;
-  const universalRows = rowsFor(view.universalMetrics, FUND_UNIVERSAL_KEYS);
 
-  // Same-family family-specific rows, paired side by side. Cash flow (CFO / CFI / CFF) is
-  // split into its own labeled block below so it isn't buried among the ratios — both
-  // remain genuine side-by-side tables, gated by comparableDirectly.
+  // Same-family family-specific ratios, paired side by side. Cash flow (CFO / CFI / CFF) is
+  // split into its own labeled block so it isn't buried among the ratios. These are the
+  // family-LOCKED ratios (NIM, GNPA, solvency, …) — genuinely comparable same-family and NOT
+  // duplicated by the statements below, so they stay even alongside the full statements.
   const familyRows: CompareRow[] = familyContext.a.map((m) => {
     const bm = familyContext.b.find((x) => x.key === m.key);
     return { key: m.key, label: m.label, unit: m.unit, a: m.value, b: bm?.value ?? null };
@@ -697,85 +708,130 @@ function FundamentalsTab({ view }: { view: ComparisonViewModel }) {
   const cfRows = familyRows.filter((r) => CF_KEYS.includes(r.key));
   const familyDetailRows = familyRows.filter((r) => !CF_KEYS.includes(r.key));
 
+  if (familyContext.comparableDirectly) {
+    // ── SAME FAMILY → full statement side-by-side (P&L + BS + CF aligned line-for-line),
+    // latest annual default + per-statement history expand. The universal metrics table is
+    // HIDDEN (redundant — the real statements already align). The family-locked ratios stay
+    // (they're not in the statements). No winner, no highlight.
+    return (
+      <div className="space-y-8">
+        <div>
+          <SectionTitle
+            icon={Icons.stack}
+            accent="var(--p-found)"
+            hint={`Both companies are ${a.familyLabel}, so their financial statements line up directly. Each line shows the latest year for each — expand a statement for per-year history. Two columns of facts; no winner.`}
+          >
+            Statements — {a.familyLabel}, side by side
+          </SectionTitle>
+          {a.statements && b.statements ? (
+            <SameFamilyStatements
+              aStatements={a.statements}
+              bStatements={b.statements}
+              aLabel={a.symbol}
+              bLabel={b.symbol}
+            />
+          ) : (
+            <HonestEmpty>Statement series not available for one of these stocks.</HonestEmpty>
+          )}
+        </div>
+
+        {familyDetailRows.length > 0 && (
+          <div>
+            <SectionTitle
+              icon={Icons.building}
+              accent="var(--p-found)"
+              hint={`${a.familyLabel}-specific ratios not on the face of the statements — both are ${a.familyLabel}, so these line up directly.`}
+            >
+              {a.familyLabel} ratios
+            </SectionTitle>
+            <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={familyDetailRows} />
+          </div>
+        )}
+
+        {cfRows.length > 0 && (
+          <div>
+            <SectionTitle
+              icon={Icons.coins}
+              accent="var(--p-mom)"
+              hint={`Operating, investing and financing cash flows — both companies are ${a.familyLabel}, so these line up directly.`}
+            >
+              Cash flow (summary)
+            </SectionTitle>
+            <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={cfRows} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── CROSS FAMILY → the enriched UNIVERSAL table (the only aligned common ground, now
+  // with BS + CF rows), then each stock's OWN full statements below, separately labeled and
+  // never force-aligned. Family-locked ratios remain in their own separate lists.
+  const universalRows = [
+    ...rowsFor(view.universalMetrics, FUND_UNIVERSAL_KEYS),
+    ...rowsFor(view.universalMetrics, FUND_UNIVERSAL_BSCF_KEYS),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <SectionTitle
           icon={Icons.coins}
           accent="var(--p-found)"
-          hint="Cross-family measures present in every company — these compare directly."
+          hint="Different families, so only these cross-family measures line up directly — profit, balance-sheet and cash-flow metrics that mean the same thing everywhere. An insurer's cash-flow rows dash (no cash-flow statement)."
         >
           Universal metrics
         </SectionTitle>
         <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={universalRows} />
       </div>
 
-      {familyContext.comparableDirectly ? (
-        // Same family → the family-specific set lines up directly, side by side. Cash flow
-        // is broken out into its own labeled block; the rest of the set stays in the main
-        // table. Both are honest side-by-side comparisons (same family, directly comparable).
-        <>
-          <div>
-            <SectionTitle
-              icon={Icons.building}
-              accent="var(--p-found)"
-              hint={`${a.familyLabel}-specific measures — both companies are ${a.familyLabel}, so these line up directly.`}
-            >
-              {a.familyLabel} metrics
-            </SectionTitle>
-            <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={familyDetailRows} />
-          </div>
+      <div>
+        <SectionTitle
+          icon={Icons.stack}
+          accent="var(--p-found)"
+          hint="Each company's own statements, in its own family shape — shown separately and NOT forced into shared rows, because the two statements aren't the same statement."
+        >
+          Each company's statements
+        </SectionTitle>
+        {a.statements && b.statements ? (
+          <CrossFamilyStatements
+            aStatements={a.statements}
+            bStatements={b.statements}
+            aLabel={a.symbol}
+            bLabel={b.symbol}
+          />
+        ) : (
+          <HonestEmpty>Statement series not available for one of these stocks.</HonestEmpty>
+        )}
+      </div>
 
-          {cfRows.length > 0 && (
-            <div>
-              <SectionTitle
-                icon={Icons.coins}
-                accent="var(--p-mom)"
-                hint={`Operating, investing and financing cash flows — both companies are ${a.familyLabel}, so these line up directly.`}
-              >
-                Cash flow
-              </SectionTitle>
-              <CompareTable aLabel={a.symbol} bLabel={b.symbol} rows={cfRows} />
+      <div>
+        <SectionTitle
+          icon={Icons.building}
+          accent="var(--p-found)"
+          hint="Sector-specific ratios — meaningful only within each company's own family, so they are shown on their own and not compared across the two."
+        >
+          Sector-specific ratios
+        </SectionTitle>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full" style={{ background: A_HUE }} />
+              <span className="text-sm font-semibold text-ink">{a.familyLabel}-specific</span>
             </div>
-          )}
-        </>
-      ) : (
-        // Cross family → render each side's family metrics in SEPARATE labeled sections.
-        // Explicitly NOT a side-by-side — the payload separated them; we honor it.
-        <div className="space-y-4">
-          <div className="rounded-xl border border-line2 bg-surface-1 px-4 py-3 text-xs text-ink3">
-            These two are in different families, so each one&apos;s sector-specific
-            metrics are shown on their own below — they are not directly comparable to the
-            other&apos;s.
+            <p className="mb-2 text-xs text-ink3">Only meaningful within {a.familyLabel}.</p>
+            <FamilyMetricList hue={A_HUE} rows={familyContext.a} />
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ background: A_HUE }} />
-                <span className="text-sm font-semibold text-ink">
-                  {a.familyLabel}-specific
-                </span>
-              </div>
-              <p className="mb-2 text-xs text-ink3">
-                Only meaningful within {a.familyLabel}.
-              </p>
-              <FamilyMetricList hue={A_HUE} rows={familyContext.a} />
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full" style={{ background: B_HUE }} />
+              <span className="text-sm font-semibold text-ink">{b.familyLabel}-specific</span>
             </div>
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ background: B_HUE }} />
-                <span className="text-sm font-semibold text-ink">
-                  {b.familyLabel}-specific
-                </span>
-              </div>
-              <p className="mb-2 text-xs text-ink3">
-                Only meaningful within {b.familyLabel}.
-              </p>
-              <FamilyMetricList hue={B_HUE} rows={familyContext.b} />
-            </div>
+            <p className="mb-2 text-xs text-ink3">Only meaningful within {b.familyLabel}.</p>
+            <FamilyMetricList hue={B_HUE} rows={familyContext.b} />
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

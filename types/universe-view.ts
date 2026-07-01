@@ -101,7 +101,11 @@ export interface UniverseHealthView {
   aggregate: UniverseAggregate | null;
   members: UniverseMemberView[];
   notAtCurrentPeriod: { symbol: string; latestPeriod: string }[];
+  /** P-series / structural pattern + red-flag census (lens patterns partitioned out). */
   pathology: PathologyCensusItem[];
+  /** Three-lens (LM/LP) pattern census — the LOUD escalated lens patterns keyed `lens_*`,
+   *  same shape as `pathology`. Empty when none fire. */
+  lensPathology: PathologyCensusItem[];
   movers: { risers: PeerGroupMover[]; slippers: PeerGroupMover[] };
   sinceLastWeek: UniverseSinceLastWeek;
 }

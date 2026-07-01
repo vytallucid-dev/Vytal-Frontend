@@ -22,13 +22,24 @@ import {
   fmtPct,
   DASH,
 } from "./shared";
-import { AnnualBlock } from "./AnnualBlock";
+// The statement tables read the SAME /fundamentals layer + REUSE the shared family line-defs
+// (statement-lines.ts) the per-stock Fundamentals page and the Comparison page use — same rows,
+// same numbers, same grouped hierarchy. The Result Viewer renders them in a FOCUSED result-
+// comparison layout (this vs prior vs year-ago + growth), NOT the full historical table — that
+// full table stays on the per-stock Fundamentals page (untouched).
+import { useStockFundamentals } from "@/lib/api/hooks/use-stock-fundamentals";
+import { ResultStatements } from "./ResultStatements";
 
 const STAGE_COLORS = ["var(--p-found)", "var(--p-mom)", "var(--p-mkt)", "var(--p-own)"];
 
 export default function PnlTrendsTab({ data }: { data: ResultDetailData }) {
   const { spine, current: c, industryType } = data;
   const isNonFin = industryType === "non_financial";
+
+  // Statements — the same fundamentals view the per-stock Fundamentals page reads (no basis
+  // param → the endpoint's default, so the numbers match that page exactly). React-query dedupes
+  // if the page already fetched it. Rendered focused on THIS result's period below.
+  const fundamentals = useStockFundamentals(data.symbol);
 
   const chartData = spine.map((q) => ({
     period: shortPeriod(q.periodKey),
@@ -183,22 +194,34 @@ export default function PnlTrendsTab({ data }: { data: ResultDetailData }) {
         </section>
       </Reveal>
 
-      {/* ── Annual statements (full-year CF + BS-headline, family-aware) ─ */}
+      {/* ── Statement tables — the SAME /fundamentals view + shared family line-defs the
+          per-stock Fundamentals page uses, rendered in the Result Viewer's FOCUSED layout:
+          this result vs the prior period vs the year-ago period, with growth columns
+          (quarterly P&L → This/Prev/Year-ago + QoQ%/YoY%; annual P&L + BS + CF → This/Prev year
+          + YoY%). Family-aware; insurer CF honestly absent; growth honest-dashes on a null prior. */}
       <Reveal>
         <section>
-          <SectionEyebrow
-            label="Annual statements"
-            icon={Icons.building}
-            accent="var(--p-found)"
-            pill={data.annualState === "available" && data.annual ? data.annual.fiscalYear : undefined}
-          />
-          {data.annualState === "available" && data.annual && (
-            <p className="mb-3 px-1 text-[12px] text-ink3">
-              Full-year (annual) cash-flow &amp; balance-sheet headline for {data.annual.fiscalYear} —
-              distinct from the quarterly spine above.
-            </p>
+          {fundamentals.isLoading ? (
+            <>
+              <SectionEyebrow label="Financial statements" icon={Icons.stack} accent="var(--p-found)" pill="This vs prior · year-ago" />
+              <Panel>
+                <p className="py-6 text-center text-[12px] text-ink3">Loading reported statements…</p>
+              </Panel>
+            </>
+          ) : fundamentals.data && fundamentals.data.built ? (
+            <ResultStatements
+              view={fundamentals.data}
+              anchorPeriodKey={c.periodKey}
+              anchorFiscalYear={c.fiscalYear}
+            />
+          ) : (
+            <>
+              <SectionEyebrow label="Financial statements" icon={Icons.stack} accent="var(--p-found)" pill="This vs prior · year-ago" />
+              <HonestEmpty>
+                Statement tables for this company are not available yet.
+              </HonestEmpty>
+            </>
           )}
-          <AnnualBlock annual={data.annual} annualState={data.annualState} />
         </section>
       </Reveal>
     </div>

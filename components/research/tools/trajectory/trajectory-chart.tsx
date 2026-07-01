@@ -14,7 +14,8 @@ import { Panel, shortPeriod } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
 import type { ActiveDatapoint } from "../tool-frame.types";
 import type { CrossingEvent } from "@/types/health";
-import { TRAJECTORY_LINES, type ChartPoint } from "./trajectory-data";
+import { isHeld, type WindowPoint, type ResultMark } from "../window-slice";
+import { TRAJECTORY_LINES } from "./trajectory-data";
 
 const VBW = 640;
 const VBH = 384;
@@ -34,11 +35,17 @@ const ZONES = [
 export function TrajectoryChart({
   points,
   crossings,
+  isDaily,
+  resultMarks,
+  clampedEarlier,
   active,
   onActiveChange,
 }: {
-  points: ChartPoint[];
+  points: WindowPoint[];
   crossings: CrossingEvent[];
+  isDaily: boolean;
+  resultMarks: ResultMark[];
+  clampedEarlier: boolean;
   active: ActiveDatapoint;
   onActiveChange: (a: ActiveDatapoint) => void;
 }) {
@@ -59,16 +66,30 @@ export function TrajectoryChart({
       vals.push(p.composite);
       for (const l of TRAJECTORY_LINES) {
         if (l.key === "composite") continue;
-        if (enabled[l.key]) vals.push(p[l.key as keyof ChartPoint] as number);
+        if (enabled[l.key]) vals.push(p[l.key as keyof WindowPoint] as number);
       }
     }
     const min = Math.min(...vals);
     const max = Math.max(...vals);
+    // On a daily/custom window fit tightly to the real spread (no 55/74 pull) so daily
+    // Market/Ownership movement reads; the floor below keeps a trivial wiggle honest.
+    if (isDaily) {
+      let plo = min - 3;
+      let phi = max + 3;
+      const MIN_SPAN = 12;
+      const span = phi - plo;
+      if (span < MIN_SPAN) {
+        const grow = (MIN_SPAN - span) / 2;
+        plo -= grow;
+        phi += grow;
+      }
+      return { lo: Math.max(0, Math.floor(plo)), hi: Math.min(100, Math.ceil(phi)) };
+    }
     return {
       lo: Math.max(0, Math.min(min - 5, 55)),
       hi: Math.min(100, Math.max(max + 5, 74)),
     };
-  }, [points, enabled]);
+  }, [points, enabled, isDaily]);
 
   const xOf = (i: number) => (n <= 1 ? (X0 + X1) / 2 : X0 + (i * (X1 - X0)) / (n - 1));
   const yOf = (v: number) => Y0 + ((hi - v) / (hi - lo)) * (Y1 - Y0);
@@ -76,17 +97,26 @@ export function TrajectoryChart({
   const idx = active.index ?? n - 1;
   const scrubbing = active.index != null;
 
-  // crossings → nearest point index by matching short period label
+  // marks: quarterly → band crossings; daily → result-day markers (the F/M step).
   const crossMarks = useMemo(() => {
+    if (isDaily) return [] as { i: number; from: string; to: string }[];
     const out: { i: number; from: string; to: string }[] = [];
     for (const c of crossings) {
       if (c.type !== "band") continue;
       // crossings carry a raw periodKey (FY25Q2); points carry the short label (Q2'25).
-      const i = points.findIndex((p) => p.period === shortPeriod(c.toPeriod));
+      const i = points.findIndex((p) => p.x === shortPeriod(c.toPeriod));
       if (i >= 0) out.push({ i, from: c.from, to: c.to });
     }
     return out;
-  }, [crossings, points]);
+  }, [crossings, points, isDaily]);
+
+  // result-day markers positioned onto the window (daily/custom only).
+  const resultXi = useMemo(() => {
+    if (!isDaily) return [] as { i: number; label: string }[];
+    return resultMarks
+      .map((r) => ({ i: points.findIndex((p) => p.x === r.x), label: `Result — ${shortPeriod(r.periodKey)}` }))
+      .filter((r) => r.i >= 0);
+  }, [resultMarks, points, isDaily]);
 
   const handlePointer = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
@@ -105,11 +135,41 @@ export function TrajectoryChart({
     onActiveChange({ index: best });
   };
 
+  const anyHeld = TRAJECTORY_LINES.some((l) => isHeld(l.key, isDaily));
+
+  // Honest too-short state — a daily/custom window can slice to <2 points (empty range or
+  // sparse daily history). Guard before any points[...] access.
+  if (n < 2) {
+    return (
+      <Panel className="px-4 py-4">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <span className="kicker">The recording · composite &amp; pillars over time</span>
+        </div>
+        <p className="py-14 text-center text-[12px] text-ink3">
+          {isDaily
+            ? "Fewer than two daily points in this range. Widen the dates or pick a shorter fixed window."
+            : "Not enough scored quarters in this window."}
+        </p>
+      </Panel>
+    );
+  }
+
   return (
     <Panel className="px-4 py-4">
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="kicker">The recording · composite &amp; pillars over time</span>
       </div>
+
+      {/* cadence note — on short/custom windows, explain the flat-honest F/M lines */}
+      {isDaily ? (
+        <p className="mb-2 text-[10.5px] text-ink3">
+          Foundation &amp; Momentum update on quarterly results, so they can look flat over shorter
+          periods; a result in this window is marked with a line — the day all four pillars stepped.
+          {clampedEarlier && <span className="text-ink3/80"> Range clamped to available daily history.</span>}
+        </p>
+      ) : (
+        <p className="mb-2 text-[10.5px] text-ink3">Per-quarter scores.</p>
+      )}
 
       <svg
         ref={svgRef}
@@ -156,7 +216,7 @@ export function TrajectoryChart({
           </g>
         ))}
 
-        {/* band crossings */}
+        {/* band crossings (quarterly) */}
         {crossMarks.map((c, k) => (
           <line
             key={k}
@@ -170,9 +230,27 @@ export function TrajectoryChart({
           />
         ))}
 
-        {/* x labels */}
+        {/* result-day markers (daily) — the day a rescore stepped all four pillars */}
+        {resultXi.map((r, k) => (
+          <g key={`result-${k}`}>
+            <line
+              x1={xOf(r.i)}
+              y1={Y0}
+              x2={xOf(r.i)}
+              y2={Y1}
+              stroke="var(--ink3)"
+              strokeDasharray="3 3"
+              strokeOpacity={0.55}
+            />
+            <text x={xOf(r.i) + 4} y={Y0 + 9} className="num" fill="var(--ink3)" fontSize="9">
+              {r.label}
+            </text>
+          </g>
+        ))}
+
+        {/* x labels — denser stepping on a daily window (more points) */}
         {points.map((p, i) => {
-          const step = n > 6 ? 2 : 1;
+          const step = n > 16 ? Math.ceil(n / 8) : n > 6 ? 2 : 1;
           if (i % step !== 0 && i !== n - 1) return null;
           return (
             <text
@@ -184,16 +262,16 @@ export function TrajectoryChart({
               fontSize="11"
               textAnchor="middle"
             >
-              {p.period}
+              {p.x}
             </text>
           );
         })}
 
-        {/* lines */}
+        {/* lines — held-aware: F/M dashed on a daily window (flat between quarters, honest) */}
         {TRAJECTORY_LINES.map((l) => {
           if (l.key !== "composite" && !enabled[l.key]) return null;
           const d = points
-            .map((p, i) => `${xOf(i).toFixed(1)},${yOf(p[l.key as keyof ChartPoint] as number).toFixed(1)}`)
+            .map((p, i) => `${xOf(i).toFixed(1)},${yOf(p[l.key as keyof WindowPoint] as number).toFixed(1)}`)
             .join(" ");
           return (
             <polyline
@@ -202,6 +280,7 @@ export function TrajectoryChart({
               fill="none"
               stroke={l.color}
               strokeWidth={l.width}
+              strokeDasharray={isHeld(l.key, isDaily) ? "5 4" : undefined}
               strokeLinejoin="round"
               strokeLinecap="round"
             />
@@ -236,7 +315,7 @@ export function TrajectoryChart({
             >
               <rect width={96} height={26} rx={6} fill="var(--surface-3)" stroke="var(--line2)" />
               <text x={9} y={17} className="num" fill="var(--ink2)" fontSize="11">
-                {points[idx].period}
+                {points[idx].x}
               </text>
               <text x={88} y={17} className="num" fill="var(--ink)" fontSize="12" textAnchor="end" fontWeight={600}>
                 {points[idx].composite.toFixed(0)}
@@ -263,14 +342,30 @@ export function TrajectoryChart({
                 isOff && "opacity-40",
               )}
             >
-              <span className="h-[3px] w-3.5 rounded" style={{ background: l.color }} />
+              <span
+                className={cn("h-[3px] w-3.5 rounded", isHeld(l.key, isDaily) && "opacity-60")}
+                style={{
+                  background: isHeld(l.key, isDaily)
+                    ? `repeating-linear-gradient(90deg, ${l.color} 0 4px, transparent 4px 7px)`
+                    : l.color,
+                }}
+              />
               {l.label}
               <span className="num font-medium text-ink">
-                {(points[n - 1][l.key as keyof ChartPoint] as number).toFixed(0)}
+                {(points[n - 1][l.key as keyof WindowPoint] as number).toFixed(0)}
               </span>
             </button>
           );
         })}
+        {/* held key — shown only when a coarser pillar (F/M on a daily window) is held */}
+        {anyHeld && (
+          <span className="inline-flex items-center gap-1.5 self-center text-[11px] text-ink3">
+            <span className="inline-block h-[3px] w-4 rounded bg-ink3" />
+            measured
+            <span className="ml-1 inline-block h-0 w-4 border-t border-dashed border-ink3" />
+            held
+          </span>
+        )}
       </div>
     </Panel>
   );

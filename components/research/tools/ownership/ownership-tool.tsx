@@ -16,7 +16,13 @@ import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { useStockOwnership } from "@/lib/api/hooks/use-stock-ownership";
 import type { OwnershipScanItem } from "@/types/research-tools";
 import { ToolFrame } from "../tool-frame";
-import type { SingleViewSlots, ToolMeta, ToolWindow } from "../tool-frame.types";
+import {
+  DEFAULT_WINDOW,
+  windowQuarters,
+  type SingleViewSlots,
+  type ToolMeta,
+  type ToolWindow,
+} from "../tool-frame.types";
 import { OwnershipChart } from "./ownership-chart";
 import { OwnershipReadout } from "./ownership-readout";
 import { OwnershipSummary } from "./ownership-summary";
@@ -48,17 +54,21 @@ export function OwnershipTool() {
   const params = useSearchParams();
   const symbol = params.get("symbol")?.toUpperCase() || null;
 
-  const [window, setWindow] = useState<ToolWindow>(12);
+  // Ownership stays quarterly — it reads the ownership ledger (per-filing), not the daily
+  // score series. It rides the shared window contract via the quarter count; the switcher's
+  // daily/custom options render disabled (no daily bounds passed) — an honest dormant state.
+  const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
   const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
   if (lastSymbol !== symbol) {
     setLastSymbol(symbol);
-    setWindow(12);
+    setWindow(DEFAULT_WINDOW);
   }
+  const quarters = windowQuarters(window);
 
   const stocksQ = useScoredStocks();
   const scanQ = useStockScan<OwnershipScanItem>("ownership", !symbol);
-  const healthQ = useStockHealth(symbol ?? "", window);
-  const ownQ = useStockOwnership(symbol ?? "", window);
+  const healthQ = useStockHealth(symbol ?? "", quarters);
+  const ownQ = useStockOwnership(symbol ?? "", quarters);
 
   const health = healthQ.data;
   const ownView = ownQ.data ?? null;
@@ -129,7 +139,9 @@ export function OwnershipTool() {
             <OwnershipChart points={holdingPoints} active={active} onActiveChange={setActive} />
           ) : null,
         renderReadout: (active) =>
-          holdingPoints.length ? <OwnershipReadout points={holdingPoints} active={active} /> : null,
+          holdingPoints.length ? (
+            <OwnershipReadout points={holdingPoints} active={active} r1={pledge.r1} />
+          ) : null,
         renderSummary: () =>
           ownView ? <OwnershipSummary view={ownView} floor={fc} symbol={symbol} /> : null,
       }

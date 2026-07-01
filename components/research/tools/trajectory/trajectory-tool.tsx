@@ -10,25 +10,23 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
-import { shortPeriod } from "@/components/stock-detail/health/shared";
 import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import type { StockScanItem } from "@/types/research-tools";
 import { ToolFrame } from "../tool-frame";
-import type {
-  SingleViewSlots,
-  ToolMeta,
-  ToolWindow,
+import {
+  DEFAULT_WINDOW,
+  windowQuarters,
+  type SingleViewSlots,
+  type ToolMeta,
+  type ToolWindow,
 } from "../tool-frame.types";
+import { sliceWindow, dailyBoundsOf } from "../window-slice";
 import { TrajectoryChart } from "./trajectory-chart";
 import { TrajectoryReadout } from "./trajectory-readout";
 import { TrajectorySummary } from "./trajectory-summary";
 import { TrajectoryScanCard } from "./trajectory-card";
-import {
-  buildTrajectoryChips,
-  buildTrajectoryRead,
-  type ChartPoint,
-} from "./trajectory-data";
+import { buildTrajectoryChips, buildTrajectoryRead } from "./trajectory-data";
 
 const TRAJECTORY_META: ToolMeta = {
   id: "trajectory",
@@ -42,42 +40,39 @@ const TRAJECTORY_META: ToolMeta = {
   searchPlaceholder: "Search a stock — e.g. TATASTEEL, Sun Pharma…",
 };
 
-const r1 = (x: number) => Math.round(x * 10) / 10;
-
 export function TrajectoryTool() {
   const router = useRouter();
   const params = useSearchParams();
   const symbol = params.get("symbol")?.toUpperCase() || null;
 
-  // window drives the health endpoint's ?window= (4/8/12 → 1Y/2Y/3Y). Local state;
-  // reset to 3Y whenever the stock changes (adjust-state-on-prop-change pattern).
-  const [window, setWindow] = useState<ToolWindow>(12);
+  // The window carries the cadence (quarterly 1Y/2Y/3Y · daily 60/30/15D · custom).
+  // Only the quarter count re-keys the fetch; daily/custom re-slice the same payload.
+  // Reset to the default (3Y quarterly) whenever the stock changes.
+  const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
   const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
   if (lastSymbol !== symbol) {
     setLastSymbol(symbol);
-    setWindow(12);
+    setWindow(DEFAULT_WINDOW);
   }
 
   const stocksQ = useScoredStocks();
   const scanQ = useStockScan("trajectory", !symbol);
-  const healthQ = useStockHealth(symbol ?? "", window);
+  const healthQ = useStockHealth(symbol ?? "", windowQuarters(window));
 
   const data = healthQ.data;
   const verdict = data?.verdict ?? null;
   const trajectory = data?.trajectory ?? null;
 
-  const chartPoints: ChartPoint[] = useMemo(
+  // The sliced window — quarterly series, daily series, or custom range (all client-side).
+  const sliced = useMemo(
     () =>
-      (trajectory?.series ?? []).map((pt) => ({
-        period: shortPeriod(pt.periodKey),
-        composite: r1(pt.composite),
-        foundation: r1(pt.foundation),
-        momentum: r1(pt.momentum),
-        market: r1(pt.market),
-        ownership: r1(pt.ownership),
-      })),
-    [trajectory],
+      trajectory
+        ? sliceWindow(window, trajectory.series, trajectory.dailySeries, trajectory.resultDays)
+        : null,
+    [trajectory, window],
   );
+  const chartPoints = sliced?.points ?? [];
+  const dailyBounds = dailyBoundsOf(trajectory?.dailySeries);
 
   const single: SingleViewSlots | null = symbol
     ? {
@@ -92,7 +87,10 @@ export function TrajectoryTool() {
                   `Coverage state: ${data.identity?.coverageState ?? "not yet scored"}`,
               }
             : null,
-        buildingHistory: !!trajectory && trajectory.series.length <= 1,
+        // building-history only when there's neither a multi-point quarterly series
+        // NOR usable daily history (a daily-only stock can still draw a short window).
+        buildingHistory: !!trajectory && trajectory.series.length <= 1 && !dailyBounds,
+        dailyBounds,
         identity: {
           name: data?.identity?.name ?? symbol,
           ticker: symbol,
@@ -104,16 +102,21 @@ export function TrajectoryTool() {
         promotedRead: verdict && trajectory ? buildTrajectoryRead(verdict, trajectory) : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
         renderChart: (active, setActive) =>
-          trajectory ? (
+          trajectory && sliced ? (
             <TrajectoryChart
               points={chartPoints}
               crossings={trajectory.crossings}
+              isDaily={sliced.isDaily}
+              resultMarks={sliced.resultMarks}
+              clampedEarlier={sliced.clampedEarlier}
               active={active}
               onActiveChange={setActive}
             />
           ) : null,
         renderReadout: (active) =>
-          chartPoints.length ? <TrajectoryReadout points={chartPoints} active={active} /> : null,
+          chartPoints.length ? (
+            <TrajectoryReadout points={chartPoints} isDaily={sliced?.isDaily ?? false} active={active} />
+          ) : null,
         renderSummary: () => (trajectory ? <TrajectorySummary trajectory={trajectory} /> : null),
       }
     : null;

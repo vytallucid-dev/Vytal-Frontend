@@ -161,8 +161,13 @@ export interface BankingQuarter {
   nii: number | null; // ₹ Cr (net interest income)
   otherIncome: number | null; // ₹ Cr
   totalIncome: number | null; // ₹ Cr
+  // operating-expense breakdown (₹ Cr) — the wedge between totalIncome and PPOP
+  employeesCost: number | null;
+  operatingExpenses: number | null;
+  expenditureExclProvisions: number | null;
   ppop: number | null; // ₹ Cr (pre-provision operating profit)
   provisions: number | null; // ₹ Cr
+  exceptionalItems: number | null; // ₹ Cr
   netProfit: number | null; // ₹ Cr
   netMargin: number | null; // %
 
@@ -200,6 +205,27 @@ export interface BankingAnnual {
   interestEarned: number | null;
   interestOnAdvances: number | null;
   revenueOnInvestments: number | null;
+  interestOnRbiBalances: number | null;
+  otherInterest: number | null;
+
+  // full-year P&L waterfall (₹ Cr) — Interest Earned → Interest Expended → NII → Other Income
+  // → Total Income → opex breakdown → PPOP → Provisions → Exceptional/Extraordinary → PBT → PAT
+  interestExpended: number | null;
+  nii: number | null;
+  otherIncome: number | null;
+  totalIncome: number | null;
+  employeesCost: number | null;
+  operatingExpenses: number | null;
+  otherOperatingExpenses: number | null;
+  expenditureExclProvisions: number | null;
+  ppop: number | null;
+  provisions: number | null;
+  exceptionalItems: number | null;
+  extraordinaryItems: number | null;
+  profitBeforeTax: number | null;
+  tax: number | null;
+  netProfit: number | null;
+  netMargin: number | null; // % DERIVED (netProfit / totalIncome × 100)
 
   deposits: number | null; // ₹ Cr
   advances: number | null; // ₹ Cr
@@ -223,9 +249,15 @@ export interface BankingAnnual {
 
   capital: number | null; // ₹ Cr
   reservesAndSurplus: number | null; // ₹ Cr
+  reserveExclRevaluation: number | null; // ₹ Cr
   netWorth: number | null; // ₹ Cr
-  totalAssets: number | null; // ₹ Cr
+  otherLiabilities: number | null; // ₹ Cr
+  capitalAndLiabilities: number | null; // ₹ Cr (BS total, liability side)
   cashAndBalancesWithRbi: number | null; // ₹ Cr
+  balancesWithBanks: number | null; // ₹ Cr
+  fixedAssets: number | null; // ₹ Cr
+  otherAssets: number | null; // ₹ Cr
+  totalAssets: number | null; // ₹ Cr
 
   basicEps: number | null; // ₹
   bookValuePerShare: number | null; // ₹
@@ -233,6 +265,7 @@ export interface BankingAnnual {
   cashFromOperating: number | null; // ₹ Cr
   cashFromInvesting: number | null; // ₹ Cr
   cashFromFinancing: number | null; // ₹ Cr
+  netCashFlow: number | null; // ₹ Cr
 }
 
 /** One fiscal year of the banking headline-ratio history — feeds the sparklines beside the
@@ -297,9 +330,14 @@ export interface NbfcQuarter {
   revenue: number | null; // ₹ Cr (total income)
   interestIncome: number | null; // ₹ Cr
   feeAndCommissionIncome: number | null; // ₹ Cr
+  otherIncome: number | null; // ₹ Cr
+  totalIncome: number | null; // ₹ Cr
   financeCosts: number | null; // ₹ Cr
   impairmentOnFinancialInstruments: number | null; // ₹ Cr (loan-loss / ECL)
+  totalExpenses: number | null; // ₹ Cr
   nii: number | null; // ₹ Cr (net interest income)
+  profitBeforeTax: number | null; // ₹ Cr
+  tax: number | null; // ₹ Cr
   netProfit: number | null; // ₹ Cr
   netMargin: number | null; // %
 
@@ -313,11 +351,24 @@ export interface NbfcQuarter {
 export interface NbfcAnnual {
   fiscalYear: string;
 
-  // P&L — previously missing from payload (live bug fix)
-  netProfit: number | null; // ₹ Cr
-  netMargin: number | null; // % DERIVED (netProfit / revenue × 100)
+  // P&L waterfall (₹ Cr) — Interest Income + Fee/Commission + Other → Total Income →
+  // Finance Costs + Impairment + opex → Total Expenses → PBT → Tax → Net Profit → Net Margin%
   interestIncome: number | null; // ₹ Cr
   feeAndCommissionIncome: number | null; // ₹ Cr
+  otherIncome: number | null; // ₹ Cr
+  totalIncome: number | null; // ₹ Cr
+  financeCosts: number | null; // ₹ Cr
+  feeAndCommissionExpense: number | null; // ₹ Cr
+  netGainOnFairValueChanges: number | null; // ₹ Cr (can be negative — mark-to-market)
+  impairmentOnFinancialInstruments: number | null; // ₹ Cr (loan-loss / ECL)
+  employeeBenefitExpense: number | null; // ₹ Cr
+  depreciation: number | null; // ₹ Cr
+  otherExpenses: number | null; // ₹ Cr
+  totalExpenses: number | null; // ₹ Cr
+  profitBeforeTax: number | null; // ₹ Cr
+  tax: number | null; // ₹ Cr
+  netProfit: number | null; // ₹ Cr
+  netMargin: number | null; // % DERIVED (netProfit / revenue × 100)
 
   roe: number | null; // %
   nim: number | null; // % (net interest margin)
@@ -337,11 +388,28 @@ export interface NbfcAnnual {
   revenueGrowthYoy: number | null; // %
   patGrowthYoy: number | null; // %
 
-  totalAssets: number | null; // ₹ Cr
-  totalEquity: number | null; // ₹ Cr
-  netWorth: number | null; // ₹ Cr
-  investments: number | null; // ₹ Cr
-  cashAndCashEquivalents: number | null; // ₹ Cr
+  // balance-sheet — Ind-AS financial-statement layout (₹ Cr). Equity → Financial Assets →
+  // Non-Financial Assets → Total Assets; Financial Liabilities → Non-Financial Liabilities.
+  equityShareCapital: number | null;
+  otherEquity: number | null;
+  totalEquity: number | null;
+  netWorth: number | null;
+  cashAndCashEquivalents: number | null;
+  bankBalanceOther: number | null;
+  investments: number | null;
+  receivablesTrade: number | null;
+  otherFinancialAssets: number | null;
+  financialAssets: number | null; // sub-total
+  propertyPlantAndEquipment: number | null;
+  nonFinancialAssets: number | null; // sub-total
+  totalAssets: number | null;
+  payables: number | null;
+  subordinatedLiabilities: number | null;
+  otherFinancialLiabilities: number | null;
+  financialLiabilities: number | null; // sub-total
+  provisions: number | null;
+  nonFinancialLiabilities: number | null; // sub-total
+  totalLiabilities: number | null;
 
   basicEps: number | null; // ₹
   bookValuePerShare: number | null; // ₹
@@ -349,6 +417,7 @@ export interface NbfcAnnual {
   cashFromOperating: number | null; // ₹ Cr
   cashFromInvesting: number | null; // ₹ Cr
   cashFromFinancing: number | null; // ₹ Cr
+  netCashFlow: number | null; // ₹ Cr
 }
 
 export interface NbfcPayload {
@@ -414,15 +483,52 @@ export interface LifeInsuranceAnnual {
   incomeRenewalPremium: number | null; // ₹ Cr
   incomeSinglePremium: number | null; // ₹ Cr
 
+  // ── Revenue Account (Policyholders) → Shareholders' Account — the full annual P&L (₹ Cr).
+  // incomeFromInvestments(-Shareholders) / changeInValuationOfLiabilities can be negative.
+  grossPremiumIncome: number | null;
+  netPremiumIncome: number | null;
+  reinsuranceCeded: number | null; // ₹ Cr (a deduction — stored positive)
+  incomeFromInvestments: number | null; // ₹ Cr (can be negative)
+  otherIncomePolicyholders: number | null;
+  totalRevenuePolicyholders: number | null;
+  commissionFirstYearPremium: number | null;
+  commissionRenewalPremium: number | null;
+  commissionSinglePremium: number | null;
+  totalCommission: number | null;
+  employeesRemuneration: number | null;
+  administrationExpenses: number | null;
+  totalOperatingExpenses: number | null;
+  benefitsPaidNet: number | null;
+  changeInValuationOfLiabilities: number | null; // ₹ Cr (can be negative)
+  surplusFromRevenueAccount: number | null;
+  transferFromPolicyholders: number | null;
+  incomeFromInvestmentsShareholders: number | null; // ₹ Cr (can be negative)
+  shareholdersExpenses: number | null;
+  profitBeforeTax: number | null;
+  tax: number | null;
+  netProfit: number | null; // ₹ Cr (final line of the shareholders' account)
+
   premiumGrowthYoy: number | null; // %
   patGrowthYoy: number | null; // %
 
-  policyholdersFunds: number | null; // ₹ Cr (the dominant liability)
-  assetsHeldToCoverLinkedLiabilities: number | null; // ₹ Cr (ULIP-linked)
-  investmentsShareholders: number | null; // ₹ Cr
-  investmentsPolicyholders: number | null; // ₹ Cr
+  // balance sheet — Sources of Funds / Application of Funds (₹ Cr). Policyholders' fund dominates.
   shareCapital: number | null; // ₹ Cr
   reservesAndSurplus: number | null; // ₹ Cr
+  fairValueChangeAccount: number | null; // ₹ Cr (can be negative)
+  borrowings: number | null; // ₹ Cr
+  policyholdersFunds: number | null; // ₹ Cr (the dominant liability)
+  fundsForFutureAppropriations: number | null; // ₹ Cr
+  totalSourcesOfFunds: number | null; // ₹ Cr
+  investmentsShareholders: number | null; // ₹ Cr
+  investmentsPolicyholders: number | null; // ₹ Cr
+  assetsHeldToCoverLinkedLiabilities: number | null; // ₹ Cr (ULIP-linked)
+  loansApplicationOfFunds: number | null; // ₹ Cr
+  fixedAssets: number | null; // ₹ Cr
+  cashAndBankBalances: number | null; // ₹ Cr
+  advancesAndOtherAssets: number | null; // ₹ Cr
+  currentLiabilities: number | null; // ₹ Cr
+  provisions: number | null; // ₹ Cr
+  totalApplicationOfFunds: number | null; // ₹ Cr
   netWorth: number | null; // ₹ Cr
   totalAssets: number | null; // ₹ Cr
 
@@ -494,14 +600,53 @@ export interface GeneralInsuranceAnnual {
   gpwGrowthYoy: number | null; // %
   patGrowthYoy: number | null; // %
 
+  // ── Revenue Account (underwriting) → Shareholders' Account — the full annual P&L (₹ Cr).
+  // GPW → NPW → Net Premium → Premium Earned → reinsurance → investment income → Total
+  // Revenue → claims → Incurred Claims → commission → Net Commission → opex → Underwriting
+  // Profit/Loss → PBT → Tax → Net Profit. underwritingProfitOrLoss can be negative.
+  grossPremiumsWritten: number | null;
+  netPremiumWritten: number | null;
+  netPremium: number | null;
+  premiumEarned: number | null;
+  reinsuranceCeded: number | null; // ₹ Cr (a deduction — stored positive)
+  reinsuranceAccepted: number | null;
+  changeInUnexpiredRiskReserve: number | null; // ₹ Cr (can be negative)
+  incomeFromInvestments: number | null; // ₹ Cr (can be negative)
+  otherIncome: number | null;
+  totalRevenue: number | null;
+  claimsPaid: number | null;
+  changeInOutstandingClaims: number | null; // ₹ Cr (can be negative)
+  reinsuranceRecoveriesOnClaims: number | null;
+  incurredClaims: number | null;
+  commissionPaid: number | null;
+  commissionReceivedFromReinsurance: number | null;
+  netCommission: number | null;
+  totalOperatingExpensesRelatedToInsurance: number | null;
+  underwritingProfitOrLoss: number | null; // ₹ Cr (can be negative)
+  profitBeforeTax: number | null;
+  tax: number | null;
+  netProfit: number | null;
+
   // reserve adequacy — ₹ Cr; 0 = none required (adequate pricing); positive = a flag
   premiumDeficiency: number | null;
 
-  investments: number | null; // ₹ Cr (own line)
-  totalAssets: number | null; // ₹ Cr (context only)
+  // balance sheet — Sources of Funds / Application of Funds (₹ Cr). investments is its OWN
+  // line — NOT cross-derived vs totalAssets (GI convention).
   shareCapital: number | null; // ₹ Cr
   reservesAndSurplus: number | null; // ₹ Cr
+  fairValueChangeAccount: number | null; // ₹ Cr (can be negative)
+  borrowings: number | null; // ₹ Cr
+  totalSourcesOfFunds: number | null; // ₹ Cr
+  investments: number | null; // ₹ Cr (own line)
+  loansApplicationOfFunds: number | null; // ₹ Cr
+  fixedAssets: number | null; // ₹ Cr
+  cashAndBankBalances: number | null; // ₹ Cr
+  advancesAndOtherAssets: number | null; // ₹ Cr
+  currentLiabilities: number | null; // ₹ Cr
+  provisions: number | null; // ₹ Cr
+  totalApplicationOfFunds: number | null; // ₹ Cr
   netWorth: number | null; // ₹ Cr
+  totalAssets: number | null; // ₹ Cr (context only)
 
   basicEps: number | null; // ₹
   bookValuePerShare: number | null; // ₹

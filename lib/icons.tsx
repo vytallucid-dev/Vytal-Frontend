@@ -61,6 +61,8 @@ import {
   WarningCircle,
   CheckCircle,
   ArrowCounterClockwise,
+  ArrowsOutSimple,
+  ArrowsInSimple,
   Scales,
   Rocket,
   Graph,
@@ -134,6 +136,8 @@ export const Icons = {
   caretRight: CaretRight,
   caretDown: CaretDown,
   caretUp: CaretUp,
+  arrowsOutSimple: ArrowsOutSimple,
+  arrowsInSimple: ArrowsInSimple,
 } satisfies Record<string, Icon>;
 
 export type IconName = keyof typeof Icons;

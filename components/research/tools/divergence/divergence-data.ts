@@ -10,16 +10,16 @@
  * Direction × config together produce the read; they are never equal.
  */
 
-import { PILLAR_META, BAND_META, shortPeriod } from "@/components/stock-detail/health/shared";
+import { PILLAR_META, BAND_META } from "@/components/stock-detail/health/shared";
 import type {
   VerdictSection,
-  TrajectoryPoint,
   PillarView,
   PillarKey,
   DivergenceFlag,
 } from "@/types/health";
 import type { DivergenceConfig, DivergenceDirection } from "@/types/research-tools";
 import type { ChipSpec, PromotedRead } from "../tool-frame.types";
+import type { WindowPoint } from "../window-slice";
 
 const DIVERGENCE_NOTABLE = 15;
 const DIVERGENCE_WIDE = 25;
@@ -30,6 +30,7 @@ const label = (p: PillarKey) => PILLAR_META[p].label;
 const color = (p: PillarKey) => PILLAR_META[p].cssVar;
 
 export interface SpreadPoint {
+  /** axis label — short period (quarterly) or short day (daily/custom). */
   period: string;
   high: number;
   low: number;
@@ -67,22 +68,23 @@ export function pickScoredPair(pillars: PillarView[]): { high: PillarKey; low: P
   return { high: high.pillar, low: low.pillar };
 }
 
-/** The fixed pair's two subtotals + gap over time, oldest→newest. Periods where
- *  either pillar reads ≤ 0 are dropped: the trajectory contract doesn't carry
- *  per-period pillar availability, and an `unavailable_redistributed` pillar lands a
- *  ~0 subtotal that would inject a phantom gap. (The backend scan does this precisely
- *  via applied weights; the single view uses the ≤0 guard — see the backend candidate
- *  to expose per-period weights in the trajectory series.) */
+/** The fixed pair's two subtotals + gap over the SLICED window, oldest→newest. Runs over
+ *  the shared WindowPoint series — so on a daily/custom window the gap is computed per
+ *  `asOfDate` and you see it widen/narrow day by day (the same pillar-spread math, just
+ *  over daily points). Points where either pillar reads ≤ 0 are dropped: the trajectory
+ *  contract doesn't carry per-period pillar availability, and an `unavailable_redistributed`
+ *  pillar lands a ~0 subtotal that would inject a phantom gap. The x-axis plots on the
+ *  point's own label so dropped points never evenly-space-distort the timeline. */
 export function buildSpread(
-  series: TrajectoryPoint[],
+  points: WindowPoint[],
   high: PillarKey,
   low: PillarKey,
 ): SpreadPoint[] {
-  return series
+  return points
     .map((pt) => {
-      const h = pt[high];
-      const l = pt[low];
-      return { period: shortPeriod(pt.periodKey), high: r1(h), low: r1(l), gap: r1(h - l) };
+      const h = pt[high] as number;
+      const l = pt[low] as number;
+      return { period: pt.x, high: r1(h), low: r1(l), gap: r1(h - l) };
     })
     .filter((p) => p.high > 0 && p.low > 0);
 }

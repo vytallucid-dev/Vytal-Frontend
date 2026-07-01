@@ -1,12 +1,63 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Reveal } from "@/components/ui/reveal";
 import { Icons } from "@/lib/icons";
 import { Panel } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { getMetricLabel } from "@/lib/health/metric-labels";
 import { prepareCensus, accentVars, type PreparedCensus, type Concern } from "@/lib/findings";
 import type { UniverseHealthView } from "@/types/universe-view";
+
+// ── lens-pattern label resolver ──────────────────────────────────────────────
+// The lens census carries dynamic `lens_<id>_<suffix>` keys (id = lm3/lm7/lp2/lp5;
+// suffix = metricKey for LM, pillar for LP). The census has no evidence, so derive the
+// verbatim catalog label + scope + context from the key. Labels mirror the backend
+// LM/LP_CATALOG (Vytal_Three_Lens_Pattern_Library_v1) — descriptive, never predictive.
+const LENS_FACES: Record<string, { label: string; scope: "metric" | "pillar" }> = {
+  lm3: { label: "Below bar — leads a weak field", scope: "metric" },
+  lm7: { label: "Weak on every lens", scope: "metric" },
+  lp2: { label: "Field-lifted", scope: "pillar" },
+  lp5: { label: "Eroding breadth", scope: "pillar" },
+};
+const PILLAR_TITLE: Record<string, string> = {
+  foundation: "Foundation",
+  momentum: "Momentum",
+};
+
+interface LensMeta {
+  lensId: string; // "LM3" | "LM7" | "LP2" | "LP5"
+  scope: "metric" | "pillar";
+  label: string; // catalog label (card title)
+  context: string; // the metric label (LM) or pillar name (LP)
+}
+
+/** Parse a `lens_<id>_<suffix>` census key into its display face. Falls back gracefully
+ *  for any unknown lens id (future keys still render, never crash). */
+function lensMetaOf(key: string): LensMeta {
+  const m = /^lens_([a-z]+\d+)_(.+)$/.exec(key);
+  const id = m?.[1] ?? "";
+  const suffix = m?.[2] ?? key;
+  const face = LENS_FACES[id];
+  const scope = face?.scope ?? (id.startsWith("lp") ? "pillar" : "metric");
+  const context =
+    scope === "pillar" ? (PILLAR_TITLE[suffix] ?? suffix) : getMetricLabel(suffix).label;
+  return {
+    lensId: id.toUpperCase(),
+    scope,
+    label: face?.label ?? id.toUpperCase(),
+    context,
+  };
+}
 
 type FilterId = "all" | "red_flags" | "ownership" | "fundamentals" | "momentum" | "recovery";
 const FILTERS: { id: FilterId; label: string }[] = [
@@ -22,6 +73,67 @@ function flagDescription(key: string): string {
   if (key === "ownership_R1_pledge")
     return "Promoter pledged holding has crossed 50% of their stake, or risen sharply in one quarter — a financing-stress signal that overrides the composite. A hard ownership-quality check.";
   return "An auto-tier red flag that overrides the composite until it clears.";
+}
+
+const SCREENER_HREF = (symbol: string) => `/research/stock-screener/${symbol}`;
+
+// ── Investigate affordance — 1 member jumps straight to its screener page; N members
+// open a light picker modal (select → jump). Uniform across flag / pattern / lens cards. ─
+function InvestigateButton({ members, title }: { members: string[]; title: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  if (members.length === 0) return null;
+
+  if (members.length === 1) {
+    return (
+      <Link
+        href={SCREENER_HREF(members[0])}
+        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line2 bg-surface-1 px-2 py-1 text-[10.5px] font-medium text-ink2 transition-colors hover:border-line3 hover:text-ink"
+      >
+        Investigate
+        <Icons.arrowUpRight className="size-3" />
+      </Link>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line2 bg-surface-1 px-2 py-1 text-[10.5px] font-medium text-ink2 transition-colors hover:border-line3 hover:text-ink"
+      >
+        Investigate
+        <span className="num text-ink3">{members.length}</span>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm border-line2 bg-surface-1 text-ink">
+          <DialogHeader>
+            <DialogTitle className="text-[15px] font-medium">{title}</DialogTitle>
+            <DialogDescription className="text-[12px] text-ink3">
+              {members.length} names firing this. Pick one to open its screener.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-1 grid max-h-[50vh] grid-cols-2 gap-1.5 overflow-y-auto sm:grid-cols-3">
+            {members.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push(SCREENER_HREF(s));
+                }}
+                className="num inline-flex items-center justify-between gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1.5 text-[12px] text-ink2 transition-colors hover:border-line3 hover:bg-surface-3 hover:text-ink"
+              >
+                {s}
+                <Icons.arrowUpRight className="size-3 text-ink3" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 const accentChip = (accent: PreparedCensus["accent"]) => {
@@ -75,9 +187,12 @@ function RedFlagCard({ p }: { p: PreparedCensus }) {
         </span>
       </div>
       <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink2">{flagDescription(p.key)}</p>
-      <p className="mt-2 text-[11.5px] italic text-ink3">
-        Reach: {p.reach} ({p.memberCount} of {p.outOf} scored) — {p.reach === "isolated" ? "a single-name concern, not a universe signal." : p.reach === "widespread" ? "a group-wide read, not company-specific." : "a shared cluster worth watching."}
-      </p>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-[11.5px] italic text-ink3">
+          Reach: {p.reach} ({p.memberCount} of {p.outOf} scored) — {p.reach === "isolated" ? "a single-name concern, not a universe signal." : p.reach === "widespread" ? "a group-wide read, not company-specific." : "a shared cluster worth watching."}
+        </p>
+        <InvestigateButton members={p.members} title={p.name} />
+      </div>
     </div>
   );
 }
@@ -97,7 +212,43 @@ function PatternCard({ p }: { p: PreparedCensus }) {
           {p.memberCount}/{p.outOf}
         </span>
       </div>
-      <div className="num mt-2 text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
+        <InvestigateButton members={p.members} title={p.name} />
+      </div>
+    </div>
+  );
+}
+
+// ── lens-pattern card (three-lens LM/LP) — same card language as PatternCard, with an
+// LM/LP scope chip + the metric/pillar context. Descriptive, never predictive. ──────────
+function LensPatternCard({ p }: { p: PreparedCensus }) {
+  const a = accentVars(p.accent);
+  const meta = lensMetaOf(p.key);
+  return (
+    <div
+      className="mb-2 rounded-xl border border-line bg-surface-1 p-3.5"
+      style={{ borderLeft: `3px solid ${a.color}` }}
+    >
+      <div className="flex items-center gap-2.5">
+        <span
+          className="num shrink-0 rounded-[5px] px-1.5 py-0.5 text-[9px] font-semibold tracking-wide"
+          style={accentChip(p.accent)}
+        >
+          {meta.lensId}
+        </span>
+        <span className="text-[13px] font-semibold">{meta.label}</span>
+        <span className="truncate text-[11px] text-ink3">
+          {meta.scope === "metric" ? "metric" : "pillar"} · {meta.context}
+        </span>
+        <span className="num ml-auto shrink-0 text-[12px] font-medium" style={{ color: a.color }}>
+          {p.memberCount}/{p.outOf}
+        </span>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
+        <InvestigateButton members={p.members} title={`${meta.lensId} · ${meta.label}`} />
+      </div>
     </div>
   );
 }
@@ -174,15 +325,21 @@ function ThresholdWatchSection({ atRisk, approaching }: { atRisk: EdgeWatcher[];
       </div>
     );
   }
+  // Each row jumps to the stock's TRAJECTORY tool — threshold watch is about movement
+  // toward a band line, so the movement-over-time tool is the right destination.
   const WatchRow = ({ w }: { w: EdgeWatcher }) => (
-    <div className="flex items-baseline gap-2 py-2 text-[12px]">
-      <span className="num w-20 shrink-0 font-medium text-ink">{w.symbol}</span>
+    <Link
+      href={`/research/trajectory?symbol=${w.symbol}`}
+      className="group -mx-2 flex items-baseline gap-2 rounded-md px-2 py-2 text-[12px] transition-colors hover:bg-surface-2"
+    >
+      <span className="num w-20 shrink-0 font-medium text-ink group-hover:text-pristine">{w.symbol}</span>
       <span className="num text-ink2">{w.composite.toFixed(1)}</span>
       <span className="ml-auto text-right text-[11.5px] text-ink3">
         {w.gap.toFixed(1)} pt{w.gap.toFixed(1) !== "1.0" ? "s" : ""}{" "}
         {w.direction === "down" ? `above ${w.toBand} floor` : `below ${w.toBand} floor`}
       </span>
-    </div>
+      <Icons.arrowUpRight className="size-3 shrink-0 self-center text-ink3 opacity-0 transition-opacity group-hover:opacity-100" />
+    </Link>
   );
   return (
     <div className="flex flex-col gap-3">
@@ -231,6 +388,12 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
   const prepared = useMemo(() => prepareCensus(view.pathology), [view.pathology]);
   const redFlags = useMemo(() => prepared.filter((p) => p.kind === "red_flag"), [prepared]);
   const patterns = useMemo(() => prepared.filter((p) => p.kind === "pattern"), [prepared]);
+
+  // Three-lens (LM/LP) census — its own family, prepared with the same machinery, then
+  // split metric-level (LM) vs pillar-level (LP) for a light sub-grouping.
+  const lens = useMemo(() => prepareCensus(view.lensPathology ?? []), [view.lensPathology]);
+  const lensMetric = useMemo(() => lens.filter((p) => lensMetaOf(p.key).scope === "metric"), [lens]);
+  const lensPillar = useMemo(() => lens.filter((p) => lensMetaOf(p.key).scope === "pillar"), [lens]);
 
   const matches = (p: PreparedCensus) => {
     switch (filter) {
@@ -391,6 +554,50 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
               <p className="mt-0.5 text-[11px] italic text-ink3">
                 Pattern engine is live — all three categories quiet this snapshot.
               </p>
+            )}
+          </Tier>
+
+          <Tier title="Lens patterns · Cross-lens signals" count={`${lens.length} firing`}>
+            <p className="mb-2.5 text-[11px] text-ink3">
+              The three-lens (LM/LP) library — where a metric or pillar disagrees across its
+              absolute bar, its peer field, and its own history. Descriptive reads on where the
+              tension sits, never a forecast.
+            </p>
+            {lens.length > 0 ? (
+              <div className="flex flex-col gap-4">
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink3">Metric-level (LM)</span>
+                    <span className="h-px flex-1 bg-line" />
+                    <span className="num text-[10px] tracking-normal text-ink3">{lensMetric.length} firing</span>
+                  </div>
+                  {lensMetric.length > 0 ? (
+                    lensMetric.map((p) => <LensPatternCard key={p.key} p={p} />)
+                  ) : (
+                    <div className="rounded-lg border border-line bg-surface-1 px-3 py-2.5 text-[11.5px] text-ink3">
+                      No metric-level lens patterns this snapshot.
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink3">Pillar-level (LP)</span>
+                    <span className="h-px flex-1 bg-line" />
+                    <span className="num text-[10px] tracking-normal text-ink3">{lensPillar.length} firing</span>
+                  </div>
+                  {lensPillar.length > 0 ? (
+                    lensPillar.map((p) => <LensPatternCard key={p.key} p={p} />)
+                  ) : (
+                    <div className="rounded-lg border border-line bg-surface-1 px-3 py-2.5 text-[11.5px] text-ink3">
+                      No pillar-level lens patterns this snapshot.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center text-[12px] text-ink3">
+                No cross-lens patterns firing this snapshot — no metric or pillar is in three-lens disagreement.
+              </div>
             )}
           </Tier>
 

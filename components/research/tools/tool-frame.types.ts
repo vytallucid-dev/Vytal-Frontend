@@ -27,13 +27,49 @@ import type { ReactNode } from "react";
 import type { Icon } from "@/lib/icons";
 import type { ScoredStockLite } from "@/types/research-tools";
 
-/** Trailing-quarter windows the frame's switcher offers (→ `?window=`). */
-export type ToolWindow = 4 | 8 | 12;
+/**
+ * THE WINDOW MODEL — a discriminated union carrying BOTH cadences behind one prop.
+ *   • quarterly → slices the per-quarter `trajectory.series` (the original 1Y/2Y/3Y)
+ *   • daily     → slices `trajectory.dailySeries` to the last N calendar days (60/30/15D)
+ *   • custom    → slices `dailySeries` to an arbitrary start–end (clamped to retention)
+ * The daily/custom modes read the SAME payload — the health endpoint always ships
+ * `dailySeries` + `resultDays` regardless of the fetch's quarter count — so switching
+ * cadence is a pure client-side re-slice; only `quarters` re-keys the fetch.
+ */
+export type QuarterCount = 4 | 8 | 12;
+export type DayCount = 60 | 30 | 15;
+export type ToolWindow =
+  | { mode: "quarterly"; quarters: QuarterCount }
+  | { mode: "daily"; days: DayCount }
+  | { mode: "custom"; start: string; end: string };
 
-export const WINDOW_OPTIONS: { label: string; value: ToolWindow }[] = [
+/** The default resting window — 3Y quarterly (preserves the original tool behaviour). */
+export const DEFAULT_WINDOW: ToolWindow = { mode: "quarterly", quarters: 12 };
+
+/** The quarter count a window fetches with. Daily/custom keep the full 3Y quarterly
+ *  series available (and a stable query key) while they re-slice the daily series. */
+export function windowQuarters(w: ToolWindow): QuarterCount {
+  return w.mode === "quarterly" ? w.quarters : 12;
+}
+
+/** Stable identity string for a window — used to reset the shared scrub state on change
+ *  (a plain object prop would be a new ref every render). */
+export function windowKey(w: ToolWindow): string {
+  if (w.mode === "quarterly") return `q${w.quarters}`;
+  if (w.mode === "daily") return `d${w.days}`;
+  return `c${w.start}_${w.end}`;
+}
+
+export const QUARTER_OPTIONS: { label: string; value: QuarterCount }[] = [
   { label: "1Y", value: 4 },
   { label: "2Y", value: 8 },
   { label: "3Y", value: 12 },
+];
+
+export const DAY_OPTIONS: { label: string; value: DayCount }[] = [
+  { label: "60D", value: 60 },
+  { label: "30D", value: 30 },
+  { label: "15D", value: 15 },
 ];
 
 /**
@@ -88,6 +124,10 @@ export interface SingleViewSlots {
   notScored?: { reason: string; title?: string } | null;
   /** honest single-period "building history" state (frame renders a panel). */
   buildingHistory?: boolean;
+  /** Available daily-history bounds (raw ISO, oldest→newest) — the retention envelope the
+   *  custom-range picker clamps to. null when the stock has no daily score history yet
+   *  (the switcher then disables the daily/custom options). */
+  dailyBounds?: { first: string; last: string } | null;
   identity: { name: string; ticker: string; sub: string };
   chips: ChipSpec[];
   promotedRead: PromotedRead | null;
