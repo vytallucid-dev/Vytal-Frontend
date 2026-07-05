@@ -1,10 +1,12 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import Navbar from "@/components/navbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { RequireAuth } from "@/components/auth/route-guard";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <RequireAuth>
+      <SidebarProvider>
       {/* static grid backdrop (depth from surfaces + hairline grid, no motion) */}
       <div
         aria-hidden
@@ -22,6 +24,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </SidebarInset>
-    </SidebarProvider>
+      </SidebarProvider>
+    </RequireAuth>
   );
 }

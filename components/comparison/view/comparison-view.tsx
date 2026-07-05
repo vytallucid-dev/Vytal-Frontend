@@ -115,13 +115,13 @@ export function ComparisonView({ view }: { view: ComparisonViewModel }) {
   const { a, b } = view;
 
   return (
-    <div className="mx-auto w-full px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full px-0 py-6 sm:px-6">
       <Header view={view} />
 
       {/* Tab bar — matches the stock-detail page: a thin pillar-coloured underline marks
           the active tab (no thick border, no sticky backdrop-blur / glass). */}
       <div className="mt-6 border-b border-line">
-        <div className="flex gap-1 overflow-x-auto overflow-y-hidden">
+        <div className="flex gap-1 hidden-scrollbar overflow-x-auto overflow-y-hidden">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -328,24 +328,26 @@ function PillarGapList({
             key={r.key}
             type="button"
             onClick={onOpenHealth}
-            className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface-1 px-4 py-3 text-left transition-colors hover:border-line2"
+            className="flex w-full items-center gap-2 rounded-xl border border-line bg-surface-1 px-2 py-3 text-left transition-colors hover:border-line2 sm:gap-3 sm:px-4"
           >
             <span className="h-3.5 w-[3px] shrink-0 rounded-full" style={{ background: meta.cssVar }} />
-            <span className="w-24 shrink-0 text-sm font-medium text-ink">{meta.label}</span>
-            <span className="num text-sm font-semibold" style={{ color: A_HUE }}>
-              {r.a !== null ? r.a.toFixed(1) : "—"}
+            <span className="w-20 shrink-0 text-sm font-medium text-ink sm:w-24">{meta.label}</span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span className="num text-sm font-semibold" style={{ color: A_HUE }}>
+                {r.a !== null ? r.a.toFixed(1) : "—"}
+              </span>
+              <span className="text-xs text-ink3">vs</span>
+              <span className="num text-sm font-semibold" style={{ color: B_HUE }}>
+                {r.b !== null ? r.b.toFixed(1) : "—"}
+              </span>
             </span>
-            <span className="text-xs text-ink3">vs</span>
-            <span className="num text-sm font-semibold" style={{ color: B_HUE }}>
-              {r.b !== null ? r.b.toFixed(1) : "—"}
-            </span>
-            <span className="ml-auto flex items-center gap-2.5">
+            <span className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
               {r.gap !== null && (
-                <span className="num rounded-full border border-line2 px-2.5 py-0.5 text-xs text-ink2">
+                <span className="num shrink-0 rounded-full border border-line2 px-2 py-0.5 text-[11px] text-ink2 sm:px-2.5 sm:text-xs">
                   gap {r.gap.toFixed(1)}
                 </span>
               )}
-              <Icons.arrowRight className="h-3.5 w-3.5 text-ink3" />
+              <Icons.arrowRight className="h-3.5 w-3.5 shrink-0 text-ink3" />
             </span>
           </button>
         );

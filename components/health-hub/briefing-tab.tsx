@@ -111,7 +111,7 @@ function Hero({ view }: { view: UniverseHealthView }) {
           {view.scoredUniverseSize} scored · {view.periodKey}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-6">
+      <div className="grid sm:flex flex-wrap items-center gap-6">
         <div className="min-w-[240px] flex-1">
           <h2 className="font-display text-[24px] font-medium leading-[1.15]">
             <span className="num font-medium">{view.scoredUniverseSize}</span> names, this quarter

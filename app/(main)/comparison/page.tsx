@@ -25,7 +25,10 @@ import { usePeerGroupHealth } from "@/lib/api/hooks/use-peer-group-health";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import type { LabelBand } from "@/types/health";
-import { EntityPicker, type PickerStock } from "@/components/comparison/entity-picker";
+import {
+  EntityPicker,
+  type PickerStock,
+} from "@/components/comparison/entity-picker";
 import {
   PeerGroupPicker,
   type PickerPeerGroup,
@@ -135,7 +138,7 @@ export default function ComparisonLandingPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-12">
+    <div className="mx-auto w-full max-w-5xl px-0 py-8 sm:px-6 sm:py-12">
       {/* Heading */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -152,19 +155,24 @@ export default function ComparisonLandingPage() {
         </h1>
         <p className="mx-auto max-w-2xl text-base text-ink2 md:text-lg">
           Pick two to study side by side. We tell you what lines up — and what
-          doesn&apos;t — while you choose. No winner is declared; you read the full
-          picture.
+          doesn&apos;t — while you choose. No winner is declared; you read the
+          full picture.
         </p>
       </motion.div>
 
       {/* Mode selector */}
-      <div className="mt-10 flex justify-center">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mt-10 flex justify-center"
+      >
         <div className="inline-flex rounded-xl border border-line bg-surface p-1">
           <button
             type="button"
             onClick={() => setMode("stocks")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:gap-2 sm:px-5",
               mode === "stocks"
                 ? "bg-pristine/12 text-pristine shadow-sm ring-1 ring-pristine/25"
                 : "text-ink3 hover:text-ink2",
@@ -180,7 +188,7 @@ export default function ComparisonLandingPage() {
             type="button"
             onClick={() => setMode("peer_groups")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:gap-2 sm:px-5",
               mode === "peer_groups"
                 ? "bg-healthy/12 text-healthy shadow-sm ring-1 ring-healthy/25"
                 : "text-ink3 hover:text-ink2",
@@ -193,7 +201,7 @@ export default function ComparisonLandingPage() {
             Peer Groups
           </button>
         </div>
-      </div>
+      </motion.div>
 
       <AnimatePresence mode="wait">
         {mode === "peer_groups" ? (
@@ -247,20 +255,21 @@ export default function ComparisonLandingPage() {
                 disabled={!canComparePg}
                 onClick={startComparePg}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all",
+                  "inline-flex max-w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-center text-sm font-semibold transition-all sm:px-6",
                   canComparePg
                     ? "cursor-pointer bg-primary text-primary-foreground hover:opacity-90"
                     : "cursor-not-allowed bg-line2 text-ink3",
                 )}
               >
-                <Icons.scales className="h-4 w-4" />
+                <Icons.scales className="h-4 w-4 shrink-0" />
                 {canComparePg && pgA && pgB
                   ? `Compare ${pgA.displayName} vs ${pgB.displayName}`
                   : "Pick two peer groups to compare"}
               </button>
               {canComparePg && (
                 <p className="text-xs text-ink3">
-                  Distributions compare regardless of sector — you read each field in full.
+                  Distributions compare regardless of sector — you read each
+                  field in full.
                 </p>
               )}
             </div>
@@ -315,20 +324,21 @@ export default function ComparisonLandingPage() {
                 disabled={!canCompare}
                 onClick={startCompare}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all",
+                  "inline-flex max-w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-center text-sm font-semibold transition-all sm:px-6",
                   canCompare
                     ? "cursor-pointer bg-primary text-primary-foreground hover:opacity-90"
                     : "cursor-not-allowed bg-line2 text-ink3",
                 )}
               >
-                <Icons.scales className="h-4 w-4" />
+                <Icons.scales className="h-4 w-4 shrink-0" />
                 {canCompare && a && b
                   ? `Compare ${a.symbol} vs ${b.symbol}`
                   : "Pick two stocks to compare"}
               </button>
               {canCompare && (
                 <p className="text-xs text-ink3">
-                  Comparison opens regardless of sector — you choose what to read.
+                  Comparison opens regardless of sector — you choose what to
+                  read.
                 </p>
               )}
             </div>
@@ -352,7 +362,9 @@ export default function ComparisonLandingPage() {
                       onClick={() => applySuggested(pair)}
                       className={cn(
                         "rounded-xl border border-line bg-surface px-4 py-2.5 text-left transition-colors",
-                        ready ? "hover:bg-line2/40" : "cursor-not-allowed opacity-50",
+                        ready
+                          ? "hover:bg-line2/40"
+                          : "cursor-not-allowed opacity-50",
                       )}
                     >
                       <div className="num text-sm font-semibold text-ink">
@@ -479,7 +491,10 @@ function ComparabilitySignal({
 
   if (query.isLoading) {
     return (
-      <SignalCard tone="neutral" icon={<Icons.refresh className="h-4 w-4 animate-spin" />}>
+      <SignalCard
+        tone="neutral"
+        icon={<Icons.refresh className="h-4 w-4 animate-spin" />}
+      >
         Checking how these line up…
       </SignalCard>
     );
@@ -488,7 +503,8 @@ function ComparabilitySignal({
   if (query.isError || !query.data) {
     return (
       <SignalCard tone="neutral" icon={<Icons.warning className="h-4 w-4" />}>
-        Couldn&apos;t check comparability right now — you can still open the comparison.
+        Couldn&apos;t check comparability right now — you can still open the
+        comparison.
       </SignalCard>
     );
   }
@@ -523,8 +539,9 @@ function ComparabilitySignal({
       <span className="font-medium text-ink">
         Different families ({a.familyLabel} vs {b.familyLabel}).
       </span>{" "}
-      Universal measures — health, ROE, growth, returns, ownership — compare directly.
-      Sector-specific metrics are shown separately and aren&apos;t directly comparable.
+      Universal measures — health, ROE, growth, returns, ownership — compare
+      directly. Sector-specific metrics are shown separately and aren&apos;t
+      directly comparable.
     </SignalCard>
   );
 }
@@ -556,7 +573,11 @@ function SignalCard({
       <span
         className={cn(
           "mt-0.5 shrink-0",
-          tone === "positive" ? "text-healthy" : tone === "info" ? "text-ctx" : "text-ink3",
+          tone === "positive"
+            ? "text-healthy"
+            : tone === "info"
+              ? "text-ctx"
+              : "text-ink3",
         )}
       >
         {icon}
@@ -678,7 +699,10 @@ function PgComparabilitySignal({
 
   if (queryA.isLoading || queryB.isLoading) {
     return (
-      <SignalCard tone="neutral" icon={<Icons.refresh className="h-4 w-4 animate-spin" />}>
+      <SignalCard
+        tone="neutral"
+        icon={<Icons.refresh className="h-4 w-4 animate-spin" />}
+      >
         Checking how these fields line up…
       </SignalCard>
     );
@@ -692,7 +716,8 @@ function PgComparabilitySignal({
   ) {
     return (
       <SignalCard tone="neutral" icon={<Icons.warning className="h-4 w-4" />}>
-        Couldn&apos;t check field comparability right now — you can still open the comparison.
+        Couldn&apos;t check field comparability right now — you can still open
+        the comparison.
       </SignalCard>
     );
   }
@@ -704,8 +729,7 @@ function PgComparabilitySignal({
 
   // Same-family gate: both classified, identical, and NOT "mixed" (a mixed pond has no
   // single metric set, so it's cross-family vs anything — including another mixed).
-  const sameFamily =
-    pathA != null && pathA !== "mixed" && pathA === pathB;
+  const sameFamily = pathA != null && pathA !== "mixed" && pathA === pathB;
 
   if (sameFamily) {
     return (
@@ -713,8 +737,8 @@ function PgComparabilitySignal({
         <span className="font-medium text-ink">
           Both {labelA} fields — key-metric distributions compare directly.
         </span>{" "}
-        Their sector-specific metric distributions line up, alongside the universal
-        health, band-spread, and dispersion measures.
+        Their sector-specific metric distributions line up, alongside the
+        universal health, band-spread, and dispersion measures.
       </SignalCard>
     );
   }
@@ -725,9 +749,9 @@ function PgComparabilitySignal({
       <span className="font-medium text-ink">
         Different field types ({labelA} vs {labelB}).
       </span>{" "}
-      Universal measures — health distribution, band spread, concentration, dispersion —
-      compare directly. Each field&apos;s sector-specific metric distributions are shown
-      separately, not aligned.
+      Universal measures — health distribution, band spread, concentration,
+      dispersion — compare directly. Each field&apos;s sector-specific metric
+      distributions are shown separately, not aligned.
     </SignalCard>
   );
 }

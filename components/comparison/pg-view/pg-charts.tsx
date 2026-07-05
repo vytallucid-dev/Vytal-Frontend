@@ -70,7 +70,7 @@ export function BandDistributionPaired({
         const bPct = bTotal ? (bCount / bTotal) * 100 : 0;
         return (
           <div key={band} className="flex items-center gap-3">
-            <div className="flex w-24 shrink-0 items-center gap-2">
+            <div className="flex w-20 shrink-0 items-center gap-2 sm:w-24">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ background: meta.cssVar }}
@@ -148,7 +148,7 @@ function DistRow({
           style={{ width: `${clamp01(pct)}%`, background: hue }}
         />
       </div>
-      <span className="num w-16 shrink-0 text-right text-[11px] text-ink3">
+      <span className="num w-14 shrink-0 text-right text-[11px] text-ink3 sm:w-16">
         {pct.toFixed(0)}% · {count}
       </span>
     </div>
@@ -185,7 +185,7 @@ export function PillarMediansPaired({
         const bv = bMedians[pk];
         return (
           <div key={pk} className="flex items-center gap-3">
-            <div className="flex w-24 shrink-0 items-center gap-2">
+            <div className="flex w-20 shrink-0 items-center gap-2 sm:w-24">
               <span
                 className="h-3 w-[3px] shrink-0 rounded-full"
                 style={{ background: meta.cssVar }}
@@ -290,10 +290,10 @@ export function DispersionStrips({ fields }: { fields: DispersionField[] }) {
       <ChartTooltip tip={tip} />
       {fields.map((f) => (
         <div key={f.label}>
-          <div className="mb-1.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: f.hue }} />
-              <span className="num text-xs font-medium text-ink2">{f.label}</span>
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: f.hue }} />
+              <span className="num truncate text-xs font-medium text-ink2">{f.label}</span>
             </div>
             <span className="num text-[11px] text-ink3">
               median {f.median.toFixed(1)} · σ {f.stdDev.toFixed(1)} · IQR {f.iqr.toFixed(1)}
@@ -435,13 +435,13 @@ function StackedBandBar({
   const total = bars ? sumVals(bars) : 0;
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full" style={{ background: hue }} />
-          <span className="num text-[11px] font-medium text-ink2">{label}</span>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hue }} />
+          <span className="num truncate text-[11px] font-medium text-ink2">{label}</span>
         </span>
         {peer?.usable && (
-          <span className="num text-[11px] text-ink3">
+          <span className="num shrink-0 text-[11px] text-ink3">
             peer μ {peer.mean.toFixed(1)}
             {unit ? unit : ""} · σ {peer.stdDev.toFixed(1)}
           </span>

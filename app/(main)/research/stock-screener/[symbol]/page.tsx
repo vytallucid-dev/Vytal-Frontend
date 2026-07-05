@@ -9,21 +9,20 @@ import Overview from "@/components/stock-detail/overview";
 import Technical from "@/components/stock-detail/technical";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { QuerySkeleton } from "@/components/ui/query-skeleton";
-import { Icons } from "@/lib/icons";
+import { CreateAlertModal } from "@/components/alerts/create-alert-modal";
+import { TransactionSheet } from "@/components/portfolio/transaction-sheet";
+import { Icons, type Icon } from "@/lib/icons";
+import { cn } from "@/lib/utils";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
+import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
+import { useWatchlist, useWatchlistMutations } from "@/lib/api/hooks/use-watchlist";
 import { isApiError } from "@/lib/api/client";
 import type { Stock } from "@/lib/indian-stocks-data";
 import type { LabelBand } from "@/types/health";
-import { ArrowLeft, Bell, ChevronDown, Plus, Star } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const BAND_BADGE: Record<LabelBand, string> = {
   pristine: "border-pristine/30 bg-pristine/10 text-pristine",
@@ -33,12 +32,71 @@ const BAND_BADGE: Record<LabelBand, string> = {
   fragile: "border-fragile/30 bg-fragile/10 text-fragile",
 };
 
+// ── the three quick actions — the app's standard outline button (border-line2 / surface-1 /
+//    ink2, matching the Button `outline` variant + the header's other controls), with the
+//    only colour being a subtly-accented duotone icon glyph (the same colour-icon-on-neutral
+//    idiom the alert modal uses). A toggle in its ON state (watchlist) fills with its accent
+//    tint — the app's active-toggle convention (cf. the watchlist Favorites toggle) — so an
+//    active state reads clearly without the trio shouting at rest. Icon always shows; the
+//    label hides below `sm` so three buttons + the back-link never overflow a phone header. ──
+function QuickActionButton({
+  icon: ActionIcon,
+  label,
+  color,
+  active,
+  busy,
+  onClick,
+}: {
+  icon: Icon;
+  label: string;
+  color: string;
+  active?: boolean;
+  busy?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      aria-pressed={active}
+      title={label}
+      className={cn(
+        "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:px-3 sm:text-[13px]",
+        !active && "border-line2 bg-surface-1 text-ink2 hover:border-line3 hover:bg-surface-2 hover:text-ink",
+      )}
+      style={
+        active
+          ? {
+              color,
+              borderColor: `color-mix(in oklch, ${color} 40%, transparent)`,
+              background: `color-mix(in oklch, ${color} 12%, transparent)`,
+            }
+          : undefined
+      }
+    >
+      {busy ? (
+        <Icons.spinner className="size-3.5 animate-spin sm:size-4" />
+      ) : (
+        <ActionIcon
+          weight={active ? "fill" : "duotone"}
+          className="size-3.5 sm:size-4"
+          style={active ? undefined : { color }}
+        />
+      )}
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
+
 const StockDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const symbol = (params.symbol as string)?.toUpperCase();
   const [activeTab, setActiveTab] = useState("overview");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [portfolioOpen, setPortfolioOpen] = useState(false);
 
   const {
     data: health,
@@ -47,6 +105,23 @@ const StockDetailPage = () => {
     error,
     refetch,
   } = useStockHealth(symbol);
+
+  // Quick-action state (header buttons). Resolved independently of the health fetch above —
+  // health's `identity` carries no raw stock id, and the watchlist pin needs the universe id.
+  const { data: universe } = useUniverseStocks();
+  const stockId = useMemo(() => universe?.find((s) => s.symbol === symbol)?.id ?? null, [universe, symbol]);
+  const { data: watchlist } = useWatchlist();
+  const isWatchlisted = useMemo(
+    () => (stockId ? (watchlist?.some((w) => w.stockId === stockId) ?? false) : false),
+    [watchlist, stockId],
+  );
+  const { pin, unpin } = useWatchlistMutations();
+  const watchlistBusy = pin.isPending || unpin.isPending;
+  const toggleWatchlist = () => {
+    if (!stockId || watchlistBusy) return;
+    if (isWatchlisted) unpin.mutate(stockId);
+    else pin.mutate(stockId);
+  };
 
   // Handle URL query parameters for tab and section navigation
   useEffect(() => {
@@ -170,8 +245,10 @@ const StockDetailPage = () => {
               </div>
             </div>
 
-            {/* Right: Action Buttons */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            {/* Right: Action Buttons — three standalone colour-coded buttons (no dropdown).
+                flex-wrap is the safety net if a phone width ever squeezes tighter than the
+                icon-only buttons allow. */}
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => router.push("/research/stock-screener")}
                 className="inline-flex items-center gap-1.5 text-xs cursor-pointer text-ink3 underline-offset-4 transition-colors hover:text-ink hover:underline"
@@ -180,32 +257,28 @@ const StockDetailPage = () => {
                 Back to screener
               </button>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
-                  >
-                    Quick Actions
-                    <ChevronDown className="ml-1 h-3.5 w-3.5 sm:ml-2 sm:h-4 sm:w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[7rem] sm:min-w-[8rem]">
-                  <DropdownMenuItem className="text-xs sm:text-sm">
-                    <Plus className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Add to Portfolio
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="text-xs sm:text-sm">
-                    <Star className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Watchlist
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="text-xs sm:text-sm">
-                    <Bell className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Set Alert
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <QuickActionButton
+                  icon={Icons.portfolio}
+                  label="Portfolio"
+                  color="var(--rec)"
+                  onClick={() => setPortfolioOpen(true)}
+                />
+                <QuickActionButton
+                  icon={Icons.star}
+                  label={isWatchlisted ? "Watchlisted" : "Watchlist"}
+                  color="var(--warning)"
+                  active={isWatchlisted}
+                  busy={watchlistBusy}
+                  onClick={toggleWatchlist}
+                />
+                <QuickActionButton
+                  icon={Icons.bell}
+                  label="Set Alert"
+                  color="var(--primary)"
+                  onClick={() => setAlertOpen(true)}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -253,6 +326,12 @@ const StockDetailPage = () => {
         {activeTab === "events" && <Events />}
         {activeTab === "news" && <News symbol={symbol} />}
       </div>
+
+      {/* set-alert modal (symbol-driven; resolves scored/band from the universe) */}
+      <CreateAlertModal open={alertOpen} onOpenChange={setAlertOpen} symbol={symbol} name={stock.name} />
+
+      {/* add-to-portfolio sheet — pre-selects this symbol (add mode only) */}
+      <TransactionSheet open={portfolioOpen} onOpenChange={setPortfolioOpen} initialSymbol={symbol} />
     </div>
   );
 };

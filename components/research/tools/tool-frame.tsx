@@ -245,31 +245,33 @@ export function ToolFrame({
   return (
     <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col">
       {/* ── strip ── */}
-      <div className="mb-4 flex flex-wrap items-center gap-4 border-b border-line pb-3 pt-1">
-        <button
-          onClick={onHome}
-          className="sm:hidden flex items-center gap-2.5 font-display text-base font-medium text-ink"
-        >
-          <Tool weight="duotone" className="size-[18px]" style={{ color: meta.accentVar }} />
-          {meta.name}
-        </button>
-        <div className="ml-1 flex gap-1.5">
+      {symbol && (
+        <div className="mb-4 flex flex-wrap items-center gap-4 border-b border-line pb-3 pt-1">
           <button
-            onClick={() => setSwitcherOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-1 px-3 py-1.5 text-[12px] text-ink2 transition-colors hover:border-line3 hover:text-ink"
+            onClick={onHome}
+            className="sm:hidden flex items-center gap-2.5 font-display text-base font-medium text-ink"
           >
-            <Icons.search className="size-3.5" />
-            Search stock
+            <Tool weight="duotone" className="size-[18px]" style={{ color: meta.accentVar }} />
+            {meta.name}
           </button>
-          <button
-            onClick={() => setSwitcherOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-1 px-3 py-1.5 text-[12px] text-ink2 transition-colors hover:border-line3 hover:text-ink"
-          >
-            <Icons.stack className="size-3.5" />
-            Across your scope
-          </button>
+          <div className="ml-1 flex items-center w-full md:w-auto justify-between gap-3">
+            <button
+              onClick={() => setSwitcherOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-1 px-3 py-1.5 text-[12px] text-ink2 transition-colors hover:border-line3 hover:text-ink"
+            >
+              <Icons.search className="size-3.5" />
+              Search stock
+            </button>
+            <button
+              onClick={onHome}
+              className="inline-flex items-center gap-1 text-[12px] text-ink2 transition-colors hover:text-ink"
+            >
+              <Icons.arrowLeft className="size-3" />
+              Back to tool
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <NameSwitcher
         open={switcherOpen}

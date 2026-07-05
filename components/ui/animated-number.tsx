@@ -11,6 +11,8 @@ interface AnimatedNumberProps {
   decimals?: number;
   /** Intl.NumberFormat options (e.g. style/currency/grouping) */
   format?: Format;
+  /** Locale(s) for grouping (e.g. "en-IN" for lakh/crore commas). */
+  locales?: Intl.LocalesArgument;
 }
 
 /**
@@ -24,12 +26,14 @@ export function AnimatedNumber({
   suffix,
   decimals = 0,
   format,
+  locales,
 }: AnimatedNumberProps) {
   return (
     <NumberFlow
       value={value}
       prefix={prefix}
       suffix={suffix}
+      locales={locales}
       className={cn("font-mono tabular-nums", className)}
       format={
         format ?? {

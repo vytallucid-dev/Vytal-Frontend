@@ -270,6 +270,21 @@
     background: color-mix(in oklch, var(--primary) 30%, transparent);
     color: var(--foreground);
   }
+  /* every actionable control gets a pointer cursor — buttons, role=button elements,
+     input buttons and native <summary>. Disabled controls keep the default arrow. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  label[role="button"],
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   /* global focus ring — cool-blue pristine, per the design system */
   :focus-visible {
     outline: 2px solid var(--c-pristine);

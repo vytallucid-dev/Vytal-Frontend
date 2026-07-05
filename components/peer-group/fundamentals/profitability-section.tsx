@@ -7,7 +7,7 @@ import { niceBounds } from "@/components/peer-group/health/lib";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { median, type FundamentalsRow } from "./lib";
-import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
+import { useChartTooltip, useElementWidth, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 
 // ─────────────────────────────────────────────────────────────────────────────────────
 // §C · Profitability & margins — a 1-D DISTRIBUTION STRIP (not a bar chart): every member
@@ -68,6 +68,12 @@ export function ProfitabilitySection({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { tip, show, hide } = useChartTooltip(containerRef);
+  const CHART_REF_WIDTH = 860; // the container width these unit constants were tuned against
+  const width = useElementWidth(containerRef, CHART_REF_WIDTH);
+  /** desired on-screen px AT CHART_REF_WIDTH → viewBox units, DAMPED (sqrt, not linear) as
+   *  width deviates from the reference — text grows on a narrow phone without the offsets
+   *  it depends on outgrowing the fixed-height viewBox and clipping. */
+  const u = (px: number) => (px * W) / Math.sqrt(width * CHART_REF_WIDTH);
 
   return (
     <section>
@@ -102,6 +108,7 @@ export function ProfitabilitySection({
               Too few members report {metric.label} to show a distribution yet.
             </p>
           ) : (
+            <>
             <div ref={containerRef} className="relative">
               <ChartTooltip tip={tip} />
               <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" preserveAspectRatio="none"
@@ -110,15 +117,15 @@ export function ProfitabilitySection({
                 <line x1={X0} y1={AXIS_Y} x2={X1} y2={AXIS_Y} stroke="var(--line2)" strokeWidth={1} />
                 {/* min / max ticks */}
                 {[lo, hi].map((v, i) => (
-                  <text key={i} x={i === 0 ? X0 : X1} y={AXIS_Y + 26} textAnchor={i === 0 ? "start" : "end"} className="num" style={{ fontSize: 10, fill: "var(--ink3)" }}>
+                  <text key={i} x={i === 0 ? X0 : X1} y={AXIS_Y + u(22)} textAnchor={i === 0 ? "start" : "end"} className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
                     {v.toFixed(0)}%
                   </text>
                 ))}
                 {/* median tick — a fact */}
                 {med != null && (
                   <g>
-                    <line x1={xo(med)} y1={AXIS_Y - 26} x2={xo(med)} y2={AXIS_Y + 6} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="3 4" />
-                    <text x={clampX(xo(med))} y={AXIS_Y - 32} textAnchor="middle" className="num" style={{ fontSize: 10, fill: "var(--ink3)" }}>
+                    <line x1={xo(med)} y1={AXIS_Y - u(22)} x2={xo(med)} y2={AXIS_Y + u(5)} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="3 4" />
+                    <text x={clampX(xo(med))} y={AXIS_Y - u(27)} textAnchor="middle" className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
                       median {med.toFixed(1)}%
                     </text>
                   </g>
@@ -127,17 +134,17 @@ export function ProfitabilitySection({
                 {pts.map((p, i) => {
                   const x = xo(p.v);
                   const above = i % 2 === 0;
-                  const ly = above ? AXIS_Y - 12 : AXIS_Y + 22;
+                  const ly = above ? AXIS_Y - u(10) : AXIS_Y + u(19);
                   return (
                     <g key={p.symbol}>
-                      <circle cx={x} cy={AXIS_Y} r={5} fill={DOT} opacity={0.85} />
-                      <text x={clampX(x)} y={ly} textAnchor="middle" className="num" style={{ fontSize: 10, fill: "var(--ink2)" }}>
+                      <circle cx={x} cy={AXIS_Y} r={u(6)} fill={DOT} opacity={0.85} />
+                      <text x={clampX(x)} y={ly} textAnchor="middle" className="num" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                         {p.symbol}
                       </text>
                       <circle
                         cx={x}
                         cy={AXIS_Y}
-                        r={18}
+                        r={u(18)}
                         fill="transparent"
                         style={{ cursor: "pointer" }}
                         onMouseMove={(e) =>
@@ -152,12 +159,13 @@ export function ProfitabilitySection({
                   );
                 })}
               </svg>
-              <p className="mt-3 text-[11.5px] text-ink3">
-                Each member placed by {metric.label}; the dashed tick is the group median. Hover a
-                point for its value. Where a member sits is the information — no member is flagged best
-                or worst.
-              </p>
             </div>
+            <p className="mt-3 text-[11.5px] text-ink3">
+              Each member placed by {metric.label}; the dashed tick is the group median. Hover a
+              point for its value. Where a member sits is the information — no member is flagged best
+              or worst.
+            </p>
+            </>
           )}
         </div>
       </Reveal>

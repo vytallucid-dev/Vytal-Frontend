@@ -116,7 +116,7 @@ export function SectionEyebrow({
       <span className="eyebrow shrink-0">{label}</span>
       <span className="h-px min-w-4 flex-1" style={{ background: `color-mix(in oklch, ${accent} 20%, var(--line))` }} />
       {pill && (
-        <span className="num shrink-0 rounded-full border w-full px-2.5 py-1 text-[11px] tracking-normal" style={tint(accent, 10, 26)}>
+        <span className="num shrink-0 rounded-full border w-full sm:w-max px-2.5 py-1 text-[11px] tracking-normal" style={tint(accent, 10, 26)}>
           {pill}
         </span>
       )}
@@ -223,7 +223,7 @@ export function Panel({
   style?: CSSProperties;
 }) {
   return (
-    <div className={cn("rounded-xl border border-line bg-surface-1 p-5", className)} style={style}>
+    <div className={cn("rounded-xl border border-line bg-surface-1 p-3 sm:p-5", className)} style={style}>
       {children}
     </div>
   );

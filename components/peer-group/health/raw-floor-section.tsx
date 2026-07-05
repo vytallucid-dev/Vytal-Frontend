@@ -162,7 +162,7 @@ export function RawFloorSection({
                   <tr>
                     <th
                       onClick={() => onSort("metric")}
-                      className="sticky left-0 z-10 cursor-pointer select-none whitespace-nowrap border-b border-line2 bg-surface-1 px-3 py-2.5 text-left text-[9.5px] font-semibold uppercase tracking-wide text-ink3 hover:text-ink2"
+                      className="cursor-pointer select-none whitespace-nowrap border-b border-line2 bg-surface-1 px-3 py-2.5 text-left text-[9.5px] font-semibold uppercase tracking-wide text-ink3 hover:text-ink2"
                     >
                       Metric {sortKey === "metric" && <span className="text-steady">{sortDir < 0 ? "▼" : "▲"}</span>}
                     </th>
@@ -231,7 +231,7 @@ function MetricRow({
       <tr className="group hover:bg-surface-2">
         <td
           onClick={onToggle}
-          className="sticky left-0 z-10 cursor-pointer whitespace-nowrap border-b border-line bg-surface-1 px-3 py-2.5 text-left group-hover:bg-surface-2"
+          className=" cursor-pointer whitespace-nowrap border-b border-line bg-surface-1 px-3 py-2.5 text-left group-hover:bg-surface-2"
         >
           <span className="mr-1 text-[10px] text-ink3">{isExp ? "▾" : "▸"}</span>
           <span className="inline-flex items-center gap-1.5">

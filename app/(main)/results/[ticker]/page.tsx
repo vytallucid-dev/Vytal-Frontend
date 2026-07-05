@@ -92,7 +92,7 @@ function ResultsViewerInner() {
   const c = detail.current;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">
+    <div className="mx-auto w-full max-w-7xl px-2 py-5 sm:px-6">
       {/* back */}
       <Link
         href="/results"
@@ -133,7 +133,7 @@ function ResultsViewerInner() {
         </div>
 
         {/* quarter navigator */}
-        <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-line2 text-[12px]">
+        <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-line2 text-[12px] w-max">
           <button
             disabled={!nav.older}
             onClick={() => nav.older && pushParams({ period: nav.older })}
@@ -155,7 +155,7 @@ function ResultsViewerInner() {
       </div>
 
       {/* tab bar */}
-      <div className="mt-1 flex gap-1 overflow-x-auto overflow-y-hidden">
+      <div className="mt-1 hidden-scrollbar flex gap-1 overflow-x-auto overflow-y-hidden">
         {TABS.map((t) => (
           <button
             key={t.id}

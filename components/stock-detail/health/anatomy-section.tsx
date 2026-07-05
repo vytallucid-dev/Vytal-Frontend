@@ -445,7 +445,7 @@ function OwnershipBlock({ o }: { o: OwnershipDetail }) {
 function PillarBody({ p, pillarLabel, twoCol }: { p: PillarView; pillarLabel: string; twoCol?: boolean }) {
   if (p.metrics && p.metrics.length) {
     return twoCol ? (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:divide-x sm:divide-line">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 md:divide-x md:divide-line">
         <div>{p.metrics.filter((_, i) => i % 2 === 0).map((m) => <MetricRow key={m.metricKey} m={m} pillarLabel={pillarLabel} />)}</div>
         <div className="sm:pl-6">{p.metrics.filter((_, i) => i % 2 === 1).map((m) => <MetricRow key={m.metricKey} m={m} pillarLabel={pillarLabel} />)}</div>
       </div>

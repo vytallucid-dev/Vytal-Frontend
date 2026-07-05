@@ -29,8 +29,10 @@ export interface ScoredStockLite {
 
 /** Lean row for EVERY stock in the universe (scored + not-yet-scored) — powers the
  *  screener typeahead so it spans all tracked stocks, not just the scored subset.
- *  `scored=false` rows carry null composite/band. Mirrors backend UniverseStockListItem. */
+ *  `scored=false` rows carry null composite/band. Mirrors backend UniverseStockListItem.
+ *  `id` is the Stock UUID — the key the watchlist pin (POST /me/watchlist) targets. */
 export interface UniverseStockLite {
+  id: string;
   symbol: string;
   name: string;
   sector: SectorRef | null;

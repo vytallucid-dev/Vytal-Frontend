@@ -9,7 +9,7 @@ import {
   PILLAR_META,
   lensAccentVars,
 } from "@/components/stock-detail/health/shared";
-import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
+import { useChartTooltip, useElementWidth, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 import { getMetricLabel } from "@/lib/health/metric-labels";
 import { niceBounds, fieldVerdictPhrase, clearingFigure } from "./lib";
 import type { PeerMetricDistribution, PeerGroupFieldLensVerdict } from "@/types/peer-group";
@@ -89,6 +89,15 @@ function MetricChart({ dist, unit }: { dist: PeerMetricDistribution; unit?: stri
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { tip, show, hide } = useChartTooltip(containerRef);
+  const CHART_REF_WIDTH = 640; // the container width these unit constants were tuned against
+  const width = useElementWidth(containerRef, CHART_REF_WIDTH);
+  /** desired on-screen px AT CHART_REF_WIDTH → viewBox units, DAMPED (sqrt, not linear) as
+   *  width deviates from the reference — text grows on a narrow phone without the offsets
+   *  it depends on (label clearance from the axis/dot) outgrowing the fixed-height viewBox
+   *  and clipping. Full linear compensation (px*VB_W/width) keeps text pixel-perfect but can
+   *  push labels past VB_H on a short, wide strip chart at small widths — this trades a
+   *  little size fidelity for guaranteed fit, with no distortion and no horizontal scroll. */
+  const u = (px: number) => (px * VB_W) / Math.sqrt(width * CHART_REF_WIDTH);
 
   return (
     <div ref={containerRef} className="relative">
@@ -119,7 +128,7 @@ function MetricChart({ dist, unit }: { dist: PeerMetricDistribution; unit?: stri
             opacity={0.07}
           />
           <line x1={clampX(xo(dist.peer.mean))} y1={40} x2={clampX(xo(dist.peer.mean))} y2={AXIS_Y} stroke="var(--ink2)" strokeWidth={1.5} strokeDasharray="3 3" />
-          <text x={clampX(xo(dist.peer.mean))} y={36} textAnchor="middle" className="num" style={{ fontSize: 9.5, fill: "var(--ink2)" }}>
+          <text x={clampX(xo(dist.peer.mean))} y={36} textAnchor="middle" className="num" style={{ fontSize: u(11), fill: "var(--ink2)" }}>
             μ {fmtVal(dist.peer.mean, unit)}
           </text>
         </g>
@@ -141,7 +150,7 @@ function MetricChart({ dist, unit }: { dist: PeerMetricDistribution; unit?: stri
 
       {/* median tick */}
       <line x1={clampX(xo(med))} y1={AXIS_Y} x2={clampX(xo(med))} y2={188} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="1 3" />
-      <text x={clampX(xo(med))} y={200} textAnchor="middle" className="num" style={{ fontSize: 9.5, fill: "var(--ink3)" }}>
+      <text x={clampX(xo(med))} y={200} textAnchor="middle" className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
         median {fmtVal(med, unit)}
       </text>
 
@@ -151,19 +160,19 @@ function MetricChart({ dist, unit }: { dist: PeerMetricDistribution; unit?: stri
         const col = m.l1Band ? METRIC_BAND_VAR[m.l1Band] : "var(--ink3)";
         const dim = m.scoreState !== "scored";
         const above = i % 2 === 0;
-        const ly = above ? AXIS_Y - 18 : AXIS_Y + 28;
-        const dy = above ? AXIS_Y - 7 : AXIS_Y + 7;
+        const ly = above ? AXIS_Y - u(15) : AXIS_Y + u(22);
+        const dy = above ? AXIS_Y - u(7) : AXIS_Y + u(7);
         return (
           <g key={m.symbol} opacity={dim ? 0.4 : 1}>
             <line x1={x} y1={AXIS_Y} x2={x} y2={dy} stroke={col} strokeWidth={1} opacity={0.35} />
-            <circle cx={x} cy={AXIS_Y} r={5} fill={col} />
-            <text x={clampX(x)} y={ly} textAnchor="middle" className="num" style={{ fontSize: 9.5, fill: "var(--ink2)" }}>
+            <circle cx={x} cy={AXIS_Y} r={u(6)} fill={col} />
+            <text x={clampX(x)} y={ly} textAnchor="middle" className="num" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
               {m.symbol}
             </text>
             <circle
               cx={x}
               cy={AXIS_Y}
-              r={16}
+              r={u(18)}
               fill="transparent"
               style={{ cursor: "pointer" }}
               onMouseMove={(e) =>
@@ -193,7 +202,7 @@ function Stat({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2.5 border-b border-line pb-3 last:border-b-0 last:pb-0">
       <span className="text-[11.5px] text-ink2">{k}</span>
-      <span className="num text-[15px] font-medium text-ink">{v}</span>
+      <span className="num text-xs sm:text-[15px] font-medium text-ink">{v}</span>
     </div>
   );
 }

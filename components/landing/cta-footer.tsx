@@ -30,7 +30,7 @@ export function CtaFooter() {
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild size="lg" className="group">
-                <Link href="/dashboard">
+                <Link href="/signup">
                   Launch the Terminal
                   <Icons.arrowRight weight="bold" className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>

@@ -1,5 +1,7 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { AuthProvider } from "@/components/providers/auth-provider";
+import { Toaster } from "@/components/ui/toast";
 import type { Metadata } from "next";
 import { Inter, Fraunces, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
@@ -30,9 +32,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "InvestIQ — Intelligent Investing, Beautifully Clear",
+  title: "Vytal — Intelligent Investing, Beautifully Clear",
   description:
-    "A premium analysis terminal for Indian markets. Proprietary Health Scores, portfolio intelligence, and AI insight — designed to make confident investing effortless.",
+    "A premium analysis terminal for Indian markets. Health Scores and portfolio intelligence — designed to make confident investing effortless.",
 };
 
 export default function RootLayout({
@@ -53,7 +55,10 @@ export default function RootLayout({
           forcedTheme="dark"
           enableSystem={false}
         >
-          <QueryProvider>{children}</QueryProvider>
+          <AuthProvider>
+            <QueryProvider>{children}</QueryProvider>
+          </AuthProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

@@ -1,143 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+// ─────────────────────────────────────────────────────────────
+// SETTINGS — the all-users preferences + account surface. Visible to every
+// signed-in user (NOT gated). The admin-only ingestion Control Hub now lives
+// at /admin (the Admin Panel). Built on the platform's FLAT editorial theme
+// (solid surface-1/2 cards, hairline line borders, ink text scale, primary as
+// the single accent) — the same language as the stock pages. No frosted glass,
+// no aurora wash, no gradient text/avatars.
+// ─────────────────────────────────────────────────────────────
+
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Reveal } from "@/components/ui/reveal";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Button } from "@/components/ui/button";
-import { AnimatedNumber } from "@/components/ui/animated-number";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Icons, type Icon } from "@/lib/icons";
 import { formatINR } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toast";
 
-/* ─── Data flows (8 sub-routes) ──────────────────────────────────────────── */
+/* ─── Account name helpers (mirror app-sidebar-user) ─────────────────────── */
 
-type FlowStatus = "healthy" | "running" | "stale";
-
-interface DataFlow {
-  href: string;
-  title: string;
-  description: string;
-  icon: Icon;
-  lastSync: string;
-  status: FlowStatus;
-  recordsToday: number;
+function fullNameFromUser(
+  meta: Record<string, unknown> | undefined,
+  email: string | undefined,
+): string {
+  const fromMeta =
+    (typeof meta?.display_name === "string" && meta.display_name) ||
+    (typeof meta?.full_name === "string" && meta.full_name) ||
+    (typeof meta?.name === "string" && meta.name) ||
+    "";
+  if (fromMeta.trim()) return fromMeta.trim();
+  if (email) {
+    const local = email.split("@")[0];
+    if (local) return local.charAt(0).toUpperCase() + local.slice(1);
+  }
+  return "Your account";
 }
 
-const dataFlows: DataFlow[] = [
-  {
-    href: "/settings/ingestion-errors",
-    title: "Ingestion Errors",
-    description: "Detection-layer violations — fill admin-fixable values (cited) or flag for a code fix.",
-    icon: Icons.warning,
-    lastSync: "Live",
-    status: "stale",
-    recordsToday: 0,
-  },
-  {
-    href: "/settings/stock-prices",
-    title: "Stock Prices",
-    description: "End-of-day NSE Bhavcopy prices, deduped and inserted nightly.",
-    icon: Icons.chartLine,
-    lastSync: "2h ago",
-    status: "healthy",
-    recordsToday: 2148,
-  },
-  {
-    href: "/settings/index-prices",
-    title: "Index Prices",
-    description: "End-of-day NSE index OHLC + valuation (ind_close_all). Display-only.",
-    icon: Icons.graph,
-    lastSync: "2h ago",
-    status: "healthy",
-    recordsToday: 143,
-  },
-  {
-    href: "/settings/quarterly-results",
-    title: "Quarterly Results",
-    description: "Latest filings parsed into clean financial statements.",
-    icon: Icons.results,
-    lastSync: "5h ago",
-    status: "healthy",
-    recordsToday: 312,
-  },
-  {
-    href: "/settings/casa",
-    title: "CASA Ratios",
-    description: "Quarterly CASA for the 12 scored banks — manual ingest, feeds banking F7.",
-    icon: Icons.scales,
-    lastSync: "Manual",
-    status: "stale",
-    recordsToday: 0,
-  },
-  {
-    href: "/settings/corporate-events",
-    title: "Corporate Events",
-    description: "Dividends, splits and bonuses upserted from the exchange.",
-    icon: Icons.calendar,
-    lastSync: "1h ago",
-    status: "running",
-    recordsToday: 87,
-  },
-  {
-    href: "/settings/insider-trades",
-    title: "Insider Trades",
-    description: "Promoter and designated-person activity, filtered to your universe.",
-    icon: Icons.user,
-    lastSync: "3h ago",
-    status: "healthy",
-    recordsToday: 54,
-  },
-  {
-    href: "/settings/block-deals",
-    title: "Block Deals",
-    description: "Bulk and block trade records ingested from exchange feeds.",
-    icon: Icons.coins,
-    lastSync: "4h ago",
-    status: "healthy",
-    recordsToday: 129,
-  },
-  {
-    href: "/settings/news-announcements",
-    title: "News & Announcements",
-    description: "NSE filings and Google News, enriched by the content extractor.",
-    icon: Icons.news,
-    lastSync: "12m ago",
-    status: "running",
-    recordsToday: 643,
-  },
-  {
-    href: "/settings/peer-group-metrics",
-    title: "Peer Group Metrics",
-    description: "Computed valuation and growth metrics across every peer group.",
-    icon: Icons.chartBar,
-    lastSync: "2d ago",
-    status: "stale",
-    recordsToday: 0,
-  },
-  {
-    href: "/settings/shareholding-patterns",
-    title: "Shareholding Patterns",
-    description: "Quarterly promoter, FII, DII and public holding breakdowns.",
-    icon: Icons.sector,
-    lastSync: "9d ago",
-    status: "stale",
-    recordsToday: 0,
-  },
-];
-
-/* ─── Status presentation ────────────────────────────────────────────────── */
-
-const statusMeta: Record<
-  FlowStatus,
-  { label: string; dot: string; text: string; pulse?: boolean }
-> = {
-  healthy: { label: "Healthy", dot: "bg-success", text: "text-success" },
-  running: { label: "Syncing", dot: "bg-warning", text: "text-warning", pulse: true },
-  stale: { label: "Stale", dot: "bg-danger", text: "text-danger" },
-};
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p.charAt(0).toUpperCase()).join("") || "U";
+}
 
 /* ─── Preference toggles ─────────────────────────────────────────────────── */
 
@@ -192,14 +97,14 @@ function Toggle({ on, onToggle, label }: { on: boolean; onToggle: () => void; la
       onClick={onToggle}
       className={cn(
         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-300",
-        on ? "border-primary/40 bg-primary/80" : "border-border/70 bg-surface-2"
+        on ? "border-primary/40 bg-primary/80" : "border-line2 bg-surface-3"
       )}
     >
       <motion.span
         layout
         transition={{ type: "spring", stiffness: 520, damping: 34 }}
         className={cn(
-          "absolute size-4 rounded-full bg-foreground shadow-sm",
+          "absolute size-4 rounded-full bg-ink shadow-sm",
           on ? "right-1" : "left-1"
         )}
       />
@@ -210,179 +115,58 @@ function Toggle({ on, onToggle, label }: { on: boolean; onToggle: () => void; la
 /* ─── Page ───────────────────────────────────────────────────────────────── */
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [prefs, setPrefs] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(preferenceDefs.map((p) => [p.key, p.defaultOn]))
   );
 
-  const togglePref = (key: string) =>
-    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+  const togglePref = (pref: Preference) =>
+    setPrefs((prev) => {
+      const next = !prev[pref.key];
+      toast.success(`${pref.label} ${next ? "on" : "off"}`, {
+        description: next
+          ? "You'll be notified about this."
+          : "You won't be notified about this anymore.",
+      });
+      return { ...prev, [pref.key]: next };
+    });
 
-  const recordsToday = dataFlows.reduce((a, f) => a + f.recordsToday, 0);
-  const syncsToday = 36;
-
-  const heroStats = [
-    { label: "Data sources", value: dataFlows.length, icon: Icons.building, suffix: "" },
-    { label: "Syncs today", value: syncsToday, icon: Icons.bolt, suffix: "" },
-    {
-      label: "Records ingested",
-      value: recordsToday,
-      icon: Icons.chartBar,
-      suffix: "",
-      animate: true,
-    },
-    { label: "Uptime", value: "99.9%", icon: Icons.shield, suffix: "" },
-  ];
+  const name = useMemo(
+    () => fullNameFromUser(user?.user_metadata, user?.email),
+    [user]
+  );
+  const email = user?.email ?? "";
+  const initials = initialsOf(name);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-6">
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-strong relative overflow-hidden rounded-3xl border border-border/70 p-5 sm:p-7"
+        className="rounded-2xl border border-line bg-surface-1 p-5 sm:p-7"
       >
-        <div className="bg-aurora pointer-events-none absolute inset-0 -z-10 opacity-20" />
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface-1/40 px-3 py-1 text-xs font-medium text-primary">
-                <Icons.settings weight="duotone" className="size-3.5" />
-                Control hub
-              </div>
-              <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Data &amp; <span className="text-gradient">Settings</span>
-              </h1>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                Keep the terminal&apos;s data fresh and tune how InvestIQ works for you —
-                manage every ingestion pipeline and fine-tune your experience from one place.
-              </p>
-            </div>
-            <Button asChild variant="outline" className="h-9 shrink-0">
-              <Link href="/settings/stock-prices">
-                <Icons.bolt weight="duotone" className="size-4" />
-                Run a sync
-              </Link>
-            </Button>
+        <div className="min-w-0">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <Icons.settings weight="duotone" className="size-3.5" />
+            Preferences
           </div>
-
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {heroStats.map((s) => (
-              <div
-                key={s.label}
-                className="rounded-2xl border border-border/70 bg-surface-1/40 p-4"
-              >
-                <div className="mb-2 flex items-center gap-2 text-primary">
-                  <span className="grid size-7 place-items-center rounded-lg bg-primary/12 ring-1 ring-primary/20">
-                    <s.icon weight="duotone" className="size-4" />
-                  </span>
-                  <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-                    {s.label}
-                  </p>
-                </div>
-                <p className="font-display text-2xl font-bold sm:text-[1.65rem]">
-                  {s.animate ? (
-                    <AnimatedNumber value={s.value as number} />
-                  ) : (
-                    s.value
-                  )}
-                </p>
-              </div>
-            ))}
-          </div>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+            Your <span className="text-primary">Settings</span>
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-ink2">
+            Tune how Vytal works for you — choose what the terminal nudges you
+            about and manage your account.
+          </p>
         </div>
       </motion.section>
-
-      {/* ── Data sources ───────────────────────────────────────────────── */}
-      <section className="flex flex-col gap-4">
-        <Reveal>
-          <SectionHeading
-            eyebrow="Pipelines"
-            icon={Icons.health}
-            title="Data sources"
-            subtitle="Every ingestion flow feeds the terminal. Tap any source to trigger, backfill or inspect its jobs."
-          />
-        </Reveal>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {dataFlows.map((flow, i) => {
-            const meta = statusMeta[flow.status];
-            return (
-              <Reveal key={flow.href} delay={i * 0.05}>
-                <SpotlightCard className="h-full">
-                  <Link
-                    href={flow.href}
-                    className="flex h-full flex-col gap-4 p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-primary/20">
-                        <flow.icon weight="duotone" className="size-5" />
-                      </span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface-1/50 px-2.5 py-1 text-[0.65rem] font-semibold",
-                          meta.text
-                        )}
-                      >
-                        <span className="relative flex size-2">
-                          {meta.pulse && (
-                            <span
-                              className={cn(
-                                "absolute inline-flex size-full animate-ping rounded-full opacity-75",
-                                meta.dot
-                              )}
-                            />
-                          )}
-                          <span
-                            className={cn(
-                              "relative inline-flex size-2 rounded-full",
-                              meta.dot
-                            )}
-                          />
-                        </span>
-                        {meta.label}
-                      </span>
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-display text-lg font-bold tracking-tight">
-                        {flow.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {flow.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-3">
-                      <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Icons.clock weight="duotone" className="size-3.5" />
-                          Last sync: {flow.lastSync}
-                        </p>
-                        <p className="mt-0.5 font-mono text-xs text-muted-foreground/80">
-                          {flow.recordsToday > 0
-                            ? `${flow.recordsToday.toLocaleString("en-IN")} records today`
-                            : "No records today"}
-                        </p>
-                      </div>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-                        Manage
-                        <Icons.arrowRight weight="bold" className="size-3.5" />
-                      </span>
-                    </div>
-                  </Link>
-                </SpotlightCard>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
 
       {/* ── Preferences + Account ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Preferences */}
         <Reveal className="lg:col-span-2">
-          <div className="glass h-full rounded-3xl border border-border/70 p-5 sm:p-6">
+          <div className="h-full rounded-2xl border border-line bg-surface-1 p-5 sm:p-6">
             <SectionHeading
               eyebrow="Preferences"
               icon={Icons.bell}
@@ -394,51 +178,43 @@ export default function SettingsPage() {
               {preferenceDefs.map((p) => (
                 <div
                   key={p.key}
-                  className="flex items-center gap-3 rounded-2xl border border-border/60 bg-surface-1/40 p-3.5 sm:gap-4"
+                  className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-3.5 sm:gap-4"
                 >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                     <p.icon weight="duotone" className="size-5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{p.label}</p>
-                    <p className="text-xs text-muted-foreground">{p.description}</p>
+                    <p className="text-sm font-semibold text-ink">{p.label}</p>
+                    <p className="text-xs text-ink3">{p.description}</p>
                   </div>
-                  <Toggle
-                    on={prefs[p.key]}
-                    onToggle={() => togglePref(p.key)}
-                    label={p.label}
-                  />
+                  <Toggle on={prefs[p.key]} onToggle={() => togglePref(p)} label={p.label} />
                 </div>
               ))}
             </div>
 
             {/* Appearance / theme row */}
             <div className="mt-5">
-              <SectionHeading
-                eyebrow="Appearance"
-                icon={Icons.spark}
-                title="Theme"
-              />
-              <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-1/40 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+              <SectionHeading eyebrow="Appearance" icon={Icons.spark} title="Theme" />
+              <div className="mt-3 flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                     <Icons.crown weight="duotone" className="size-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">Midnight Aurora</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-semibold text-ink">Midnight Aurora</p>
+                    <p className="text-xs text-ink3">
                       Accent currently set to brand primary.
                     </p>
                   </div>
                 </div>
-                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 bg-surface-2 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-line2 bg-surface-3 px-3 py-1.5 text-xs font-medium text-ink2">
                   <Icons.shield weight="duotone" className="size-3.5 text-primary" />
                   Dark theme only
                 </span>
               </div>
-              <p className="mt-2 flex items-center gap-1.5 px-1 text-xs text-muted-foreground/80">
+              <p className="mt-2 flex items-center gap-1.5 px-1 text-xs text-ink3">
                 <Icons.info weight="duotone" className="size-3.5 shrink-0 text-info" />
-                InvestIQ is crafted as a dark-only terminal — a light mode isn&apos;t available yet.
+                Vytal is crafted as a dark-only terminal — a light mode isn&apos;t available yet.
               </p>
             </div>
           </div>
@@ -446,45 +222,60 @@ export default function SettingsPage() {
 
         {/* Account */}
         <Reveal delay={0.05}>
-          <div className="glass-strong relative h-full overflow-hidden rounded-3xl border border-border/70 p-5 sm:p-6">
-            <div className="bg-aurora pointer-events-none absolute inset-0 -z-10 opacity-20" />
+          <div className="h-full rounded-2xl border border-line bg-surface-1 p-5 sm:p-6">
             <SectionHeading eyebrow="Account" icon={Icons.user} title="Your profile" />
 
             <div className="mt-5 flex flex-col items-center text-center">
-              <div className="grid size-20 place-items-center rounded-full bg-linear-to-br from-primary via-primary/70 to-accent font-display text-2xl font-extrabold text-primary-foreground shadow-[0_8px_30px_-8px_var(--glow)]">
-                AI
+              <div className="grid size-20 place-items-center rounded-full border border-primary/20 bg-primary/12 font-display text-2xl font-extrabold text-primary">
+                {initials}
               </div>
-              <p className="mt-3 font-display text-xl font-bold">Aarav Investor</p>
-              <p className="text-sm text-muted-foreground">ajmix06@gmail.com</p>
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <p className="mt-3 font-display text-xl font-bold text-ink">{name}</p>
+              {email && <p className="text-sm text-ink3">{email}</p>}
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 <Icons.crown weight="fill" className="size-3.5" />
-                InvestIQ Pro
+                Vytal Pro
               </div>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-border/60 bg-surface-1/40 p-3 text-center">
-                <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-xl border border-line bg-surface-2 p-3 text-center">
+                <p className="text-[0.65rem] uppercase tracking-wider text-ink3">
                   Member since
                 </p>
-                <p className="font-display text-base font-bold">2023</p>
+                <p className="num text-base font-bold text-ink">2023</p>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-surface-1/40 p-3 text-center">
-                <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-xl border border-line bg-surface-2 p-3 text-center">
+                <p className="text-[0.65rem] uppercase tracking-wider text-ink3">
                   Plan value
                 </p>
-                <p className="font-display text-base font-bold">
+                <p className="num text-base font-bold text-ink">
                   {formatINR(2499, { compact: true })}/yr
                 </p>
               </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-2">
-              <Button variant="gradient" className="w-full">
+              <Button
+                variant="default"
+                className="w-full"
+                onClick={() =>
+                  toast.info("Plan management is coming soon", {
+                    description: "You're on Vytal Pro — billing controls arrive shortly.",
+                  })
+                }
+              >
                 <Icons.crown weight="fill" className="size-4" />
                 Manage plan
               </Button>
-              <Button variant="ghost" className="w-full text-muted-foreground">
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() =>
+                  toast.info("Account settings are coming soon", {
+                    description: "Profile & security controls arrive shortly.",
+                  })
+                }
+              >
                 <Icons.settings weight="duotone" className="size-4" />
                 Account settings
               </Button>

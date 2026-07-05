@@ -19,15 +19,20 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { SidebarUser } from "@/components/app-sidebar-user";
 import { HealthRing } from "@/components/ui/health-ring";
 import { Icons, type Icon } from "@/lib/icons";
-import { portfolioSummary } from "@/lib/demo-data";
+import { usePortfolioSnapshot } from "@/lib/api/hooks/use-portfolio-snapshot";
+import { useMe } from "@/lib/api/hooks/use-me";
+import { PHS_BAND_META, phsColor } from "@/components/portfolio/lib";
 import { cn } from "@/lib/utils";
 
-type NavItem = { title: string; url: string; icon: Icon };
+type NavItem = { title: string; url: string; icon: Icon; adminOnly?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
 
-const groups: NavGroup[] = [
+// Product surfaces above the Settings group. The Settings group is assembled in
+// the component because its "Admin Panel" item is admin-gated (role-aware).
+const baseGroups: NavGroup[] = [
   {
     label: "Overview",
     items: [
@@ -55,16 +60,39 @@ const groups: NavGroup[] = [
       { title: "Results", url: "/results", icon: Icons.results },
     ],
   },
-  {
-    label: "System",
-    items: [{ title: "Data & Settings", url: "/settings", icon: Icons.settings }],
-  },
 ];
 
 export function AppSidebar() {
   const { state, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
   const collapsed = !isMobile && state === "collapsed";
+
+  // Real portfolio health pulse — the pre-computed PHS snapshot, never a fabricated
+  // score. null phs ⇒ an honest "no read yet" state (empty/unscored/pending book).
+  const snapQ = usePortfolioSnapshot();
+  const snapshot = snapQ.data?.snapshot ?? null;
+  const phs = snapshot?.phs ?? null;
+  const band = snapshot?.band ?? null;
+  const bandLabel = band ? PHS_BAND_META[band].label : null;
+
+  // Role gate — the "Admin Panel" item appears ONLY for admins. Role comes from
+  // /api/v1/me/profile (never the JWT); the backend still enforces admin on the
+  // routes themselves, so this is a UI courtesy, not the security boundary.
+  const { isAdmin } = useMe();
+
+  // Settings group — assembled here so Admin Panel can be dropped for non-admins.
+  const groups: NavGroup[] = [
+    ...baseGroups,
+    {
+      label: "Settings",
+      items: [
+        ...(isAdmin
+          ? [{ title: "Admin Panel", url: "/admin", icon: Icons.shield, adminOnly: true } as NavItem]
+          : []),
+        { title: "Settings", url: "/settings", icon: Icons.settings },
+      ],
+    },
+  ];
 
   // On mobile the sidebar is an overlay Sheet — close it whenever the route changes
   // so tapping a nav item navigates AND dismisses the sheet (instead of staying open).
@@ -77,32 +105,34 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" variant="floating" className="border-none">
-      <div className="glass-strong flex h-full flex-col rounded-2xl">
+      {/* Flat editorial shell — solid surface + hairline, matching the stock pages
+          (no frosted glass, no aurora, no gradient washes). */}
+      <div className="flex h-full flex-col rounded-lg border border-line bg-surface-1">
         <SidebarHeader className="px-2 pt-3">
           {collapsed ? (
             <button
               onClick={toggleSidebar}
               aria-label="Expand sidebar"
-              className="group relative mx-auto grid size-9 place-items-center rounded-xl bg-gradient-to-br from-primary/30 to-accent/20 ring-1 ring-primary/30"
+              className="group relative mx-auto grid size-8 place-items-center rounded-xl border border-line2 bg-surface-2 transition-colors hover:border-line3 hover:bg-surface-3"
             >
               <Icons.spark weight="fill" className="size-5 text-primary group-hover:opacity-0" />
-              <Icons.caretRight className="absolute size-4 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+              <Icons.caretRight className="absolute size-4 text-ink opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
           ) : (
             <div className="flex items-center justify-between gap-2 px-1">
               <Link href="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary/30 to-accent/20 ring-1 ring-primary/30">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-line2 bg-surface-2">
                   <Icons.spark weight="fill" className="size-5 text-primary" />
                 </span>
-                <span className="font-display text-lg font-extrabold tracking-tight">
-                  Invest<span className="text-gradient">IQ</span>
+                <span className="font-display text-lg font-extrabold tracking-tight text-ink">
+                  Vy<span className="text-primary">tal</span>
                 </span>
               </Link>
               <Button
                 size="icon"
                 variant="ghost"
                 onClick={toggleSidebar}
-                className="size-8 shrink-0 text-muted-foreground"
+                className="size-8 shrink-0 text-ink3 hover:text-ink"
                 aria-label="Collapse sidebar"
               >
                 <Icons.menu className="size-4" />
@@ -110,41 +140,68 @@ export function AppSidebar() {
             </div>
           )}
 
-          {/* Health pulse — promotes the proprietary score in-nav */}
+          {/* Portfolio health pulse — the real PHS snapshot (never a fabricated score).
+              No score yet (empty / unscored / pending) → an honest neutral state. */}
           {collapsed ? (
-            <Link
-              href="/health-score"
-              aria-label={`Portfolio health ${portfolioSummary.healthScore}`}
-              className="mx-auto mt-3 grid place-items-center"
-            >
-              <HealthRing score={portfolioSummary.healthScore} size={34} strokeWidth={4} showValue />
-            </Link>
+            phs != null ? (
+              <Link
+                href="/portfolio"
+                aria-label={`Portfolio health ${phs}`}
+                className="mx-auto mt-3 grid place-items-center"
+              >
+                <HealthRing score={phs} size={34} strokeWidth={4} showValue />
+              </Link>
+            ) : (
+              <Link
+                href="/portfolio"
+                aria-label="Portfolio health — no read yet"
+                className="mx-auto mt-3 grid size-9 place-items-center rounded-xl border border-line2 bg-surface-2 text-ink3 transition-colors hover:border-line3 hover:bg-surface-3"
+              >
+                <Icons.health weight="duotone" className="size-4" />
+              </Link>
+            )
           ) : (
             <Link
-              href="/health-score"
-              className="lift group mx-1 mt-3 flex items-center gap-3 rounded-xl border border-border/70 bg-surface-1/50 p-3 hover:border-primary/30"
+              href="/portfolio"
+              className="group mx-1 mt-3 flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-3 transition-colors hover:border-line3 hover:bg-surface-3"
             >
-              <HealthRing score={portfolioSummary.healthScore} size={48} strokeWidth={5} showValue />
-              <div className="min-w-0">
-                <p className="text-[0.7rem] uppercase tracking-wider text-muted-foreground">
-                  Portfolio Health
-                </p>
-                <p className="flex items-center gap-1 text-sm font-semibold text-foreground">
-                  Strong
-                  <span className="flex items-center gap-0.5 text-xs font-medium text-success">
-                    <Icons.trendUp weight="bold" className="size-3" />+{portfolioSummary.healthTrend}
+              {phs != null ? (
+                <>
+                  <HealthRing score={phs} size={48} strokeWidth={5} showValue />
+                  <div className="min-w-0">
+                    <p className="text-[0.7rem] uppercase tracking-wider text-ink3">
+                      Portfolio Health
+                    </p>
+                    <p className="text-sm font-semibold" style={bandLabel ? { color: phsColor(band) } : undefined}>
+                      {bandLabel ?? "Scored"}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="grid size-12 shrink-0 place-items-center rounded-full border border-line2 bg-surface-3 text-ink3">
+                    <Icons.health weight="duotone" className="size-5" />
                   </span>
-                </p>
-              </div>
-              <Icons.caretRight className="ml-auto size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-[0.7rem] uppercase tracking-wider text-ink3">
+                      Portfolio Health
+                    </p>
+                    <p className="text-sm font-semibold text-ink2">No read yet</p>
+                  </div>
+                </>
+              )}
+              <Icons.caretRight className="ml-auto size-4 text-ink3 transition-transform group-hover:translate-x-0.5" />
             </Link>
           )}
         </SidebarHeader>
 
-        <SidebarContent className="custom-scrollbar mt-1 gap-0">
-          {groups.map((group) => (
-            <SidebarGroup key={group.label} className="py-1">
-              <SidebarGroupLabel className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+        <SidebarContent className="custom-scrollbar mt-1 gap-0.5">
+          {groups.map((group, gi) => (
+            <SidebarGroup
+              key={group.label}
+              className={cn("py-1", gi > 0 && "border-t border-line")}
+            >
+              <SidebarGroupLabel className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-ink3">
                 {group.label}
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -158,20 +215,31 @@ export function AppSidebar() {
                           isActive={active}
                           tooltip={item.title}
                           className={cn(
-                            "group/nav h-10 rounded-lg transition-all",
+                            "group/nav relative h-10 rounded-lg transition-colors duration-200",
                             active
-                              ? "bg-primary/12 text-foreground ring-1 ring-primary/25"
-                              : "text-muted-foreground hover:bg-surface-2/60 hover:text-foreground"
+                              ? "bg-surface-2 text-ink"
+                              : "text-ink2 hover:bg-surface-2 hover:text-ink"
                           )}
                         >
                           <Link href={item.url}>
+                            {/* leading primary rail — the single accent marking the active row */}
+                            {active && !collapsed && (
+                              <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+                            )}
                             <item.icon
                               weight={active ? "fill" : "regular"}
-                              className={cn("size-[1.15rem] shrink-0", active && "text-primary")}
+                              className={cn(
+                                "size-[1.15rem] shrink-0 transition-colors",
+                                active
+                                  ? "text-primary"
+                                  : "text-ink3 group-hover/nav:text-ink"
+                              )}
                             />
                             <span className="font-medium">{item.title}</span>
-                            {active && !collapsed && (
-                              <span className="ml-auto size-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--glow)]" />
+                            {item.adminOnly && !collapsed && (
+                              <span className="ml-auto inline-flex items-center rounded-md border border-line2 bg-surface-3 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-primary">
+                                Admin
+                              </span>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -184,42 +252,12 @@ export function AppSidebar() {
           ))}
         </SidebarContent>
 
-        <SidebarFooter className="p-2">
+        <SidebarFooter className="border-t border-line p-2">
           {collapsed ? (
-            <Link
-              href="/settings"
-              aria-label="Account"
-              className="mx-auto grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary/40 to-accent/30 text-xs font-bold text-primary-foreground"
-            >
-              AI
-            </Link>
+            <SidebarUser collapsed />
           ) : (
-            <div className="space-y-2 px-1">
-              <div className="overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-br from-primary/12 to-accent/5 p-3">
-                <p className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Icons.crown weight="fill" className="size-4 text-primary" />
-                  InvestIQ Pro
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Unlock deep AI analysis &amp; unlimited screens.
-                </p>
-                <Button size="sm" className="mt-2.5 h-8 w-full">
-                  Upgrade
-                </Button>
-              </div>
-              <Link
-                href="/settings"
-                className="flex items-center gap-2.5 rounded-xl p-2 transition-colors hover:bg-surface-2/60"
-              >
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary/40 to-accent/30 text-xs font-bold text-primary-foreground">
-                  AI
-                </span>
-                <div className="min-w-0 leading-tight">
-                  <p className="truncate text-sm font-medium">Aarav Investor</p>
-                  <p className="truncate text-xs text-muted-foreground">Pro · NSE</p>
-                </div>
-                <Icons.settings className="ml-auto size-4 shrink-0 text-muted-foreground" />
-              </Link>
+            <div className="px-1">
+              <SidebarUser collapsed={false} />
             </div>
           )}
         </SidebarFooter>

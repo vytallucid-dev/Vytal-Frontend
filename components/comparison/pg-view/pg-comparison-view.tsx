@@ -102,12 +102,12 @@ export function PgComparisonView({
   }
 
   return (
-    <div className="mx-auto w-full px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full px-0 py-6 sm:px-6">
       <Header a={a} b={b} sameFamily={sameFamily} />
 
       {/* Tab bar — thin pillar-coloured underline marks the active tab. */}
       <div className="mt-6 border-b border-line">
-        <div className="flex gap-1 overflow-x-auto overflow-y-hidden">
+        <div className="flex gap-1 hidden-scrollbar overflow-x-auto overflow-y-hidden">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -268,14 +268,14 @@ function PairedStat({
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-line py-2.5 last:border-0">
-      <span className="flex flex-1 items-center gap-1.5 text-sm text-ink2">
+      <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-ink2">
         {label}
         {info && <InfoTip text={info} />}
       </span>
-      <span className="num w-28 text-right text-sm font-medium" style={{ color: A_HUE }}>
+      <span className="num w-20 shrink-0 text-right text-sm font-medium sm:w-28" style={{ color: A_HUE }}>
         {a}
       </span>
-      <span className="num w-28 text-right text-sm font-medium" style={{ color: B_HUE }}>
+      <span className="num w-20 shrink-0 text-right text-sm font-medium sm:w-28" style={{ color: B_HUE }}>
         {b}
       </span>
     </div>
@@ -336,10 +336,10 @@ function OverviewTab({
         {aAgg && bAgg ? (
           <Panel>
             <div className="mb-1 flex items-center justify-end gap-3 text-[11px] font-medium">
-              <span className="w-28 text-right" style={{ color: A_HUE }}>
+              <span className="w-20 shrink-0 truncate text-right sm:w-28" style={{ color: A_HUE }}>
                 {a.identity.displayName}
               </span>
-              <span className="w-28 text-right" style={{ color: B_HUE }}>
+              <span className="w-20 shrink-0 truncate text-right sm:w-28" style={{ color: B_HUE }}>
                 {b.identity.displayName}
               </span>
             </div>

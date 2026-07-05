@@ -107,7 +107,7 @@ export default function SnapshotTab({
                     <div key={m.label} className="flex items-center justify-between gap-4 px-5 py-3.5">
                       <span className="text-[13px] font-medium text-ink">{m.label}</span>
                       <div className="flex items-center gap-6">
-                        <span className="num text-[17px] font-semibold text-ink">{fmtPct(m.value)}</span>
+                        <span className="num text-sm sm:text-[17px] font-semibold text-ink">{fmtPct(m.value)}</span>
                         <div className="min-w-[92px] text-right">
                           <div className="num text-[11px]" style={{ color: toneColor(bps(m.value, m.sqly)) }}>
                             {fmtBps(bps(m.value, m.sqly))} <span className="text-ink3">YoY</span>
@@ -291,7 +291,7 @@ function SparkRow({
     <div className="flex items-center justify-between gap-4">
       <div>
         <div className="text-[11px] text-ink3">{label}</div>
-        <div className="num mt-0.5 text-[16px] font-semibold text-ink">{value}</div>
+        <div className="num mt-0.5 text-xs sm:text-[16px] font-semibold text-ink">{value}</div>
       </div>
       <MiniSpark points={series} color={color} width={120} height={34} />
     </div>

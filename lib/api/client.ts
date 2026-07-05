@@ -2,7 +2,15 @@
  * Thin typed fetch wrapper for the InvestIQ API.
  * Base URL is set via NEXT_PUBLIC_API_BASE_URL (required in production).
  * All helpers throw ApiError on non-2xx so React Query's error state works.
+ *
+ * AUTH: these are the PUBLIC data reads (/api/stocks, /peer-groups, /universe,
+ * /compare, /v1/results) — the backend does not require a token on them yet.
+ * We attach one WHEN a session exists (enabler for gating these routes later),
+ * but never require it: no session → the request goes out anonymously, exactly
+ * as before. Never block, never throw, never redirect on a missing session here.
  */
+
+import { supabase } from "@/lib/supabase/client";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
@@ -57,12 +65,18 @@ export async function apiFetch<T>(
   init?: RequestInit,
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-    ...init,
-  });
+
+  // Fresh per-call read (supabase-js resolves from its persisted/auto-refreshed
+  // session) — no stale-token window, and no session is a valid, non-error state.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...init?.headers,
+  };
+
+  const res = await fetch(url, { ...init, headers });
   return parseResponse<T>(res);
 }

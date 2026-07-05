@@ -639,7 +639,7 @@ export function FinancialStatements({
     <section>
       {/* Collapsible eyebrow — mirrors SectionEyebrow markup exactly, with a caret added */}
       <div
-        className="mb-4 mt-8 flex cursor-pointer select-none items-center gap-2.5"
+        className="mb-4 mt-8 flex cursor-pointer flex-wrap select-none items-center gap-2.5"
         onClick={() => setOpen((o) => !o)}
         role="button"
         aria-expanded={open}

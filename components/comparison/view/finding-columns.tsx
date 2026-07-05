@@ -40,7 +40,7 @@ function tagOf(f: PreparedFinding): string {
 function CompactFinding({ f }: { f: PreparedFinding }) {
   const a = accentVars(f.accent);
   return (
-    <div className="relative overflow-hidden rounded-xl border border-line bg-surface-1 p-3.5">
+    <div className="relative overflow-x-auto rounded-xl border border-line bg-surface-1 p-3.5">
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: a.color }} />
       <div className="flex items-start gap-2">
         <span className="text-[13px] font-semibold leading-snug text-ink">{f.name}</span>

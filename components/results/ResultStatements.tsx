@@ -365,7 +365,7 @@ export function ResultStatements({
     <section>
       {/* Collapsible eyebrow — mirrors the per-stock page's Financial-statements section. */}
       <div
-        className="mb-4 mt-8 flex cursor-pointer select-none items-center gap-2.5"
+        className="mb-4 mt-8 flex cursor-pointer flex-wrap select-none items-center gap-2.5"
         onClick={() => setOpen((o) => !o)}
         role="button"
         aria-expanded={open}

@@ -63,10 +63,10 @@ export function LandingNav() {
 
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link href="/dashboard">Sign in</Link>
+            <Link href="/login">Sign in</Link>
           </Button>
           <Button asChild size="sm" className="hidden sm:inline-flex">
-            <Link href="/dashboard">
+            <Link href="/signup">
               Launch Terminal
               <Icons.arrowRight weight="bold" className="size-3.5" />
             </Link>
@@ -101,7 +101,7 @@ export function LandingNav() {
                 </a>
               ))}
               <Button asChild className="mt-1">
-                <Link href="/dashboard">Launch Terminal</Link>
+                <Link href="/signup">Launch Terminal</Link>
               </Button>
             </div>
           </motion.div>

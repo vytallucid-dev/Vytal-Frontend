@@ -239,7 +239,7 @@ export default function ResultsPage() {
 
       {/* ------------------------------------------------------- Filters + search */}
       <Reveal className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5">
+        <div className="-mx-1 hidden-scrollbar flex items-center gap-2 overflow-x-auto px-1 pb-0.5">
           {FILTERS.map((f) => {
             const active = filter === f.key;
             return (

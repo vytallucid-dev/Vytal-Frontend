@@ -88,7 +88,7 @@ export default function ComparisonResultPage() {
 
 function ComparisonSkeleton() {
   return (
-    <div className="mx-auto w-full px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full px-0 py-6 sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="shimmer h-24 flex-1 rounded-xl bg-surface-2" />
         <div className="shimmer h-24 flex-1 rounded-xl bg-surface-2" />

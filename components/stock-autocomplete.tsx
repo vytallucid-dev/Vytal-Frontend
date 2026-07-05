@@ -165,7 +165,7 @@ export function StockAutocomplete({
               setIsOpen(true);
             }
           }}
-          className="w-full h-12 pl-11 pr-4 text-xs rounded-xl border-2 border-border bg-background/50 backdrop-blur-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-300 placeholder:text-muted-foreground/50 shadow-lg sm:h-16 sm:pl-16 sm:pr-6 sm:text-lg sm:rounded-2xl"
+          className="w-full h-12 pl-11 pr-4 text-xs rounded-xl border-2 border-border bg-background/50 backdrop-blur-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-300 placeholder:text-muted-foreground/50 shadow-lg sm:h-16 sm:pl-16 sm:pr-6 sm:text-sm md:text-lg sm:rounded-2xl"
         />
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
       </div>

@@ -39,6 +39,7 @@ import { QuerySkeleton } from "@/components/ui/query-skeleton";
 import { QueryError } from "@/components/ui/query-error";
 import { Panel, SectionEyebrow, tint } from "@/components/stock-detail/health/shared";
 import { HonestEmpty, Chip } from "@/components/stock-detail/overview/shared";
+import { SetReminderButton } from "@/components/reminders/set-reminder-button";
 import { WhereNext } from "./where-next";
 import { useStockEvents } from "@/lib/api/hooks/use-stock-events";
 import { useResultDetail } from "@/lib/api/hooks/use-result-detail";
@@ -215,8 +216,9 @@ function EventBody({ e }: { e: CorporateEvent }) {
   );
 }
 
-/** One corporate-event card — per-type body, impact badge, confirmed/tentative (upcoming). */
-function EventCard({ e, showStatus }: { e: CorporateEvent; showStatus: boolean }) {
+/** One corporate-event card — per-type body, impact badge, confirmed/tentative (upcoming).
+ *  Upcoming cards (showStatus) also carry a set-reminder control, mirroring the calendar's. */
+function EventCard({ e, showStatus, symbol }: { e: CorporateEvent; showStatus: boolean; symbol: string }) {
   const meta = metaFor(e.eventType);
   return (
     <Panel className="flex h-full flex-col gap-3 p-4 transition-colors hover:border-line3">
@@ -242,6 +244,11 @@ function EventCard({ e, showStatus }: { e: CorporateEvent; showStatus: boolean }
 
       <div className="mt-auto flex items-center gap-1.5 pt-0.5">
         <ImpactChip level={e.impactLevel} />
+        {showStatus && (
+          <span className="ml-auto">
+            <SetReminderButton symbol={symbol} eventType={e.eventType} eventDate={e.eventDate} />
+          </span>
+        )}
       </div>
     </Panel>
   );
@@ -468,7 +475,7 @@ function PastCardsView({
                 <StaggerGroup className={cardGrid}>
                   {dividendExtras.map((e) => (
                     <StaggerItem key={e.id}>
-                      <EventCard e={e} showStatus={false} />
+                      <EventCard e={e} showStatus={false} symbol={symbol} />
                     </StaggerItem>
                   ))}
                 </StaggerGroup>
@@ -478,7 +485,7 @@ function PastCardsView({
             <StaggerGroup className={cardGrid}>
               {groups.dividend.map((e) => (
                 <StaggerItem key={e.id}>
-                  <EventCard e={e} showStatus={false} />
+                  <EventCard e={e} showStatus={false} symbol={symbol} />
                 </StaggerItem>
               ))}
             </StaggerGroup>
@@ -512,7 +519,7 @@ function PastCardsView({
           <StaggerGroup className={cardGrid}>
             {groups.earnings.map((e) => (
               <StaggerItem key={e.id}>
-                <EventCard e={e} showStatus={false} />
+                <EventCard e={e} showStatus={false} symbol={symbol} />
               </StaggerItem>
             ))}
           </StaggerGroup>
@@ -525,7 +532,7 @@ function PastCardsView({
           <StaggerGroup className={cardGrid}>
             {groups.meeting.map((e) => (
               <StaggerItem key={e.id}>
-                <EventCard e={e} showStatus={false} />
+                <EventCard e={e} showStatus={false} symbol={symbol} />
               </StaggerItem>
             ))}
           </StaggerGroup>
@@ -896,7 +903,7 @@ export default function Events() {
           <StaggerGroup className={cardGrid}>
             {upcoming.map((e) => (
               <StaggerItem key={e.id}>
-                <EventCard e={e} showStatus />
+                <EventCard e={e} showStatus symbol={symbol} />
               </StaggerItem>
             ))}
           </StaggerGroup>

@@ -98,7 +98,7 @@ export default function PeerGroupDetailPage() {
       ) : (
         <>
           {/* Tab row — custom button tabs (matches the stock/sector detail pattern). */}
-          <div className="flex gap-1 overflow-x-auto border-b border-line">
+          <div className="hidden-scrollbar flex gap-1 overflow-x-auto border-b border-line">
             {TABS.map((tab) => (
               <button
                 key={tab.id}

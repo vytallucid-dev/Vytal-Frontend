@@ -90,15 +90,15 @@ function PairedTable({
     return <HonestEmpty>No metric detail for this pillar.</HonestEmpty>;
   }
   return (
-    <div className="overflow-hidden rounded-xl border border-line">
+    <div className="overflow-x-auto rounded-xl border border-line">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line bg-surface-1 text-left">
-            <th className="px-4 py-2.5 font-medium text-ink3">Metric</th>
-            <th className="px-4 py-2.5 text-right font-semibold">
+            <th className="px-3 py-2.5 sm:px-4 max-sm:text-xs font-medium text-ink3">Metric</th>
+            <th className="px-3 py-2.5 sm:px-4 max-sm:text-xs text-right font-semibold">
               <span className="num" style={{ color: A_HUE }}>{aLabel}</span>
             </th>
-            <th className="px-4 py-2.5 text-right font-semibold">
+            <th className="px-3 py-2.5 sm:px-4 max-sm:text-xs text-right font-semibold">
               <span className="num" style={{ color: B_HUE }}>{bLabel}</span>
             </th>
           </tr>
@@ -109,7 +109,7 @@ function PairedTable({
               key={r.key}
               className={cn("border-b border-line last:border-0", i % 2 === 1 && "bg-surface-1/50")}
             >
-              <td className="px-4 py-2.5">
+              <td className="px-3 py-2.5 sm:px-4 max-sm:text-xs">
                 <span className="text-ink2">{r.label}</span>
                 {r.code && (
                   <span className="num ml-1.5 text-[10px] uppercase tracking-wider text-ink3">
@@ -117,10 +117,10 @@ function PairedTable({
                   </span>
                 )}
               </td>
-              <td className="px-4 py-2.5 text-right">
+              <td className="px-3 py-2.5 sm:px-4 max-sm:text-xs text-right">
                 <ValueCell display={r.aDisplay} band={r.aBand} dim={r.aDim} />
               </td>
-              <td className="px-4 py-2.5 text-right">
+              <td className="px-3 py-2.5 sm:px-4 max-sm:text-xs text-right">
                 <ValueCell display={r.bDisplay} band={r.bBand} dim={r.bDim} />
               </td>
             </tr>
@@ -153,7 +153,7 @@ function SingleMetricList({
       {metrics.length === 0 ? (
         <HonestEmpty>No metric detail on file.</HonestEmpty>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-line">
+        <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full text-sm">
             <tbody>
               {metrics.map((m, i) => (
@@ -164,13 +164,13 @@ function SingleMetricList({
                     i % 2 === 1 && "bg-surface-1/50",
                   )}
                 >
-                  <td className="px-4 py-2.5">
+                  <td className="px-3 py-2.5 sm:px-4 max-sm:text-xs">
                     <span className="text-ink2">{getMetricLabel(m.metricKey).label}</span>
                     <span className="num ml-1.5 text-[10px] uppercase tracking-wider text-ink3">
                       {m.metricKey}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-3 py-2.5 sm:px-4 max-sm:text-xs text-right">
                     <ValueCell
                       display={metricDisplay(m)}
                       band={m.scoreState === "scored" ? m.l1Band : null}

@@ -146,7 +146,7 @@ function LaneShell({
 }) {
   const hasData = total > 0;
   return (
-    <div className="flex flex-col rounded-xl border border-line bg-surface-1 p-4">
+    <div className="flex min-w-0 flex-col rounded-xl border border-line bg-surface-1 p-4">
       <div className="mb-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg border" style={tint(accent)}>
@@ -199,8 +199,8 @@ function LaneShell({
 // ════════════════════════════════════════════════════════════════════════════════════
 function InsiderRowItem({ e, accent }: { e: InsiderRow; accent: string }) {
   return (
-    <li className="border-t border-line py-2.5 first:border-t-0 first:pt-0">
-      <div className="flex items-center gap-2">
+    <li className="min-w-0 border-t border-line py-2.5 first:border-t-0 first:pt-0">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <span
           className="num shrink-0 rounded border px-1.5 py-0.5 text-[10px]"
           style={tint(accent, 12, 26)}
@@ -228,8 +228,8 @@ function InsiderRowItem({ e, accent }: { e: InsiderRow; accent: string }) {
 // ════════════════════════════════════════════════════════════════════════════════════
 function BlockRowItem({ d, accent }: { d: BlockRow; accent: string }) {
   return (
-    <li className="border-t border-line py-2.5 first:border-t-0 first:pt-0">
-      <div className="flex items-center gap-2">
+    <li className="min-w-0 border-t border-line py-2.5 first:border-t-0 first:pt-0">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <span
           className="num shrink-0 rounded border px-1.5 py-0.5 text-[10px]"
           style={tint(accent, 12, 26)}
@@ -305,7 +305,7 @@ export function ActivitySection({
         pill={isComplete ? `${total} events` : "assembling"}
       />
       <Reveal>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {/* Insider lane */}
           <LaneShell
             icon={Icons.eye}

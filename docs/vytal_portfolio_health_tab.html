@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vytal — Portfolio Health</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#090a0d;--surface:#111319;--surface2:#171a20;--surface3:#20242c;
+  --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.10);--line3:rgba(255,255,255,.17);
+  --ink:#f1efe9;--ink2:#9b9c9c;--ink3:#62646c;
+  --c-fragile:#e2584d;--c-below:#e0913f;--c-steady:#cda74f;--c-healthy:#48ba7c;--c-pristine:#4ea1e6;
+  --p-found:#5d92d8;--p-mom:#a085d8;--p-mkt:#d6a652;--p-own:#4fb6a4;
+  --crit:#e2584d;--crit-bg:rgba(226,88,77,.12);--crit-bd:rgba(226,88,77,.40);
+  --high:#e0a13e;--high-bg:rgba(224,161,62,.12);--high-bd:rgba(224,161,62,.38);
+  --rec:#48ba7c;--rec-bg:rgba(72,186,124,.12);--rec-bd:rgba(72,186,124,.40);
+  --ctx:#7f93b2;--ctx-bg:rgba(127,147,178,.11);--ctx-bd:rgba(127,147,178,.32);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 60px}
+.num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.shell{padding:0 26px;max-width:1500px;margin:0 auto}
+
+/* context + tabs */
+.top{padding:14px 0 0;border-bottom:1px solid var(--line);margin-bottom:20px}
+.bc{font-size:12.5px;color:var(--ink3);margin-bottom:14px}.bc b{color:var(--ink2);font-weight:500}.bc .sep{margin:0 8px;opacity:.5}
+.pf-id{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+.pf-name{font-family:'Fraunces',serif;font-weight:500;font-size:30px;line-height:1.05}
+.pf-meta{font-size:12.5px;color:var(--ink2);margin-top:5px}
+.pf-summary{display:flex;gap:10px;flex-wrap:wrap}
+.sm{display:flex;flex-direction:column;gap:2px;background:var(--surface2);border:1px solid var(--line2);border-radius:11px;padding:8px 14px}
+.sm .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.sm .v{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500}
+.tabs{display:flex;gap:2px;overflow-x:auto}
+.tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--ink3);font:inherit;font-size:13px;font-weight:500;padding:11px 16px;cursor:pointer;white-space:nowrap;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+.tab:hover{color:var(--ink2)}.tab.on{color:var(--ink);border-bottom-color:var(--c-steady)}.tab.on svg{color:var(--c-steady)}.tab svg{width:15px;height:15px}
+
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px;margin:30px 2px 14px}
+.eyebrow .ln{flex:1;height:1px;background:var(--line)}
+.eyebrow .pill{font-family:'IBM Plex Mono',monospace;letter-spacing:0;text-transform:none;color:var(--ink2);background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:3px 11px;font-size:11px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+.kick{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3)}
+
+/* ===== EXPOSURE HERO ===== */
+.hero{border:1px solid var(--line2);border-radius:20px;background:linear-gradient(180deg,rgba(205,167,79,.045),transparent 50%),var(--surface);padding:24px 26px;overflow:hidden}
+.hero-top{display:grid;grid-template-columns:auto 1fr;gap:30px;align-items:center}
+.agg{text-align:center;flex:none;padding-right:28px;border-right:1px solid var(--line)}
+.agg .lab{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.agg .big{font-family:'IBM Plex Mono',monospace;font-size:64px;font-weight:500;line-height:1;margin:8px 0 2px}
+.agg .bnd{font-family:'Fraunces',serif;font-size:17px}
+.agg .wt{font-size:10.5px;color:var(--ink3);margin-top:9px;max-width:15em}
+.disp{}
+.disp-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.disp-h .t{font-size:12px;color:var(--ink2)}
+.disp-h .legend{font-size:10.5px;color:var(--ink3)}
+.capbar{display:flex;height:34px;border-radius:9px;overflow:hidden;gap:2px}
+.capseg{display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#0a0b0e;min-width:34px;transition:.2s}
+.capkey{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-size:11px;color:var(--ink2)}
+.capkey span{display:inline-flex;align-items:center;gap:7px}.capkey .d{width:9px;height:9px;border-radius:2px}
+.bind{font-family:'Fraunces',serif;font-size:16.5px;line-height:1.5;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.bind b{font-weight:600}.bind .hl{color:var(--high);font-weight:500}.bind .cl{color:var(--crit);font-weight:500}
+/* scatter */
+.scatter{margin-top:18px}
+.scatter svg{width:100%;height:auto;display:block}
+.sc-cap{font-size:11px;color:var(--ink3);margin-top:8px;display:flex;gap:18px;flex-wrap:wrap}
+.sc-cap span{display:inline-flex;align-items:center;gap:6px}
+
+/* ===== PILLARS ===== */
+.bpillars{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+.bp{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px 17px;border-top:2px solid var(--bc)}
+.bp.found{--bc:var(--p-found)}.bp.mom{--bc:var(--p-mom)}.bp.mkt{--bc:var(--p-mkt)}.bp.own{--bc:var(--p-own)}
+.bp.soft{box-shadow:inset 0 0 0 1px var(--high-bd)}
+.bp-top{display:flex;align-items:center;justify-content:space-between}
+.bp-name{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:7px}.bp-name .d{width:7px;height:7px;border-radius:2px;background:var(--bc)}
+.bp-soft-tag{font-size:9px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;color:var(--high);background:var(--high-bg);padding:2px 7px;border-radius:5px}
+.bp-score{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:500;margin:12px 0 3px}
+.bp-bar{height:6px;border-radius:4px;background:var(--surface3);overflow:hidden;margin:8px 0 12px}.bp-bar i{display:block;height:100%;background:var(--bc);border-radius:4px}
+.bp-drv{font-size:11px;color:var(--ink3);line-height:1.5}.bp-drv b{color:var(--ink2);font-weight:500;font-family:'IBM Plex Mono',monospace}
+
+/* ===== CHANGES ===== */
+.changes{display:flex;flex-direction:column;gap:11px}
+.chg{display:flex;align-items:center;gap:15px;border:1px solid var(--line);border-radius:13px;background:var(--surface);padding:15px 17px;border-left:3px solid var(--cc)}
+.chg.high{--cc:var(--high)}.chg.crit{--cc:var(--crit)}.chg.rec{--cc:var(--rec)}
+.chg-ic{width:36px;height:36px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--ccbg);color:var(--cc)}
+.chg.high{--ccbg:var(--high-bg)}.chg.crit{--ccbg:var(--crit-bg)}.chg.rec{--ccbg:var(--rec-bg)}
+.chg-ic svg{width:19px;height:19px}
+.chg-body{flex:1;min-width:0}
+.chg-top{display:flex;align-items:center;gap:10px}
+.chg-tk{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600}
+.chg-wt{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink2);background:var(--surface3);border-radius:20px;padding:2px 9px}
+.chg-what{font-size:13px;margin-top:1px}
+.chg-sub{font-size:11.5px;color:var(--ink2);margin-top:4px;line-height:1.4}
+.chg-fn{flex:none}
+.chg-fn a{font-size:11px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:7px 11px;display:inline-flex;align-items:center;gap:6px;background:var(--surface2);white-space:nowrap;transition:.15s}.chg-fn a:hover{border-color:var(--line3);background:var(--surface3)}.chg-fn svg{width:11px;height:11px}
+
+/* ===== SHAPE ===== */
+.shape{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.shp{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:17px 18px}
+.shp-h{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:600;margin-bottom:13px}
+.shp-h svg{width:16px;height:16px;color:var(--ink2)}
+.shp-big{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:500}
+.shp-big .u{font-size:13px;color:var(--ink3)}
+.shp-bar{height:7px;border-radius:4px;background:var(--surface3);overflow:hidden;margin:11px 0}.shp-bar i{display:block;height:100%;border-radius:4px}
+.shp-read{font-size:11.5px;color:var(--ink2);line-height:1.5}
+.shp-mini{display:flex;gap:5px;margin:10px 0}
+.shp-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink2);background:var(--surface3);border-radius:6px;padding:3px 8px}
+
+/* ===== HOLDINGS ===== */
+.holds{display:flex;flex-direction:column;gap:8px}
+.hold{border:1px solid var(--line);border-radius:13px;background:var(--surface);overflow:hidden;transition:.15s}
+.hold.attn{border-left:3px solid var(--ac)}
+.hold.attn.high{--ac:var(--high)}.hold.attn.crit{--ac:var(--crit)}.hold.attn.rec{--ac:var(--rec)}
+.hold-row{display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer}
+.hold.calm .hold-row{cursor:default}
+.hold-w{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink2);width:42px;flex:none;text-align:right}
+.hold-tk{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;width:120px;flex:none}
+.hold-band{display:inline-flex;align-items:center;gap:7px;font-size:12px;flex:none;width:130px}
+.hold-band .d{width:8px;height:8px;border-radius:50%}
+.hold-state{font-size:12px;color:var(--ink2);flex:1;min-width:0}
+.hold-sc{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;flex:none}
+.hold-chev{flex:none;color:var(--ink3);transition:transform .2s;width:16px;height:16px}
+.hold.open .hold-chev{transform:rotate(180deg)}
+.hold-detail{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+.hold.open .hold-detail{display:block}
+.hd-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;padding-top:14px}
+.hd-pill{display:flex;flex-direction:column;gap:9px}
+.hdp{display:flex;align-items:center;gap:11px;font-size:12px}
+.hdp .pn{width:90px;flex:none;display:flex;align-items:center;gap:7px}.hdp .pn .d{width:7px;height:7px;border-radius:2px}
+.hdp.found .d{background:var(--p-found)}.hdp.mom .d{background:var(--p-mom)}.hdp.mkt .d{background:var(--p-mkt)}.hdp.own .d{background:var(--p-own)}
+.hdp .b{flex:1;height:6px;border-radius:4px;background:var(--surface3);overflow:hidden}.hdp .b i{display:block;height:100%;border-radius:4px}
+.hdp.found .b i{background:var(--p-found)}.hdp.mom .b i{background:var(--p-mom)}.hdp.mkt .b i{background:var(--p-mkt)}.hdp.own .b i{background:var(--p-own)}
+.hdp .vv{font-family:'IBM Plex Mono',monospace;width:24px;text-align:right;flex:none;color:var(--ink)}
+.hd-find{background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+.hd-find .fh{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px}
+.hd-find .ft{font-size:12.5px;color:var(--ink2);line-height:1.5}
+.hd-fns{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.hd-fns a{font-size:11px;color:var(--ink);text-decoration:none;border:1px solid var(--line2);border-radius:8px;padding:6px 11px;display:inline-flex;align-items:center;gap:6px;background:var(--surface2);transition:.15s}.hd-fns a:hover{border-color:var(--line3);background:var(--surface3)}.hd-fns svg{width:11px;height:11px}
+.hold.calm .hold-chev{visibility:hidden}
+
+/* ===== RAW FLOOR ===== */
+.rawfloor{padding:0;overflow:hidden}
+.raw-toggle{width:100%;appearance:none;background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:18px 22px;display:flex;align-items:center;gap:15px;text-align:left;transition:background .15s}
+.raw-toggle:hover{background:var(--surface2)}
+.raw-toggle .ric{width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface3);color:var(--ink2)}.raw-toggle .ric svg{width:20px;height:20px}
+.raw-toggle .rt-meta{flex:1}.raw-toggle .rt-t{font-size:14.5px;font-weight:600}.raw-toggle .rt-s{font-size:12px;color:var(--ink3);margin-top:2px}
+.raw-toggle .rt-chev{flex:none;color:var(--ink3);transition:transform .25s}.raw-toggle .rt-chev svg{width:20px;height:20px}
+.rawfloor.open .raw-toggle .rt-chev{transform:rotate(180deg)}
+.raw-body{padding:0 22px 20px;display:none}
+.rawfloor.open .raw-body{display:block}
+.raw-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 0 14px}
+.per-toggle{display:flex;gap:3px;background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:3px}
+.per-toggle button{appearance:none;background:none;border:none;color:var(--ink3);font:inherit;font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;transition:.15s}
+.per-toggle button.on{background:var(--surface3);color:var(--ink)}
+.raw-hint{font-size:11px;color:var(--ink3)}
+.rawscroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.rawtbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:840px}
+.rawtbl thead th{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:600;text-align:right;padding:10px 12px;background:var(--surface2);cursor:pointer;white-space:nowrap;user-select:none;transition:color .15s}
+.rawtbl thead th:hover{color:var(--ink2)}.rawtbl thead th:first-child{text-align:left}
+.rawtbl thead th .ar{color:var(--c-steady);margin-left:3px}
+.rawtbl tbody td{padding:10px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--ink2);border-top:1px solid var(--line)}
+.rawtbl tbody td:first-child{text-align:left;font-weight:500;color:var(--ink);cursor:pointer}
+.rawtbl tbody tr.main:hover td{background:var(--surface2)}
+.rawtbl tbody tr.main td:first-child::before{content:"▸ ";color:var(--ink3);font-size:10px}
+.rawtbl tbody tr.main.exp td:first-child::before{content:"▾ ";color:var(--ink2)}
+.rawtbl tbody tr.main .hld{color:var(--ink3);font-size:9px;margin-left:5px}
+.rawtbl td.pass{color:var(--rec)}.rawtbl td.fail{color:var(--high)}
+.detail-cell{padding:0!important}
+.detail-wrap{padding:16px 16px;background:var(--surface2);display:grid;grid-template-columns:1.4fr 1fr;gap:24px;border-top:1px solid var(--line2)}
+.detail-wrap .dh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.detail-wrap .dh .dt{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.qatoggle{display:flex;gap:2px;background:var(--surface3);border-radius:8px;padding:2px}
+.qatoggle button{appearance:none;background:none;border:none;color:var(--ink3);font:inherit;font-size:11px;font-weight:500;padding:4px 12px;border-radius:6px;cursor:pointer}
+.qatoggle button.on{background:var(--surface);color:var(--ink)}
+.stbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.stbl th,.stbl td{padding:6px 8px;text-align:right;white-space:nowrap;border-top:1px solid var(--line)}
+.stbl thead th{border-top:none;font-size:9.5px;color:var(--ink3);font-weight:500;font-family:'IBM Plex Mono',monospace}
+.stbl td:first-child,.stbl th:first-child{text-align:left;color:var(--ink2);font-family:'Inter',sans-serif}
+.stbl td{font-family:'IBM Plex Mono',monospace;color:var(--ink2)}.stbl td.last{color:var(--ink);font-weight:500}
+
+.foot{padding:24px 26px 0;max-width:1500px;margin:30px auto 0;font-size:11px;color:var(--ink3);line-height:1.6;border-top:1px solid var(--line)}
+a:focus-visible,.tab:focus-visible,.raw-toggle:focus-visible{outline:2px solid var(--c-pristine);outline-offset:2px;border-radius:4px}
+@media(max-width:1180px){.hero-top{grid-template-columns:1fr}.agg{border-right:none;border-bottom:1px solid var(--line);padding-right:0;padding-bottom:18px}.bpillars{grid-template-columns:repeat(2,1fr)}.shape{grid-template-columns:1fr}.hd-grid,.detail-wrap{grid-template-columns:1fr}}
+@media(max-width:680px){.bpillars{grid-template-columns:1fr}.hold-band,.hold-state{display:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="top">
+    <div class="bc"><b>Portfolio</b><span class="sep">›</span><b style="color:var(--ink)">My Portfolio</b></div>
+    <div class="pf-id">
+      <div><div class="pf-name">My Portfolio</div><div class="pf-meta">8 holdings · ₹14.2L invested · last viewed 6 days ago</div></div>
+      <div class="pf-summary">
+        <div class="sm"><span class="k">Weighted health</span><span class="v" id="sumAgg">—</span></div>
+        <div class="sm"><span class="k">Needs attention</span><span class="v" style="color:var(--high)" id="sumAttn">—</span></div>
+        <div class="sm"><span class="k">Changed since</span><span class="v">3</span></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab">Holdings</button>
+      <button class="tab">Performance</button>
+      <button class="tab">Allocation</button>
+      <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-7 4 16 3-9 2 5h5"/></svg>Health</button>
+      <button class="tab">Transactions</button>
+    </div>
+  </div>
+
+  <!-- ===== EXPOSURE ===== -->
+  <div class="eyebrow">Where your money is exposed<span class="ln"></span></div>
+  <div class="hero">
+    <div class="hero-top">
+      <div class="agg">
+        <div class="lab">Weighted health</div>
+        <div class="big" id="aggBig">—</div>
+        <div class="bnd" id="aggBnd">—</div>
+        <div class="wt">weighted by position size — what the typical rupee you hold is worth, not a simple average</div>
+      </div>
+      <div class="disp">
+        <div class="disp-h"><span class="t">Your capital, spread across health</span><span class="legend">% of invested value</span></div>
+        <div class="capbar" id="capBar"></div>
+        <div class="capkey" id="capKey"></div>
+      </div>
+    </div>
+    <div class="bind" id="bindRead"></div>
+    <div class="scatter">
+      <div class="kick" style="margin-bottom:10px">Risk-weighted positions — bubble size is how much you hold</div>
+      <svg id="scatter" viewBox="0 0 1000 230" preserveAspectRatio="none"></svg>
+      <div class="sc-cap"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--high)" stroke-width="2.5"><path d="M12 5v9M8 11l4 4 4-4"/></svg>deteriorating</span><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--rec)" stroke-width="2.5"><path d="M12 19v-9M8 13l4-4 4 4"/></svg>recovering</span><span><span style="width:11px;height:11px;border-radius:50%;border:2px solid var(--crit);display:inline-block"></span>flagged</span></div>
+    </div>
+  </div>
+
+  <!-- ===== PILLARS ===== -->
+  <div class="eyebrow">What your book is made of<span class="ln"></span><span class="pill">weighted pillars · and which holdings drive them</span></div>
+  <div class="bpillars" id="bpillars"></div>
+
+  <!-- ===== CHANGES ===== -->
+  <div class="eyebrow">What changed since you last looked<span class="ln"></span><span class="pill">6 days · ranked by weight × severity</span></div>
+  <div class="changes" id="changes"></div>
+
+  <!-- ===== SHAPE ===== -->
+  <div class="eyebrow">The shape of what you hold<span class="ln"></span><span class="pill">risks you may not have noticed taking</span></div>
+  <div class="shape" id="shape"></div>
+
+  <!-- ===== HOLDINGS ===== -->
+  <div class="eyebrow">Your holdings<span class="ln"></span><span class="pill">attention names open to a full read · tap to expand</span></div>
+  <div class="holds" id="holds"></div>
+
+  <!-- ===== RAW FLOOR ===== -->
+  <div class="eyebrow">The underlying record<span class="ln"></span><span class="pill">every number behind the scores — on demand</span></div>
+  <div class="card rawfloor" id="rawFloor">
+    <button class="raw-toggle" id="rawToggle">
+      <span class="ric"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg></span>
+      <span class="rt-meta"><span class="rt-t">Show the underlying data</span><span class="rt-s">The actual reported figures for every holding — quarterly and annual, plus shareholding. The raw layer beneath every verdict above.</span></span>
+      <span class="rt-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
+    </button>
+    <div class="raw-body">
+      <div class="raw-controls">
+        <div class="per-toggle"><button class="on" data-per="q">Quarterly</button><button data-per="a">Annual</button></div>
+        <span class="raw-hint">Click any holding to expand its full series &amp; shareholding · columns adapt by sector in the live build</span>
+      </div>
+      <div class="rawscroll"><table class="rawtbl"><thead id="rawHead"></thead><tbody id="rawBodyTbl"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">Illustrative data for layout review — holdings, weights, scores and figures are placeholders; the weighting logic, the dispersion binding, and the data-derived structure are real. The aggregate is weighted by position size, never a simple mean. Vytal is a data platform, not an investment advisor: nothing here is a buy/sell signal.</div>
+
+<script>
+const bandOf=s=>s<55?['Fragile','var(--c-fragile)']:s<62?['Below par','var(--c-below)']:s<68?['Steady','var(--c-steady)']:s<74?['Healthy','var(--c-healthy)']:['Pristine','var(--c-pristine)'];
+const HOLD=[
+ {tk:'HDFCBANK',name:'HDFC Bank',sec:'Banking',w:22,sc:71,pillars:[74,68,70,72],attn:null,state:'Sound and stable — your anchor position.'},
+ {tk:'TCS',name:'TCS',sec:'IT services',w:18,sc:70,pillars:[80,64,66,72],attn:null,state:'Strong floor, steady across the board.'},
+ {tk:'TATASTEEL',name:'Tata Steel',sec:'Metals',w:16,sc:64,pillars:[70,52,78,58],attn:'high',state:'Deteriorating — slipped a band; price ahead of cooling fundamentals.',finding:'Composite slid from Healthy to Steady as momentum crossed weak. Price (Market 78) sits well ahead of cooling fundamentals, and institutions are stepping back beneath the floor.'},
+ {tk:'RELIANCE',name:'Reliance',sec:'Energy',w:14,sc:66,pillars:[68,64,70,64],attn:null,state:'Steady — no flags, balanced pillars.'},
+ {tk:'SUNPHARMA',name:'Sun Pharma',sec:'Pharma',w:11,sc:65,pillars:[66,70,60,68],attn:'rec',state:'Recovering — momentum rising off a weak base.',finding:'Composite up off a weak base with momentum leading — the recovery-from-weakness signal the model rates most durable. Institutions accumulating through the soft patch.'},
+ {tk:'ITC',name:'ITC',sec:'FMCG',w:9,sc:69,pillars:[72,66,64,70],attn:null,state:'Healthy and defensive.'},
+ {tk:'VEDL',name:'Vedanta',sec:'Metals',w:6,sc:51,pillars:[48,50,55,45],attn:'crit',state:'Fragile floor — distribution and pledge flags firing.',finding:'A fragile floor with two flags at once: promoter and FII distribution to retail, and rising promoter pledge. Small position, but the highest-risk name you hold.'},
+ {tk:'DIXON',name:'Dixon Tech',sec:'Cons. durables',w:4,sc:60,pillars:[58,66,74,57],attn:'high',state:'Below par — a growth premium running ahead of the floor.',finding:'Price (Market 74) is well ahead of a softer foundation — an expectation-driven premium, the most exposed if the growth story slips.'}
+];
+const PN=['found','mom','mkt','own'],PNAME=['Foundation','Momentum','Market','Ownership'],PCOL=['var(--p-found)','var(--p-mom)','var(--p-mkt)','var(--p-own)'];
+const totW=HOLD.reduce((a,h)=>a+h.w,0);
+const agg=Math.round(HOLD.reduce((a,h)=>a+h.w*h.sc,0)/totW);
+const aggP=[0,1,2,3].map(p=>Math.round(HOLD.reduce((a,h)=>a+h.w*h.pillars[p],0)/totW));
+
+/* hero number + band */
+document.getElementById('aggBig').textContent=agg;
+document.getElementById('aggBig').style.color=bandOf(agg)[1];
+document.getElementById('aggBnd').textContent=bandOf(agg)[0];
+document.getElementById('aggBnd').style.color=bandOf(agg)[1];
+document.getElementById('sumAgg').textContent=agg+' · '+bandOf(agg)[0];
+
+/* capital by band */
+const BANDS=[['Healthy','var(--c-healthy)',68,74],['Steady','var(--c-steady)',62,68],['Below par','var(--c-below)',55,62],['Fragile','var(--c-fragile)',0,55]];
+const capByBand=BANDS.map(b=>[b[0],b[1],HOLD.filter(h=>h.sc>=b[2]&&h.sc<b[3]).reduce((a,h)=>a+h.w,0)]).filter(x=>x[2]>0);
+document.getElementById('capBar').innerHTML=capByBand.map(b=>`<div class="capseg" style="flex:${b[2]};background:${b[1]}">${b[2]}%</div>`).join('');
+document.getElementById('capKey').innerHTML=capByBand.map(b=>`<span><span class="d" style="background:${b[1]}"></span>${b[0]} ${b[2]}%</span>`).join('');
+
+/* binding read */
+const healthyCap=capByBand.filter(b=>b[0]==='Healthy').reduce((a,b)=>a+b[2],0);
+document.getElementById('bindRead').innerHTML=`Your book averages <b>${agg}</b>, but the average hides the spread: <b>${healthyCap}%</b> of your capital sits in healthy businesses, while <span class="hl">16% rides on Tata Steel — your second-largest position, now deteriorating</span> — and your weakest holding, <span class="cl">Vedanta, is fragile with two flags firing</span>. The number is calm; the weight is where to look.`;
+
+/* scatter — health axis, bubble size = weight */
+(function(){const lo=46,hi=74,X0=40,X1=915,Y=120,xo=v=>X0+(v-lo)/(hi-lo)*(X1-X0),rOf=w=>6+Math.sqrt(w)*4.2;let s='';
+  const zones=[[46,55,'var(--c-fragile)'],[55,62,'var(--c-below)'],[62,68,'var(--c-steady)'],[68,74,'var(--c-healthy)']];
+  zones.forEach(z=>{const x1=xo(z[0]),x2=xo(z[1]);s+=`<rect x="${x1}" y="18" width="${x2-x1}" height="170" fill="${z[2]}" opacity=".06"/>`;});
+  [['55',55],['62',62],['68',68]].forEach(b=>{const x=xo(b[1]);s+=`<line x1="${x}" y1="18" x2="${x}" y2="188" stroke="var(--line2)" stroke-width="1" stroke-dasharray="2 4"/><text x="${x}" y="208" text-anchor="middle" style="font-size:11px;font-family:IBM Plex Mono;fill:var(--ink3)">${b[0]}</text>`;});
+  // aggregate marker
+  const ax=xo(agg);s+=`<line x1="${ax}" y1="26" x2="${ax}" y2="188" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 3"/><text x="${ax}" y="22" text-anchor="middle" style="font-size:10px;font-family:IBM Plex Mono;fill:var(--ink)">book ${agg}</text>`;
+  // bubbles: spread vertically to reduce overlap by simple alternation on sorted x
+  const sorted=HOLD.slice().sort((a,b)=>a.sc-b.sc);
+  sorted.forEach((h,i)=>{const x=xo(h.sc),r=rOf(h.w),col=bandOf(h.sc)[1],yy=Y+(i%2?22:-22)*(h.w<8?1:0.4)+(i%3-1)*10;
+    s+=`<circle cx="${x}" cy="${yy}" r="${r}" fill="${col}" opacity=".82"${h.attn==='crit'?' stroke="var(--crit)" stroke-width="2"':''}/>`;
+    s+=`<text x="${x}" y="${yy+r+13}" text-anchor="middle" style="font-size:9.5px;font-family:IBM Plex Mono;fill:var(--ink2)">${h.tk} ${h.w}%</text>`;
+    if(h.attn==='high'&&h.tk==='TATASTEEL'||h.attn==='high'&&h.tk==='DIXON')s+=`<path d="M${x} ${yy-r-12}v9M${x-4} ${yy-r-7}l4 4 4-4" stroke="var(--high)" stroke-width="2" fill="none"/>`;
+    if(h.attn==='rec')s+=`<path d="M${x} ${yy-r-3}v-9M${x-4} ${yy-r-7}l4-4 4 4" stroke="var(--rec)" stroke-width="2" fill="none"/>`;});
+  document.getElementById('scatter').innerHTML=s;})();
+
+/* pillars + drivers */
+const softIdx=aggP.indexOf(Math.min(...aggP));
+document.getElementById('bpillars').innerHTML=PN.map((k,p)=>{
+  const below=HOLD.filter(h=>h.pillars[p]<aggP[p]).sort((a,b)=>(a.pillars[p]*a.w)-(b.pillars[p]*b.w));
+  const drivers=below.slice(0,2).map(h=>`${h.tk} <b>${h.pillars[p]}</b>`).join(', ')||'—';
+  return `<div class="bp ${k} ${p===softIdx?'soft':''}"><div class="bp-top"><span class="bp-name"><span class="d"></span>${PNAME[p]}</span>${p===softIdx?'<span class="bp-soft-tag">soft spot</span>':''}</div><div class="bp-score" style="color:${PCOL[p]}">${aggP[p]}</div><div class="bp-bar"><i style="width:${aggP[p]}%"></i></div><div class="bp-drv">weighed down by: ${drivers}</div></div>`;
+}).join('');
+
+/* changes */
+const CHANGES=[
+ {tk:'TATASTEEL',sev:'high',w:16,ic:'<path d="M12 5v9M8 11l4 4 4-4"/>',what:'Slipped from Healthy into Steady',sub:'Your 2nd-largest position is deteriorating — momentum crossed its weak mark.'},
+ {tk:'VEDL',sev:'crit',w:6,ic:'<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',what:'Tripped a red flag — distribution to retail',sub:'Promoter pledge also rising. A small position, but two flags at once.'},
+ {tk:'SUNPHARMA',sev:'rec',w:11,ic:'<path d="M12 19v-9M8 13l4-4 4 4"/>',what:'Recovering — momentum rising off a weak base',sub:'The durable signal; institutions accumulating through the soft patch.'}
+];
+document.getElementById('changes').innerHTML=CHANGES.map(c=>`<div class="chg ${c.sev}"><span class="chg-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${c.ic}</svg></span><div class="chg-body"><div class="chg-top"><span class="chg-tk">${c.tk}</span><span class="chg-wt">${c.w}% of book</span></div><div class="chg-what">${c.what}</div><div class="chg-sub">${c.sub}</div></div><div class="chg-fn"><a href="#">Open health <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div></div>`).join('');
+document.getElementById('sumAttn').textContent=CHANGES.filter(c=>c.sev!=='rec').length+' names';
+
+/* shape */
+const sorted=HOLD.slice().sort((a,b)=>b.w-a.w);const top3=sorted.slice(0,3).reduce((a,h)=>a+h.w,0);
+const metals=HOLD.filter(h=>h.sec==='Metals');const metalsW=metals.reduce((a,h)=>a+h.w,0);
+const priceAhead=HOLD.filter(h=>h.tk==='TATASTEEL'||h.tk==='DIXON');const paW=priceAhead.reduce((a,h)=>a+h.w,0);
+const SHAPE=[
+ {h:'Concentration',ic:'<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/>',big:top3,u:'%',bar:top3,col:'var(--c-steady)',mini:sorted.slice(0,3).map(h=>`${h.tk} ${h.w}%`),read:'Your top three holdings are over half the book. Reasonable focus, but concentration cuts both ways.'},
+ {h:'Cyclical exposure',ic:'<path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0zM3 12h18"/>',big:metalsW,u:'%',bar:metalsW,col:'var(--c-below)',mini:metals.map(h=>`${h.tk} ${h.w}%`),read:'A fifth of your book is cyclical metals — they share one health cycle and tend to move together, so this is less diversified than it looks.'},
+ {h:'Clustered divergence',ic:'<path d="M8 7L3 12l5 5M16 7l5 5-5 5"/>',big:paW,u:'%',bar:paW,col:'var(--high)',mini:priceAhead.map(h=>`${h.tk} ${h.w}%`),read:'Two positions are priced ahead of their fundamentals at the same time — a fifth of your capital riding the same kind of bet.'}
+];
+document.getElementById('shape').innerHTML=SHAPE.map(s=>`<div class="shp"><div class="shp-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${s.ic}</svg>${s.h}</div><div class="shp-big">${s.big}<span class="u">${s.u}</span></div><div class="shp-bar"><i style="width:${s.bar}%;background:${s.col}"></i></div><div class="shp-mini">${s.mini.map(m=>`<span class="shp-chip">${m}</span>`).join('')}</div><div class="shp-read">${s.read}</div></div>`).join('');
+
+/* holdings list */
+document.getElementById('holds').innerHTML=HOLD.slice().sort((a,b)=>b.w-a.w).map(h=>{const bd=bandOf(h.sc),attnCls=h.attn?`attn ${h.attn}`:'calm';
+  const detail=h.attn?`<div class="hold-detail"><div class="hd-grid"><div><div class="kick" style="margin-bottom:11px">Pillar breakdown</div><div class="hd-pill">${PN.map((k,p)=>`<div class="hdp ${k}"><span class="pn"><span class="d"></span>${PNAME[p]}</span><span class="b"><i style="width:${h.pillars[p]}%"></i></span><span class="vv">${h.pillars[p]}</span></div>`).join('')}</div></div><div class="hd-find"><div class="fh">Why it needs a look</div><div class="ft">${h.finding}</div><div class="hd-fns"><a href="#">Open health page <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a><a href="#">Trajectory <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div></div></div></div>`:'';
+  return `<div class="hold ${attnCls}" data-tk="${h.tk}"><div class="hold-row"><span class="hold-w">${h.w}%</span><span class="hold-tk">${h.tk}</span><span class="hold-band"><span class="d" style="background:${bd[1]}"></span>${bd[0]} ${h.sc}</span><span class="hold-state">${h.state}</span><svg class="hold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>${detail}</div>`;
+}).join('');
+document.querySelectorAll('.hold.attn .hold-row').forEach(r=>r.addEventListener('click',()=>r.closest('.hold').classList.toggle('open')));
+
+/* ===== RAW FLOOR ===== */
+const RAW={
+ HDFCBANK:{w:22,sc:71,roce:14,roe:17,de:0.6,opm:26,revgr:18,prom:0,fii:48,rev:78000},
+ TCS:{w:18,sc:70,roce:55,roe:50,de:0.05,opm:26,revgr:7,prom:72,fii:12,rev:62000},
+ TATASTEEL:{w:16,sc:64,roce:14,roe:12,de:0.62,opm:23,revgr:6,prom:34,fii:18,rev:58000},
+ RELIANCE:{w:14,sc:66,roce:9,roe:9,de:0.45,opm:17,revgr:12,prom:50,fii:22,rev:240000},
+ SUNPHARMA:{w:11,sc:65,roce:16,roe:15,de:0.1,opm:27,revgr:10,prom:55,fii:16,rev:12000},
+ ITC:{w:9,sc:69,roce:32,roe:28,de:0.0,opm:36,revgr:7,prom:0,fii:14,rev:18000},
+ VEDL:{w:6,sc:51,roce:9,roe:8,de:1.8,opm:25,revgr:2,prom:55,fii:10,rev:38000},
+ DIXON:{w:4,sc:60,roce:20,roe:22,de:0.3,opm:4,revgr:24,prom:30,fii:15,rev:4800}
+};
+const RCOLS=[['w','Weight %',null,'pct'],['sc','Health',0,'plain'],['roce','ROCE %',17,'high'],['roe','ROE %',15,'high'],['de','D/E',0.75,'low'],['opm','OPM %',18,'high'],['revgr','Rev gr %',8,'high'],['prom','Promoter %',null,'dash'],['fii','FII %',null,'plain']];
+const QLAB=['Q1·24','Q2·24','Q3·24','Q4·24','Q1·25','Q2·25','Q3·25','Q4·25'],YLAB=['FY21','FY22','FY23','FY24','FY25'];
+let rawSort={k:'w',dir:-1},rawPer='q',rawOpen=null;
+function fmt(v,t){if(t==='dash'&&(v===0||v==null))return '—';if(t==='pct')return v+'%';if(v==null)return '—';return (Math.round(v*100)/100);}
+function passClass(c,v){if(c[3]==='high')return v>=c[2]?'pass':'fail';if(c[3]==='low')return v<=c[2]?'pass':'fail';return '';}
+function gen(base,n,trend){const out=[];for(let i=0;i<n;i++){const f=1+trend*((i/(n-1))-1)+((i%2)?0.008:-0.008);out.push(base*f);}return out;}
+function seriesTbl(tk){const d=RAW[tk],per=rawPer,labs=per==='q'?QLAB:YLAB,n=labs.length;
+  const revB=per==='q'?d.rev:d.rev*4;const rev=gen(revB,n,d.revgr/100*1.4);
+  const opm=gen(d.opm,n,tk==='TATASTEEL'?-0.18:tk==='SUNPHARMA'?0.12:0.04);
+  const roce=gen(d.roce,n,tk==='TATASTEEL'?-0.12:0.05);
+  const np=rev.map((r,i)=>r*opm[i]/100*0.42);
+  const rows=[['Revenue (₹cr)',rev.map(x=>Math.round(x))],['Net profit (₹cr)',np.map(x=>Math.round(x))],['OPM %',opm.map(x=>Math.round(x*10)/10)],['ROCE %',roce.map(x=>Math.round(x*10)/10)]];
+  return `<table class="stbl"><thead><tr><th></th>${labs.map(l=>`<th>${l}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td>${r[0]}</td>${r[1].map((v,i)=>`<td class="${i===n-1?'last':''}">${v.toLocaleString('en-IN')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;}
+function shareTbl(tk){const d=RAW[tk],per=rawPer,labs=per==='q'?QLAB:YLAB,n=labs.length;
+  const prom=d.prom,fii=d.fii,rem=100-prom-fii,dii=Math.round(rem*0.45),ret=rem-dii;
+  const mk=(base,tr)=>gen(base,n,tr).map(x=>Math.round(x*10)/10);
+  const rows=[['Promoter',mk(prom,prom?(tk==='TATASTEEL'?0:tk==='VEDL'?0.04:0):0)],['FII',mk(fii,tk==='VEDL'?-0.2:0.03)],['DII',mk(dii,0.05)],['Retail',mk(ret,tk==='VEDL'?0.25:-0.05)]];
+  return `<table class="stbl"><thead><tr><th></th>${labs.map(l=>`<th>${l}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td>${r[0]}</td>${r[1].map((v,i)=>`<td class="${i===n-1?'last':''}">${r[0]==='Promoter'&&prom===0?'—':v+'%'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;}
+function renderRawHead(){document.getElementById('rawHead').innerHTML='<tr><th data-k="tk">Holding</th>'+RCOLS.map(c=>{const on=rawSort.k===c[0];return `<th data-k="${c[0]}">${c[1]}${on?`<span class="ar">${rawSort.dir<0?'▼':'▲'}</span>`:''}</th>`;}).join('')+'</tr>';
+  document.querySelectorAll('#rawHead th').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(rawSort.k===k)rawSort.dir*=-1;else rawSort={k,dir:k==='tk'?1:-1};rawOpen=null;renderRawHead();renderRawRows();}));}
+function renderRawRows(){const keys=Object.keys(RAW).sort((a,b)=>{if(rawSort.k==='tk')return a<b?-rawSort.dir:rawSort.dir;return (RAW[a][rawSort.k]-RAW[b][rawSort.k])*rawSort.dir;});
+  document.getElementById('rawBodyTbl').innerHTML=keys.map(tk=>{const d=RAW[tk],held=true;
+    const tds=RCOLS.map(c=>{const pc=c[2]!=null?passClass(c,d[c[0]]):'';return `<td class="${pc}">${fmt(d[c[0]],c[3])}</td>`;}).join('');
+    const main=`<tr class="main ${rawOpen===tk?'exp':''}" data-tk="${tk}"><td>${tk}<span class="hld">●held</span></td>${tds}</tr>`;
+    const det=rawOpen===tk?`<tr class="detailrow"><td class="detail-cell" colspan="${RCOLS.length+1}"><div class="detail-wrap"><div><div class="dh"><span class="dt">Financials — ${rawPer==='q'?'last 8 quarters':'last 5 years'}</span><div class="qatoggle"><button class="${rawPer==='q'?'on':''}" data-p="q">Quarterly</button><button class="${rawPer==='a'?'on':''}" data-p="a">Annual</button></div></div>${seriesTbl(tk)}</div><div><div class="dh"><span class="dt">Shareholding</span></div>${shareTbl(tk)}</div></div></td></tr>`:'';
+    return main+det;}).join('');
+  document.querySelectorAll('#rawBodyTbl tr.main td:first-child').forEach(td=>td.addEventListener('click',()=>{const tk=td.parentElement.dataset.tk;rawOpen=rawOpen===tk?null:tk;renderRawRows();}));
+  document.querySelectorAll('#rawBodyTbl .qatoggle button').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();rawPer=b.dataset.p;renderRawRows();}));}
+document.getElementById('rawToggle').addEventListener('click',()=>{const f=document.getElementById('rawFloor');f.classList.toggle('open');if(f.classList.contains('open')&&!document.getElementById('rawBodyTbl').innerHTML){renderRawHead();renderRawRows();}});
+document.querySelectorAll('.per-toggle button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.per-toggle button').forEach(x=>x.classList.remove('on'));b.classList.add('on');rawPer=b.dataset.per;if(document.getElementById('rawBodyTbl').innerHTML)renderRawRows();}));
+</script>
+</body>
+</html>

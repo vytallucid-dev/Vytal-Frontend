@@ -174,7 +174,7 @@ function SideBySideStatement({
       {note && <p className="mb-2 text-[11px] italic text-ink3">{note}</p>}
 
       {/* The shared-selected annual year, A | B side by side */}
-      <div className="overflow-hidden rounded-xl border border-line">
+      <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="border-b border-line bg-surface-1">
@@ -566,7 +566,7 @@ function SameFamilyPL({
       </div>
 
       {/* Single-period A | B table */}
-      <div className="overflow-hidden rounded-xl border border-line">
+      <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="border-b border-line bg-surface-1">

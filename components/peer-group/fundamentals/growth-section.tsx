@@ -6,7 +6,7 @@ import { SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { niceBounds } from "@/components/peer-group/health/lib";
 import { Icons } from "@/lib/icons";
 import { median, type FundamentalsRow } from "./lib";
-import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
+import { useChartTooltip, useElementWidth, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 
 // ─────────────────────────────────────────────────────────────────────────────────────
 // §B · Growth — revenue growth (x) vs profit growth (y), each member a point. A scatter
@@ -17,7 +17,6 @@ import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/
 
 const W = 1000;
 const H = 420;
-const M = { top: 24, right: 28, bottom: 54, left: 64 };
 const DOT = "var(--ink2)";
 
 export function GrowthSection({
@@ -41,11 +40,21 @@ export function GrowthSection({
   const yMed = median(points.map((p) => p.y));
   const { lo: xLo, hi: xHi } = niceBounds(points.map((p) => p.x), 0.14);
   const { lo: yLo, hi: yHi } = niceBounds(points.map((p) => p.y), 0.14);
-  const px = (x: number) => M.left + ((x - xLo) / (xHi - xLo || 1)) * (W - M.left - M.right);
-  const py = (y: number) => H - M.bottom - ((y - yLo) / (yHi - yLo || 1)) * (H - M.top - M.bottom);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { tip, show, hide } = useChartTooltip(containerRef);
+  const CHART_REF_WIDTH = 860; // the container width these unit constants were tuned against
+  const width = useElementWidth(containerRef, CHART_REF_WIDTH);
+  /** desired on-screen px AT CHART_REF_WIDTH → viewBox units, DAMPED (sqrt, not linear) as
+   *  width deviates from the reference — text/margins grow on a narrow phone without fully
+   *  linear compensation, which could push labels past the chart's fixed-height viewBox. */
+  const u = (n: number) => (n * W) / Math.sqrt(width * CHART_REF_WIDTH);
+  // margins sized via u() so they always fit the axis titles / median labels, which are
+  // sized the same way — a shrinking viewBox scale must not shrink the margin faster than
+  // the text it needs to hold.
+  const M = { top: u(22), right: u(26), bottom: u(46), left: u(58) };
+  const px = (x: number) => M.left + ((x - xLo) / (xHi - xLo || 1)) * (W - M.left - M.right);
+  const py = (y: number) => H - M.bottom - ((y - yLo) / (yHi - yLo || 1)) * (H - M.top - M.bottom);
 
   return (
     <section>
@@ -63,6 +72,7 @@ export function GrowthSection({
               yet.
             </p>
           ) : (
+            <>
             <div ref={containerRef} className="relative">
               <ChartTooltip tip={tip} />
               <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img"
@@ -73,7 +83,7 @@ export function GrowthSection({
                 {xMed != null && (
                   <g>
                     <line x1={px(xMed)} y1={M.top} x2={px(xMed)} y2={H - M.bottom} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="3 4" opacity={0.5} />
-                    <text x={px(xMed)} y={M.top - 8} textAnchor="middle" className="num" style={{ fontSize: 11, fill: "var(--ink3)" }}>
+                    <text x={px(xMed)} y={M.top - u(8)} textAnchor="middle" className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
                       median {xMed.toFixed(1)}%
                     </text>
                   </g>
@@ -81,7 +91,7 @@ export function GrowthSection({
                 {yMed != null && (
                   <g>
                     <line x1={M.left} y1={py(yMed)} x2={W - M.right} y2={py(yMed)} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="3 4" opacity={0.5} />
-                    <text x={W - M.right} y={py(yMed) - 6} textAnchor="end" className="num" style={{ fontSize: 11, fill: "var(--ink3)" }}>
+                    <text x={W - M.right} y={py(yMed) - u(6)} textAnchor="end" className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
                       median {yMed.toFixed(1)}%
                     </text>
                   </g>
@@ -89,14 +99,14 @@ export function GrowthSection({
 
                 {points.map((p) => (
                   <g key={p.symbol}>
-                    <circle cx={px(p.x)} cy={py(p.y)} r={5.5} fill={DOT} opacity={0.85} />
-                    <text x={px(p.x)} y={py(p.y) - 10} textAnchor="middle" className="num" style={{ fontSize: 10.5, fill: "var(--ink2)" }}>
+                    <circle cx={px(p.x)} cy={py(p.y)} r={u(6)} fill={DOT} opacity={0.85} />
+                    <text x={px(p.x)} y={py(p.y) - u(10)} textAnchor="middle" className="num" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                       {p.symbol}
                     </text>
                     <circle
                       cx={px(p.x)}
                       cy={py(p.y)}
-                      r={16}
+                      r={u(18)}
                       fill="transparent"
                       style={{ cursor: "pointer" }}
                       onMouseMove={(e) =>
@@ -116,19 +126,20 @@ export function GrowthSection({
                   </g>
                 ))}
 
-                <text x={(M.left + W - M.right) / 2} y={H - 14} textAnchor="middle" style={{ fontSize: 12, fill: "var(--ink2)" }}>
+                <text x={(M.left + W - M.right) / 2} y={H - u(12)} textAnchor="middle" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                   {xLabel} (YoY %) →
                 </text>
-                <text x={18} y={(M.top + H - M.bottom) / 2} textAnchor="middle" transform={`rotate(-90 18 ${(M.top + H - M.bottom) / 2})`} style={{ fontSize: 12, fill: "var(--ink2)" }}>
+                <text x={u(16)} y={(M.top + H - M.bottom) / 2} textAnchor="middle" transform={`rotate(-90 ${u(16)} ${(M.top + H - M.bottom) / 2})`} style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                   Profit growth (YoY %) →
                 </text>
               </svg>
-              <p className="mt-3 text-[11.5px] text-ink3">
-                Each member plotted by {xLabel.toLowerCase()} against profit growth, both year-on-year;
-                dashed lines mark the group median on each axis. Hover a point for its values.
-                Positions are facts — nothing here is a recommendation.
-              </p>
             </div>
+            <p className="mt-3 text-[11.5px] text-ink3">
+              Each member plotted by {xLabel.toLowerCase()} against profit growth, both year-on-year;
+              dashed lines mark the group median on each axis. Hover a point for its values.
+              Positions are facts — nothing here is a recommendation.
+            </p>
+          </>
           )}
         </div>
       </Reveal>

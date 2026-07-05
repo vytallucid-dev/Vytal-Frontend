@@ -1,21 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkline } from "@/components/ui/sparkline";
 import { Icons, type Icon } from "@/lib/icons";
-import {
-  topHoldings,
-  trendingToday,
-  marketNews,
-  recentAlerts,
-  aiInsights,
-} from "@/lib/demo-data";
-import { healthColorVar } from "@/lib/format";
+import { Sparkline } from "@/components/ui/sparkline";
+import { AlertsSheet } from "@/components/alerts/alerts-bell";
+import { useHoldings } from "@/lib/api/hooks/use-holdings";
+import { useAlertEvents } from "@/lib/api/hooks/use-alerts";
+import { useStockOhlcv } from "@/lib/api/hooks/use-stock-ohlcv";
+import { useMarketNews } from "@/lib/api/hooks/use-market-news";
+import { STOCK_BAND_LABEL } from "@/components/portfolio/lib";
+import { sparkFromBars } from "@/components/watchlist/lib";
+import { healthColorVar, formatINR } from "@/lib/format";
+import { timeAgo, signPct } from "./lib";
 import { cn } from "@/lib/utils";
+import type { Holding } from "@/types/portfolio";
 import type { ReactNode } from "react";
 
-/* ---------- shared shell ---------- */
+/* ---------- shared shell — aligned to the app's card idiom ---------- */
 function CardShell({
   icon: IconCmp,
   title,
@@ -34,8 +37,8 @@ function CardShell({
   return (
     <div
       className={cn(
-        "glass flex h-full flex-col overflow-hidden rounded-3xl border border-border/70 p-5 sm:p-6",
-        className
+        "flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface-1 p-5 sm:p-6",
+        className,
       )}
     >
       <div className="mb-4 flex items-center justify-between gap-2">
@@ -44,8 +47,8 @@ function CardShell({
             <IconCmp weight="duotone" className="size-4 text-primary" />
           </span>
           <div>
-            <h3 className="font-display text-base font-bold leading-tight">{title}</h3>
-            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+            <h3 className="font-display text-base font-bold leading-tight text-ink">{title}</h3>
+            {subtitle && <p className="text-xs text-ink3">{subtitle}</p>}
           </div>
         </div>
         {action}
@@ -55,244 +58,275 @@ function CardShell({
   );
 }
 
-function HealthChip({ score }: { score: number }) {
+/** Health chip — INTEGER score in the stored band's colour; unscored shows a neutral
+ *  dash (never a fabricated band colour). */
+function HealthChip({ health, band }: { health: number | null; band: string | null }) {
+  const color = health == null ? "var(--ink3)" : healthColorVar(health);
   return (
     <span
-      className="grid size-7 place-items-center rounded-lg text-xs font-bold"
-      style={{
-        color: healthColorVar(score),
-        background: `color-mix(in oklch, ${healthColorVar(score)} 14%, transparent)`,
-      }}
-      title={`Health ${score}`}
+      className="grid size-7 shrink-0 place-items-center rounded-lg text-xs font-bold"
+      style={{ color, background: `color-mix(in oklch, ${color} 14%, transparent)` }}
+      title={
+        health == null
+          ? "Not yet scored"
+          : `Health ${Math.round(health)}${band ? ` · ${STOCK_BAND_LABEL[band as keyof typeof STOCK_BAND_LABEL] ?? band}` : ""}`
+      }
     >
-      {score}
+      {health == null ? "—" : Math.round(health)}
     </span>
   );
 }
 
+function EmptyRow({ icon: IconCmp, text, cta, href }: { icon: Icon; text: string; cta: string; href: string }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line2 bg-surface-2/40 px-4 py-8 text-center">
+      <IconCmp weight="duotone" className="size-7 text-ink3/60" />
+      <p className="max-w-[22em] text-xs leading-relaxed text-ink3">{text}</p>
+      <Link
+        href={href}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface-2/60 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-line3"
+      >
+        {cta}
+        <Icons.arrowRight weight="bold" className="size-3" />
+      </Link>
+    </div>
+  );
+}
+
+function RowsSkeleton({ n = 4 }: { n?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="h-12 animate-pulse rounded-xl bg-surface-2/60" />
+      ))}
+    </div>
+  );
+}
+
 /* ---------- Top Holdings ---------- */
+// One row calls the shared per-stock OHLCV read (cache key ["stock", symbol, "ohlcv"] —
+// shared with the watchlist/holdings surfaces) for its 7-day sparkline. Honest-omit <3 pts.
+function HoldingRow({ h, i }: { h: Holding; i: number }) {
+  const ohlcv = useStockOhlcv(h.symbol);
+  const spark = sparkFromBars(ohlcv.data?.bars);
+  const dayPct = h.dayChangePct;
+  const up = (dayPct ?? 0) >= 0;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: i * 0.05 }}
+    >
+      <Link
+        href={`/research/stock-screener/${h.symbol}`}
+        className="group flex items-center gap-3 rounded-xl border border-transparent p-2 transition-colors hover:border-line2 hover:bg-surface-2/60"
+      >
+        <HealthChip health={h.health} band={h.band} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-ink">{h.symbol}</p>
+          <p className="truncate text-xs text-ink3">{h.name}</p>
+        </div>
+        {spark ? (
+          <Sparkline data={spark.closes} width={60} height={26} />
+        ) : (
+          <span className="w-15" />
+        )}
+        <div className="w-24 text-right">
+          <p className="num text-sm text-ink">
+            {h.marketValue != null ? formatINR(h.marketValue, { compact: true }) : "—"}
+          </p>
+          {dayPct != null ? (
+            <p className={cn("num text-xs", up ? "text-success" : "text-danger")}>{signPct(dayPct)}</p>
+          ) : (
+            <p className="text-xs text-ink3">no price</p>
+          )}
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
 export function HoldingsCard() {
+  const { data, isLoading } = useHoldings();
+  const holdings = data?.holdings ?? [];
+  const top = [...holdings].sort((a, b) => b.weight - a.weight).slice(0, 5);
+
   return (
     <CardShell
       icon={Icons.portfolio}
       title="Top Holdings"
       subtitle="Your largest positions"
       action={
-        <Link
-          href="/portfolio"
-          className="text-xs font-medium text-primary hover:underline"
-        >
-          View all
-        </Link>
+        holdings.length > 0 ? (
+          <Link href="/portfolio?tab=holdings" className="text-xs font-medium text-primary hover:underline">
+            View all
+          </Link>
+        ) : undefined
       }
     >
-      <div className="space-y-1.5">
-        {topHoldings.map((h, i) => {
-          const up = h.day >= 0;
-          return (
-            <motion.div
-              key={h.symbol}
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.05 }}
-              className="group flex items-center gap-3 rounded-xl border border-transparent p-2 transition-colors hover:border-border/70 hover:bg-surface-1/50"
-            >
-              <HealthChip score={h.health} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{h.symbol}</p>
-                <p className="truncate text-xs text-muted-foreground">{h.name}</p>
-              </div>
-              <Sparkline data={h.spark} width={60} height={26} />
-              <div className="w-20 text-right">
-                <p className="font-mono text-sm">₹{(h.value / 1000).toFixed(1)}K</p>
-                <p
-                  className={cn(
-                    "font-mono text-xs",
-                    up ? "text-success" : "text-danger"
-                  )}
-                >
-                  {up ? "+" : ""}
-                  {h.day}%
-                </p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <RowsSkeleton />
+      ) : top.length === 0 ? (
+        <EmptyRow
+          icon={Icons.portfolio}
+          text="Add your holdings and your largest positions — with their health and today's move — surface here."
+          cta="Add transactions"
+          href="/portfolio"
+        />
+      ) : (
+        <div className="space-y-1.5">
+          {top.map((h, i) => (
+            <HoldingRow key={h.symbol} h={h} i={i} />
+          ))}
+        </div>
+      )}
     </CardShell>
   );
 }
 
-/* ---------- Trending Today ---------- */
-export function TrendingCard() {
-  return (
-    <CardShell icon={Icons.fire} title="Trending Today" subtitle="Movers worth a look">
-      <div className="space-y-3">
-        {trendingToday.map((t, i) => {
-          const up = t.change >= 0;
-          return (
-            <motion.div
-              key={t.symbol}
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.06 }}
-              className="rounded-xl border border-border/60 bg-surface-1/40 p-3"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <HealthChip score={t.health} />
-                  <div>
-                    <p className="text-sm font-semibold">{t.symbol}</p>
-                    <p className="text-xs text-muted-foreground">{t.name}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono text-sm">₹{t.price.toLocaleString("en-IN")}</p>
-                  <p className={cn("font-mono text-xs", up ? "text-success" : "text-danger")}>
-                    {up ? "+" : ""}
-                    {t.change}%
-                  </p>
-                </div>
-              </div>
-              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{t.reason}</p>
-            </motion.div>
-          );
-        })}
-      </div>
-    </CardShell>
-  );
-}
-
-/* ---------- Market News ---------- */
-const impactTint: Record<string, string> = {
-  positive: "text-success",
-  negative: "text-danger",
-  neutral: "text-muted-foreground",
-};
+/* ---------- Market News — real cross-stock feed (high-impact first, then recent) ---------- */
 export function NewsCard() {
+  const { data, isLoading } = useMarketNews(7);
+  const items = (data ?? []).slice(0, 6);
+
   return (
-    <CardShell icon={Icons.news} title="Market Pulse" subtitle="What's moving markets now">
-      <div className="-mx-1 space-y-1">
-        {marketNews.map((n, i) => (
-          <motion.a
-            key={n.id}
-            href="#"
-            initial={{ opacity: 0, y: 8 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.05 }}
-            className="block rounded-xl px-2 py-2.5 transition-colors hover:bg-surface-1/60"
-          >
-            <div className="flex items-center gap-2">
-              <span className={cn("text-[0.65rem] font-semibold uppercase tracking-wider", impactTint[n.impact])}>
-                {n.tag}
-              </span>
-              <span className="size-1 rounded-full bg-muted-foreground/40" />
-              <span className="text-xs text-muted-foreground">{n.source} · {n.time}</span>
-            </div>
-            <p className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug">{n.title}</p>
-          </motion.a>
-        ))}
-      </div>
+    <CardShell icon={Icons.news} title="Market News" subtitle="High-impact disclosures & press">
+      {isLoading ? (
+        <RowsSkeleton n={5} />
+      ) : items.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-line2 bg-surface-2/40 px-4 py-10 text-center">
+          <Icons.news weight="duotone" className="size-7 text-ink3/60" />
+          <p className="text-xs leading-relaxed text-ink3">
+            No market news in the last few days. Per-stock disclosures are always on each stock&apos;s page.
+          </p>
+        </div>
+      ) : (
+        <div className="-mx-1 space-y-0.5">
+          {items.map((n, i) => {
+            // NSE filing headlines are a raw type bucket; the real "what happened" is the summary.
+            const title = n.sourceType === "nse_announcement" ? n.summary ?? n.headline : n.headline;
+            const src = n.sourceType === "google_news" ? n.category ?? "Press" : "NSE filing";
+            return (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.04 }}
+              >
+                <Link
+                  href={`/research/stock-screener/${n.symbol}?tab=news`}
+                  className="block rounded-xl px-2 py-2 transition-colors hover:bg-surface-2/60"
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {n.isHighImpact && (
+                      <span className="rounded bg-danger/12 px-1.5 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-danger">
+                        High impact
+                      </span>
+                    )}
+                    <span className="text-xs font-semibold text-ink">{n.symbol}</span>
+                    <span className="size-1 rounded-full bg-ink3/40" />
+                    <span className="text-xs text-ink3">
+                      {src}
+                      {n.sector ? ` · ${n.sector}` : ""} · {timeAgo(n.publishedAt)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug text-ink">{title}</p>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </CardShell>
   );
 }
 
-/* ---------- Recent Alerts ---------- */
-const alertIcon: Record<string, Icon> = {
-  target: Icons.target,
-  health: Icons.health,
-  move: Icons.pulse,
-  event: Icons.calendar,
-};
+/* ---------- Recent Alerts — the real fired-events feed ---------- */
 export function AlertsCard() {
+  const { data, isLoading } = useAlertEvents(8);
+  const events = data ?? [];
+  const [manageOpen, setManageOpen] = useState(false);
+
   return (
+    <>
     <CardShell
       icon={Icons.bell}
       title="Recent Alerts"
-      subtitle="Triggered in the last 24h"
+      subtitle="Alerts that crossed recently"
       action={
-        <Link href="/calendar" className="text-xs font-medium text-primary hover:underline">
+        <button
+          type="button"
+          onClick={() => setManageOpen(true)}
+          className="cursor-pointer text-xs font-medium text-primary hover:underline"
+        >
           Manage
-        </Link>
+        </button>
       }
     >
-      <div className="space-y-2">
-        {recentAlerts.map((a, i) => {
-          const AIcon = alertIcon[a.kind] ?? Icons.bell;
-          return (
+      {isLoading ? (
+        <RowsSkeleton n={3} />
+      ) : events.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-line2 bg-surface-2/40 px-4 py-8 text-center">
+          <Icons.bell weight="duotone" className="size-7 text-ink3/60" />
+          <p className="text-xs leading-relaxed text-ink3">
+            Watching — nothing has crossed yet. Set price, health-band or finding alerts from a
+            stock&apos;s page or your watchlist, and fired ones land here.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {events.map((e, i) => (
             <motion.div
-              key={a.id}
+              key={e.id}
               initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-3 rounded-xl border border-border/60 bg-surface-1/40 p-2.5"
+              className="flex items-center gap-3 rounded-xl border border-line2 bg-surface-2/40 p-2.5"
             >
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                <AIcon weight="duotone" className="size-4" />
+                <Icons.bell weight="duotone" className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{a.symbol}</p>
-                <p className="truncate text-xs text-muted-foreground">{a.text}</p>
+                <p className="text-sm font-semibold text-ink">{e.symbol ?? "—"}</p>
+                <p className="truncate text-xs text-ink3">{e.snapshot}</p>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">{a.time}</span>
+              <span className="shrink-0 text-xs text-ink3">{timeAgo(e.firedAt)}</span>
             </motion.div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </CardShell>
+    <AlertsSheet open={manageOpen} onOpenChange={setManageOpen} />
+    </>
   );
 }
 
-/* ---------- AI Insights ---------- */
-const priorityTint: Record<string, string> = {
-  high: "border-danger/25 bg-danger/8 text-danger",
-  medium: "border-warning/25 bg-warning/8 text-warning",
-  low: "border-info/25 bg-info/8 text-info",
-};
+/* ---------- AI Insights — honest stub (the AI layer isn't built) ---------- */
 export function InsightsCard() {
   return (
     <CardShell
       icon={Icons.brain}
       title="AI Insights"
-      subtitle="Personalized for your book"
+      subtitle="Reads on your book"
       action={
-        <span className="flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[0.65rem] font-semibold text-primary">
-          <span className="size-1.5 animate-pulse rounded-full bg-primary" />
-          Live
+        <span className="rounded-full border border-line bg-surface-2/60 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-ink3">
+          Coming soon
         </span>
       }
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        {aiInsights.map((ins, i) => (
-          <motion.div
-            key={ins.id}
-            initial={{ opacity: 0, y: 8 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.06 }}
-            className="flex flex-col rounded-2xl border border-border/60 bg-surface-1/40 p-4"
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <span className="rounded-md bg-surface-2/70 px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
-                {ins.tag}
-              </span>
-              <span
-                className={cn(
-                  "rounded-md border px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase",
-                  priorityTint[ins.priority]
-                )}
-              >
-                {ins.priority}
-              </span>
-            </div>
-            <p className="text-sm font-semibold">{ins.title}</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{ins.body}</p>
-          </motion.div>
-        ))}
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line2 bg-surface-2/40 px-6 py-12 text-center">
+        <span className="grid size-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+          <Icons.brain weight="duotone" className="size-5 text-primary" />
+        </span>
+        <p className="font-display text-base font-semibold text-ink">AI insights are coming</p>
+        <p className="max-w-lg text-xs leading-relaxed text-ink3">
+          A layer that reads your real portfolio health, allocation and fired findings into plain
+          language is in progress. Until it&apos;s built we show nothing here — no generated advice,
+          no price targets, no fabricated calls.
+        </p>
       </div>
     </CardShell>
   );

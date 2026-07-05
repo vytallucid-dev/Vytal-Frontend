@@ -5,7 +5,7 @@ import { Reveal } from "@/components/ui/reveal";
 import { SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
+import { useChartTooltip, useElementWidth, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 import {
   buildComposite,
   FIELD_WINDOWS,
@@ -25,7 +25,6 @@ const fmtDate = (t: number) =>
 
 const W = 1000;
 const H = 300;
-const M = { top: 18, right: 16, bottom: 28, left: 48 };
 const LINE = "var(--p-mom)";
 
 export function FieldPerformanceSection({
@@ -53,6 +52,16 @@ export function FieldPerformanceSection({
     hide();
   };
 
+  const CHART_REF_WIDTH = 860; // the container width these unit constants were tuned against
+  const width = useElementWidth(containerRef, CHART_REF_WIDTH);
+  /** desired on-screen px AT CHART_REF_WIDTH → viewBox units, DAMPED (sqrt, not linear) as
+   *  width deviates from the reference — axis labels grow on a narrow screen without fully
+   *  linear compensation, which could push them past the chart's fixed-height viewBox. */
+  const u = (n: number) => (n * W) / Math.sqrt(width * CHART_REF_WIDTH);
+  // left margin sized via u() so it always fits the y-axis tick labels, which are sized the
+  // same way — a shrinking viewBox scale must not shrink the margin faster than the text.
+  const M = { top: 18, right: 16, bottom: 28, left: u(50) };
+
   const geom = useMemo(() => {
     if (!hasPath) return null;
     const vs = points.map((p) => p.v);
@@ -65,7 +74,7 @@ export function FieldPerformanceSection({
     const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
     const last = points[points.length - 1];
     return { lo, hi, x, y, d, last };
-  }, [points, hasPath]);
+  }, [points, hasPath, M.left]);
 
   return (
     <section>
@@ -130,16 +139,16 @@ export function FieldPerformanceSection({
                 {geom.lo <= 100 && geom.hi >= 100 && (
                   <g>
                     <line x1={M.left} y1={geom.y(100)} x2={W - M.right} y2={geom.y(100)} stroke="var(--line2)" strokeWidth={1} strokeDasharray="3 4" />
-                    <text x={M.left - 6} y={geom.y(100) + 3} textAnchor="end" className="num" style={{ fontSize: 10, fill: "var(--ink3)" }}>100</text>
+                    <text x={M.left - u(6)} y={geom.y(100) + u(3)} textAnchor="end" className="num" style={{ fontSize: u(12), fill: "var(--ink3)" }}>100</text>
                   </g>
                 )}
                 {/* hi / lo ticks */}
-                <text x={M.left - 6} y={geom.y(geom.hi) + 3} textAnchor="end" className="num" style={{ fontSize: 10, fill: "var(--ink3)" }}>{geom.hi.toFixed(0)}</text>
-                <text x={M.left - 6} y={geom.y(geom.lo) + 3} textAnchor="end" className="num" style={{ fontSize: 10, fill: "var(--ink3)" }}>{geom.lo.toFixed(0)}</text>
+                <text x={M.left - u(6)} y={geom.y(geom.hi) + u(3)} textAnchor="end" className="num" style={{ fontSize: u(12), fill: "var(--ink3)" }}>{geom.hi.toFixed(0)}</text>
+                <text x={M.left - u(6)} y={geom.y(geom.lo) + u(3)} textAnchor="end" className="num" style={{ fontSize: u(12), fill: "var(--ink3)" }}>{geom.lo.toFixed(0)}</text>
 
                 <path d={geom.d} fill="none" stroke={LINE} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
-                <circle cx={geom.x(geom.last.t)} cy={geom.y(geom.last.v)} r={3} fill={LINE} />
-                <text x={geom.x(geom.last.t)} y={geom.y(geom.last.v) - 8} textAnchor="end" className="num" style={{ fontSize: 11, fill: "var(--ink2)" }}>
+                <circle cx={geom.x(geom.last.t)} cy={geom.y(geom.last.v)} r={u(4)} fill={LINE} />
+                <text x={geom.x(geom.last.t)} y={geom.y(geom.last.v) - u(9)} textAnchor="end" className="num" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                   {geom.last.v.toFixed(1)}
                 </text>
 
@@ -147,7 +156,7 @@ export function FieldPerformanceSection({
                 {hoverI != null && points[hoverI] && (
                   <g>
                     <line x1={geom.x(points[hoverI].t)} y1={M.top} x2={geom.x(points[hoverI].t)} y2={H - M.bottom} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="2 3" />
-                    <circle cx={geom.x(points[hoverI].t)} cy={geom.y(points[hoverI].v)} r={4} fill={LINE} stroke="var(--surface-1)" strokeWidth={1.5} />
+                    <circle cx={geom.x(points[hoverI].t)} cy={geom.y(points[hoverI].v)} r={u(5)} fill={LINE} stroke="var(--surface-1)" strokeWidth={1.5} />
                   </g>
                 )}
 

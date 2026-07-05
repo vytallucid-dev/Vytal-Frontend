@@ -118,7 +118,7 @@ export function PricingSection() {
                   className="mt-6 w-full"
                   variant={t.highlight ? "default" : "outline"}
                 >
-                  <Link href="/dashboard">{t.cta}</Link>
+                  <Link href="/signup">{t.cta}</Link>
                 </Button>
               </div>
             </Reveal>

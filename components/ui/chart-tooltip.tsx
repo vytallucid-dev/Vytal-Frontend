@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useState, type ReactNode, type RefObject } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────────────
 // Shared interactive-chart tooltip for HAND-ROLLED SVG / HTML charts (recharts has its own
@@ -21,6 +21,28 @@ export interface ChartTip {
   y: number;
   w: number; // container width, for edge-clamping
   content: ReactNode;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────
+// Our hand-rolled SVG charts use a fixed viewBox stretched to `w-full`, so every value
+// inside (font-size, r) is in viewBox units and scales DOWN with the container — great
+// for line/shape geometry, bad for text and dots, which go illegibly small on a narrow
+// phone. useElementWidth reports the container's live CSS px width so callers can convert
+// a desired ON-SCREEN pixel size into the viewBox units that render at that size at the
+// CURRENT width — text and dots stay a constant, legible pixel size at any breakpoint,
+// with no min-width / horizontal scroll needed (the chart still fully occupies the width
+// it's given).
+// ─────────────────────────────────────────────────────────────────────────────────────
+export function useElementWidth(ref: RefObject<HTMLElement | null>, fallback: number): number {
+  const [width, setWidth] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return width || fallback;
 }
 
 export function useChartTooltip(containerRef: RefObject<HTMLDivElement | null>) {

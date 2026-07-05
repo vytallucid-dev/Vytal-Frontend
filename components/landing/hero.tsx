@@ -108,7 +108,7 @@ export function Hero() {
             className="mt-8 flex flex-col gap-3 sm:flex-row"
           >
             <Button asChild size="lg" className="group">
-              <Link href="/dashboard">
+              <Link href="/signup">
                 Launch the Terminal
                 <Icons.arrowRight
                   weight="bold"

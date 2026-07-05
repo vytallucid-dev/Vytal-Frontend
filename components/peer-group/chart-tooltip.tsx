@@ -4,6 +4,7 @@
 // existing imports (`@/components/peer-group/chart-tooltip`) keep working.
 export {
   useChartTooltip,
+  useElementWidth,
   ChartTooltip,
   TipBody,
   type ChartTip,

@@ -65,7 +65,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-xl border border-line bg-surface-1 p-5", className)}>
+    <div className={cn("rounded-xl border border-line bg-surface-1 p-3 sm:p-5", className)}>
       {children}
     </div>
   );
@@ -205,17 +205,17 @@ export function CompareTable({
     return <HonestEmpty>No metrics available for this section.</HonestEmpty>;
   }
   return (
-    <div className="overflow-hidden rounded-xl border border-line">
+    <div className="overflow-x-auto rounded-xl border border-line">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line bg-surface-1 text-left">
-            <th className="px-4 py-2.5 font-medium text-ink3">Metric</th>
-            <th className="px-4 py-2.5 text-right font-semibold">
+            <th className="px-3 py-2.5 sm:px-4 max-sm:text-xs font-medium text-ink3">Metric</th>
+            <th className="px-3 py-2.5 sm:px-4 max-sm:text-xs text-right font-semibold">
               <span className="num" style={{ color: A_HUE }}>
                 {aLabel}
               </span>
             </th>
-            <th className="px-4 py-2.5 text-right font-semibold">
+            <th className="px-3 py-2.5 sm:px-4 max-sm:text-xs text-right font-semibold">
               <span className="num" style={{ color: B_HUE }}>
                 {bLabel}
               </span>
@@ -231,11 +231,11 @@ export function CompareTable({
                 i % 2 === 1 && "bg-surface-1/50",
               )}
             >
-              <td className="px-4 py-2.5 text-ink2">{r.label}</td>
-              <td className="num px-4 py-2.5 text-right text-ink">
+              <td className="px-3 py-2.5 max-sm:text-xs sm:px-4 text-ink2">{r.label}</td>
+              <td className="num px-3 py-2.5 max-sm:text-xs sm:px-4 text-right text-ink">
                 {formatMetricValue(r.a, r.unit)}
               </td>
-              <td className="num px-4 py-2.5 text-right text-ink">
+              <td className="num px-3 py-2.5 max-sm:text-xs sm:px-4 text-right text-ink">
                 {formatMetricValue(r.b, r.unit)}
               </td>
             </tr>
@@ -262,7 +262,7 @@ export function FamilyMetricList({
     return <HonestEmpty>No family-specific metrics on file.</HonestEmpty>;
   }
   return (
-    <div className="overflow-hidden rounded-xl border border-line">
+    <div className="overflow-x-auto rounded-xl border border-line">
       <table className="w-full text-sm">
         <tbody>
           {rows.map((r, i) => (
@@ -273,8 +273,8 @@ export function FamilyMetricList({
                 i % 2 === 1 && "bg-surface-1/50",
               )}
             >
-              <td className="px-4 py-2.5 text-ink2">{r.label}</td>
-              <td className="num px-4 py-2.5 text-right font-medium" style={{ color: hue }}>
+              <td className="px-3 max-sm:text-xs py-2.5 sm:px-4 text-ink2">{r.label}</td>
+              <td className="num px-3 max-sm:text-xs py-2.5 sm:px-4 text-right font-medium" style={{ color: hue }}>
                 {formatMetricValue(r.value, r.unit)}
               </td>
             </tr>

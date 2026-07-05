@@ -198,7 +198,7 @@ export function StructureSection({
             <div className="mb-3.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink3">
               Movers — who&apos;s pulling away, who&apos;s slipping
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <MoversColumn title="Rising" dir="up" rows={movers.risers} />
               <MoversColumn title="Slipping" dir="down" rows={movers.slippers} />
             </div>

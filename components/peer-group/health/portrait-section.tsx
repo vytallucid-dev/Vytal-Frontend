@@ -12,7 +12,7 @@ import {
   BAND_META,
   LABEL_BAND_ORDER,
 } from "@/components/stock-detail/health/shared";
-import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
+import { useChartTooltip, useElementWidth, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 import { pondCharacterRead, niceBounds, BAND_CUTS } from "./lib";
 import type {
   PeerGroupAggregate,
@@ -50,6 +50,15 @@ function PondChart({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { tip, show, hide } = useChartTooltip(containerRef);
+  const CHART_REF_WIDTH = 640; // the container width these unit constants were tuned against
+  const width = useElementWidth(containerRef, CHART_REF_WIDTH);
+  /** desired on-screen px AT CHART_REF_WIDTH → viewBox units, DAMPED (sqrt, not linear) as
+   *  width deviates from the reference — text grows on a narrow phone without the offsets
+   *  it depends on (label clearance from the axis/dot) outgrowing the fixed-height viewBox
+   *  and clipping. Full linear compensation (px*VB_W/width) keeps text pixel-perfect but can
+   *  push labels past VB_H on a short, wide strip chart at small widths — this trades a
+   *  little size fidelity for guaranteed fit, with no distortion and no horizontal scroll. */
+  const u = (px: number) => (px * VB_W) / Math.sqrt(width * CHART_REF_WIDTH);
 
   return (
     <div ref={containerRef} className="relative">
@@ -79,7 +88,7 @@ function PondChart({
         return (
           <g key={c}>
             <line x1={x} y1={20} x2={x} y2={180} stroke="var(--line2)" strokeWidth={1} strokeDasharray="2 4" />
-            <text x={x} y={200} textAnchor="middle" className="num" style={{ fontSize: 11, fill: "var(--ink3)" }}>
+            <text x={x} y={200} textAnchor="middle" className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
               {c}
             </text>
           </g>
@@ -95,7 +104,7 @@ function PondChart({
         return (
           <g>
             <line x1={x} y1={34} x2={x} y2={AXIS_Y} stroke="var(--ink2)" strokeWidth={1.5} />
-            <text x={clampX(x)} y={30} textAnchor="middle" className="num" style={{ fontSize: 10, fill: "var(--ink2)" }}>
+            <text x={clampX(x)} y={30} textAnchor="middle" className="num" style={{ fontSize: u(11), fill: "var(--ink2)" }}>
               median {Math.round(median)}
             </text>
           </g>
@@ -107,23 +116,23 @@ function PondChart({
         const x = xo(m.composite);
         const col = BAND_META[m.labelBand].cssVar;
         const above = i % 2 === 0;
-        const ly = above ? AXIS_Y - 20 : AXIS_Y + 30;
-        const dy = above ? AXIS_Y - 8 : AXIS_Y + 8;
-        const vy = above ? AXIS_Y - 32 : AXIS_Y + 44;
+        const ly = above ? AXIS_Y - u(16) : AXIS_Y + u(24);
+        const dy = above ? AXIS_Y - u(7) : AXIS_Y + u(7);
+        const vy = above ? AXIS_Y - u(28) : AXIS_Y + u(38);
         return (
           <g key={m.symbol}>
             <line x1={x} y1={AXIS_Y} x2={x} y2={dy} stroke={col} strokeWidth={1} opacity={0.4} />
-            <circle cx={x} cy={AXIS_Y} r={5.5} fill={col} />
-            <text x={clampX(x)} y={ly} textAnchor="middle" className="num" style={{ fontSize: 10.5, fill: "var(--ink2)" }}>
+            <circle cx={x} cy={AXIS_Y} r={u(6)} fill={col} />
+            <text x={clampX(x)} y={ly} textAnchor="middle" className="num" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
               {m.symbol}
             </text>
-            <text x={clampX(x)} y={vy} textAnchor="middle" className="num" style={{ fontSize: 9, fill: "var(--ink3)" }}>
+            <text x={clampX(x)} y={vy} textAnchor="middle" className="num" style={{ fontSize: u(10.5), fill: "var(--ink3)" }}>
               {Math.round(m.composite)}
             </text>
             <circle
               cx={x}
               cy={AXIS_Y}
-              r={16}
+              r={u(18)}
               fill="transparent"
               style={{ cursor: "pointer" }}
               onMouseMove={(e) =>
@@ -185,7 +194,7 @@ function Vital({ k, v, tone }: { k: string; v: React.ReactNode; tone?: string })
   return (
     <div className="flex items-baseline justify-between gap-2.5">
       <span className="text-[12px] text-ink2">{k}</span>
-      <span className="num text-[15px] font-medium" style={tone ? { color: tone } : undefined}>
+      <span className="num text-xs sm:text-[15px] font-medium" style={tone ? { color: tone } : undefined}>
         {v}
       </span>
     </div>

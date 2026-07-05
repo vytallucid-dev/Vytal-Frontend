@@ -8,7 +8,7 @@ import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import type { IndustryFamily } from "@/types/fundamentals";
 import { median, type ValuationRow } from "./lib";
-import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
+import { useChartTooltip, useElementWidth, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
 
 // ─────────────────────────────────────────────────────────────────────────────────────
 // §B · Valuation Positioning — cheapness (x: P/E) against quality/growth (y).
@@ -39,7 +39,6 @@ const FIN_OPTIONS: QualityOption[] = [
 // neutral plot geometry
 const W = 1000;
 const H = 440;
-const M = { top: 24, right: 28, bottom: 56, left: 64 };
 const DOT = "var(--ink2)"; // single neutral colour for every member — no judgment
 
 export function PositioningScatter({
@@ -55,6 +54,15 @@ export function PositioningScatter({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { tip, show, hide } = useChartTooltip(containerRef);
+  const CHART_REF_WIDTH = 860; // the container width these unit constants were tuned against
+  const width = useElementWidth(containerRef, CHART_REF_WIDTH);
+  /** desired on-screen px AT CHART_REF_WIDTH → viewBox units, DAMPED (sqrt, not linear) as
+   *  width deviates from the reference — text/margins grow on a narrow phone without fully
+   *  linear compensation, which could push labels past the chart's fixed-height viewBox. */
+  const u = (n: number) => (n * W) / Math.sqrt(width * CHART_REF_WIDTH);
+  // margins sized via u() so they always fit the axis titles / median labels, which are
+  // sized the same way.
+  const M = { top: u(22), right: u(26), bottom: u(48), left: u(58) };
 
   const points = useMemo(
     () =>
@@ -109,6 +117,7 @@ export function PositioningScatter({
               Too few members have both a P/E and {yOpt.label} to plot a positioning view yet.
             </p>
           ) : (
+            <>
             <div ref={containerRef} className="relative">
               <ChartTooltip tip={tip} />
               <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img"
@@ -121,7 +130,7 @@ export function PositioningScatter({
                 {xMed != null && (
                   <g>
                     <line x1={px(xMed)} y1={M.top} x2={px(xMed)} y2={H - M.bottom} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="3 4" opacity={0.5} />
-                    <text x={px(xMed)} y={M.top - 8} textAnchor="middle" className="num" style={{ fontSize: 11, fill: "var(--ink3)" }}>
+                    <text x={px(xMed)} y={M.top - u(8)} textAnchor="middle" className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
                       median P/E {xMed.toFixed(1)}
                     </text>
                   </g>
@@ -129,7 +138,7 @@ export function PositioningScatter({
                 {yMed != null && (
                   <g>
                     <line x1={M.left} y1={py(yMed)} x2={W - M.right} y2={py(yMed)} stroke="var(--ink3)" strokeWidth={1} strokeDasharray="3 4" opacity={0.5} />
-                    <text x={W - M.right} y={py(yMed) - 6} textAnchor="end" className="num" style={{ fontSize: 11, fill: "var(--ink3)" }}>
+                    <text x={W - M.right} y={py(yMed) - u(6)} textAnchor="end" className="num" style={{ fontSize: u(11), fill: "var(--ink3)" }}>
                       median {yOpt.label} {yMed.toFixed(1)}{yOpt.unit}
                     </text>
                   </g>
@@ -138,15 +147,15 @@ export function PositioningScatter({
                 {/* members — one neutral colour, labelled by symbol. No corner is coloured. */}
                 {points.map((p) => (
                   <g key={p.symbol}>
-                    <circle cx={px(p.x)} cy={py(p.y)} r={5.5} fill={DOT} opacity={0.85} />
-                    <text x={px(p.x)} y={py(p.y) - 10} textAnchor="middle" className="num" style={{ fontSize: 10.5, fill: "var(--ink2)" }}>
+                    <circle cx={px(p.x)} cy={py(p.y)} r={u(6)} fill={DOT} opacity={0.85} />
+                    <text x={px(p.x)} y={py(p.y) - u(10)} textAnchor="middle" className="num" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                       {p.symbol}
                     </text>
                     {/* invisible hit target — generous radius for easy hover */}
                     <circle
                       cx={px(p.x)}
                       cy={py(p.y)}
-                      r={16}
+                      r={u(18)}
                       fill="transparent"
                       style={{ cursor: "pointer" }}
                       onMouseMove={(e) =>
@@ -167,20 +176,21 @@ export function PositioningScatter({
                 ))}
 
                 {/* axis titles */}
-                <text x={(M.left + W - M.right) / 2} y={H - 14} textAnchor="middle" style={{ fontSize: 12, fill: "var(--ink2)" }}>
+                <text x={(M.left + W - M.right) / 2} y={H - u(12)} textAnchor="middle" style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                   P/E (trailing) →
                 </text>
-                <text x={18} y={(M.top + H - M.bottom) / 2} textAnchor="middle" transform={`rotate(-90 18 ${(M.top + H - M.bottom) / 2})`} style={{ fontSize: 12, fill: "var(--ink2)" }}>
+                <text x={u(16)} y={(M.top + H - M.bottom) / 2} textAnchor="middle" transform={`rotate(-90 ${u(16)} ${(M.top + H - M.bottom) / 2})`} style={{ fontSize: u(12), fill: "var(--ink2)" }}>
                   {yOpt.label} ({yOpt.unit}) →
                 </text>
               </svg>
-              <p className="mt-3 text-[11.5px] text-ink3">
-                Each member plotted by trailing P/E against {yOpt.label}; dashed lines mark the group
-                median on each axis. Hover a point for its values. Positions are facts — there are no
-                &quot;good&quot; or &quot;bad&quot; corners here, and nothing is flagged as cheap or
-                expensive.
-              </p>
             </div>
+            <p className="mt-3 text-[11.5px] text-ink3">
+              Each member plotted by trailing P/E against {yOpt.label}; dashed lines mark the group
+              median on each axis. Hover a point for its values. Positions are facts — there are no
+              &quot;good&quot; or &quot;bad&quot; corners here, and nothing is flagged as cheap or
+              expensive.
+            </p>
+            </>
           )}
         </div>
       </Reveal>

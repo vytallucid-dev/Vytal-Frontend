@@ -60,7 +60,7 @@ function RankBars({
       {items.map((i) => (
         <div
           key={i.symbol}
-          className="flex cursor-default items-center gap-3 rounded py-0.5 transition-colors hover:bg-surface-2"
+          className="flex flex-col gap-1.5 rounded border-b border-line/50 py-2 transition-colors last:border-0 hover:bg-surface-2 sm:cursor-default sm:flex-row sm:items-center sm:gap-3 sm:border-0 sm:py-0.5"
           onMouseMove={(e) =>
             show(
               e,
@@ -75,17 +75,21 @@ function RankBars({
           }
           onMouseLeave={hide}
         >
-          <div className="num w-24 shrink-0 truncate text-[12px] text-ink2">{i.symbol}</div>
+          <div className="flex items-center justify-between gap-2 sm:hidden">
+            <span className="num truncate text-[12px] text-ink2">{i.symbol}</span>
+            <span className="num shrink-0 text-[12px] font-medium text-ink">{fmtPrimary(i.primary)}</span>
+          </div>
+          <div className="num hidden w-24 shrink-0 truncate text-[12px] text-ink2 sm:block">{i.symbol}</div>
           <div className="relative h-4 flex-1">
             <div
               className="absolute inset-y-0.5 left-0 rounded-sm"
               style={{ width: `${(Math.abs(i.primary) / max) * 100}%`, background: BAR, opacity: 0.55 }}
             />
           </div>
-          <div className="num w-16 shrink-0 text-right text-[12px] font-medium text-ink">
+          <div className="num hidden w-16 shrink-0 text-right text-[12px] font-medium text-ink sm:block">
             {fmtPrimary(i.primary)}
           </div>
-          <div className="num w-24 shrink-0 text-right text-[11px] text-ink3">{i.secondaryText}</div>
+          <div className="num shrink-0 text-right text-[11px] text-ink3 sm:w-24">{i.secondaryText}</div>
         </div>
       ))}
     </div>
