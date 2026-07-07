@@ -10,7 +10,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useHoldings } from "@/lib/api/hooks/use-holdings";
 import { usePortfolioSnapshot } from "@/lib/api/hooks/use-portfolio-snapshot";
 import { usePortfolioNav } from "@/lib/api/hooks/use-portfolio-nav";
-import { PHS_BAND_META, phsColor } from "@/components/portfolio/lib";
+import { HEALTH_BAND_META, healthColor } from "@/components/portfolio/lib";
 import { formatINR, changeColor } from "@/lib/format";
 import { nameFromUser, greeting, signINR, signPct } from "./lib";
 import { cn } from "@/lib/utils";
@@ -157,9 +157,9 @@ export function WelcomeHero() {
   const sectorsCount = new Set(holdings.map((h) => h.sector ?? "Unclassified")).size;
   const navSeries = navQ.data?.series.map((p) => p.value) ?? [];
 
-  // health line — real band, or an honest "building" when the snapshot isn't evaluable
-  const bandLabel = snapshot?.band ? PHS_BAND_META[snapshot.band].label : null;
-  const bandColor = snapshot?.band ? phsColor(snapshot.band) : undefined;
+  // health line — real band, or an honest "building" when there's no health read
+  const bandLabel = snapshot?.healthRead?.band ? HEALTH_BAND_META[snapshot.healthRead.band].label : null;
+  const bandColor = snapshot?.healthRead?.band ? healthColor(snapshot.healthRead.band) : undefined;
   const dayUp = dayVal >= 0;
 
   const kpis: {
@@ -222,10 +222,10 @@ export function WelcomeHero() {
                   }
                 >
                   {bandLabel}
-                  {snapshot?.phs != null && (
+                  {snapshot?.healthRead?.value != null && (
                     <>
                       <span className="opacity-50">·</span>
-                      <span className="num">{snapshot.phs}</span>
+                      <span className="num">{snapshot.healthRead.value}</span>
                     </>
                   )}
                 </span>

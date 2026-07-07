@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatINR } from "@/lib/format";
 import type { Transaction } from "@/types/portfolio";
 import { PORTFOLIO_TABS, type PortfolioTab } from "./tabs";
-import { PHS_BAND_META, attentionHoldings, phsColor } from "./lib";
+import { HEALTH_BAND_META, attentionHoldings, healthColor } from "./lib";
 import { OverviewTab } from "./overview";
 import { HoldingsTab } from "./holdings";
 import { HealthTab } from "./health";
@@ -22,7 +22,7 @@ import { TransactionSheet } from "./transaction-sheet";
 // ─────────────────────────────────────────────────────────────────────────────
 // The Portfolio surface — shared chrome (header + tab row) with the live tabs
 // rendering inside it. Overview + Holdings are live and read-only over GET /me/portfolio
-// (the pre-computed PHS snapshot) + GET /me/holdings. The remaining tabs follow the same
+// (the pre-computed health snapshot) + GET /me/holdings. The remaining tabs follow the same
 // pattern and are honestly marked `soon`. Chrome matches docs/vytal_portfolio_health_tab.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -95,7 +95,7 @@ export function PortfolioHub() {
   const dataReady = Boolean(holdQ.data && snapQ.data);
 
   const attn = attentionHoldings(holdings);
-  const bandLabel = snapshot?.band ? PHS_BAND_META[snapshot.band].label : null;
+  const bandLabel = snapshot?.healthRead?.band ? HEALTH_BAND_META[snapshot.healthRead.band].label : null;
 
   const loading = snapQ.isLoading || holdQ.isLoading;
   const isError = snapQ.isError || holdQ.isError;
@@ -103,10 +103,10 @@ export function PortfolioHub() {
   const summary: { k: string; v: string; color?: string }[] = [
     {
       k: "Weighted health",
-      v: dataReady ? (snapshot?.phs != null ? `${snapshot.phs} · ${bandLabel}` : "Building") : "—",
-      color: snapshot?.band ? phsColor(snapshot.band) : undefined,
+      v: dataReady ? (snapshot?.healthRead?.value != null ? `${snapshot.healthRead.value} · ${bandLabel}` : "Building") : "—",
+      color: snapshot?.healthRead?.band ? healthColor(snapshot.healthRead.band) : undefined,
     },
-    { k: "Coverage", v: dataReady && snapshot ? `${Math.round(snapshot.coverage * 100)}%` : "—" },
+    { k: "Coverage", v: dataReady && snapshot ? `${Math.round(snapshot.coverageState.scoredWeight * 100)}%` : "—" },
     { k: "Needs attention", v: dataReady ? String(attn.count) : "—", color: attn.count > 0 ? "var(--high)" : undefined },
   ];
 
@@ -212,7 +212,7 @@ export function PortfolioHub() {
         // read-only over the pre-computed snapshot (pillars, both ledgers, PF findings) +
         // per-holding health; snapshot may be null (pending) → the tab shows its honest
         // "preparing"/"building" state until the next mutation/nightly refresh lands.
-        <HealthTab snapshot={snapshot} holdings={holdings} totals={totals} />
+        <HealthTab snapshot={snapshot} holdings={holdings} totals={totals} onOpenTab={setTab} />
       ) : tab === "performance" ? (
         // the returns/accountability surface — read-only over NAV / TWR / benchmark / XIRR.
         // STRICTLY health-free by design (the one tab where "healthy → profitable" must

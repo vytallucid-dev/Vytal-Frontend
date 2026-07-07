@@ -4,9 +4,9 @@
 // The engine already computed everything: pillars, both deduction ledgers, and the
 // fired PF findings (bind/tone/loud all persisted). This file only READS those and
 // arranges them for the teaching surface — it NEVER recomputes a score, penalty, pillar
-// or PHS weight. The one derivation it does is display arithmetic over holdings (value
+// or health weight. The one derivation it does is display arithmetic over holdings (value
 // share, health × weight, band dispersion) — the same class the tracker already does,
-// never a PHS internal.
+// never a stored-score internal.
 // ─────────────────────────────────────────────────────────────────────────────
 import type {
   Holding,
@@ -19,11 +19,10 @@ import type {
   StructureDeduction,
   StructureRule,
 } from "@/types/portfolio";
-
-// ── constant weights (mirror the engine's K.W_STRUCT / K.W_SIGNAL — for RECONCILING
-//    the stored pillars to the published drag, never for recomputing them). ──────────
-export const W_STRUCT = 0.3;
-export const W_SIGNAL = 0.2;
+import { allFindings, flagsDragOf } from "../lib";
+// The flags-drag weight + expression live in ONE place (../lib flagsDragOf) — Signals is the
+// only term besides Quality in the v1.2 Health Score, and this file reconciles through that
+// shared helper rather than carrying its own copy of W_SIGNAL.
 
 // ── structure rule identity (A.6) — a short human name + the "why" per rule ─────────
 export const STRUCTURE_RULE_META: Record<StructureRule, { title: string; what: string }> = {
@@ -44,12 +43,13 @@ export const SIGNAL_SOURCE_META: Record<SignalSource, { label: string; tone: PfT
   lp6: { label: "Fading strength", tone: "Neutral" },
 };
 
-// ── ledgers (defensive: nullable on the wire for pre-ledger snapshots) ──────────────
+// ── ledgers — each nested in its read (structure on construction, signals on health).
+//    Defensive: nullable on the wire; signalsLedger empty when there's no health read. ──
 export function structureLedger(s: PortfolioSnapshot): StructureDeduction[] {
-  return s.structureLedger ?? [];
+  return (s.constructionRead.structureLedger as StructureDeduction[] | undefined) ?? [];
 }
 export function signalsLedger(s: PortfolioSnapshot): SignalsDeduction[] {
-  return s.signalsLedger ?? [];
+  return (s.healthRead?.signalsLedger as SignalsDeduction[] | undefined) ?? [];
 }
 
 /** Fired S-rules that actually took points off, largest first. Not-evaluable entries
@@ -76,39 +76,30 @@ export function flaggedSymbols(s: PortfolioSnapshot): Set<string> {
   return new Set(signalsLedger(s).map((e) => e.symbol));
 }
 
-// ── deduction waterfall (anchor − drags = composite) — reconciled from the stored
-//    pillars, NOT recomputed. Σ structure ledger points = the Structure gap; the hit on
-//    your score is W_STRUCT of that gap. Same for Signals at W_SIGNAL. ────────────────
+// ── the Health waterfall (v1.2 — the two-step spine) — Quality anchor, ONE deduction for
+//    active red flags, landing at Health. Reconciled from the stored Signals pillar, NOT
+//    recomputed. Nothing about construction or coverage enters here — that is the whole
+//    decoupling: Health answers "are the things I own sound?", not "is the book built well?" ──
 export interface DeductionStory {
-  quality: number; // the anchor — where the score starts
-  structure: number; // stored Structure pillar (0..100)
+  quality: number; // the anchor — where the score starts (Quality of the businesses)
   signals: number; // stored Signals pillar (0..100)
-  constructionDrag: number; // W_STRUCT × (100 − structure) — Structure's hit on the score
-  flagsDrag: number; // W_SIGNAL × (100 − signals) — Signals' hit on the score
-  coverageDrag: number; // extra the coverage ceiling held back (0 unless it binds)
-  composite: number; // the published PHS the drags land on
-  structurePoints: number; // Σ ledger points (= the Structure gap 100 − structure)
-  signalPoints: number; // Σ ledger points (= the Signals gap 100 − signals)
+  flagsDrag: number; // W_SIGNAL × (100 − signals) — the ONLY hit on the Health Score
+  health: number; // the published Health Score the drag lands on
+  signalPoints: number; // Σ signals ledger points (= the Signals gap 100 − signals)
 }
 
-/** Decompose the PUBLISHED snapshot into anchor + drags. null when the book isn't
- *  evaluable (no scored holdings). By construction quality − drags = composite. */
+/** Decompose the PUBLISHED Health Score into anchor − the one flags deduction. null when
+ *  the book isn't evaluable (no scored holdings). By construction quality − flagsDrag ≈ health. */
 export function deductionStory(s: PortfolioSnapshot): DeductionStory | null {
-  if (s.phs == null || s.quality == null) return null;
-  const constructionDrag = W_STRUCT * (100 - s.structure);
-  const flagsDrag = W_SIGNAL * (100 - s.signals);
-  const coverageDrag = s.ceilingApplied && s.phsRaw != null ? Math.max(0, s.phsRaw - s.phs) : 0;
-  const structurePoints = structureLedger(s).reduce((a, e) => a + e.points, 0);
+  const h = s.healthRead;
+  if (!h || h.value == null || h.quality == null) return null;
+  const flagsDrag = flagsDragOf(h.signals);
   const signalPoints = signalsLedger(s).reduce((a, e) => a + e.points, 0);
   return {
-    quality: s.quality,
-    structure: s.structure,
-    signals: s.signals,
-    constructionDrag,
+    quality: h.quality,
+    signals: h.signals,
     flagsDrag,
-    coverageDrag,
-    composite: s.phs,
-    structurePoints,
+    health: h.value,
     signalPoints,
   };
 }
@@ -158,8 +149,10 @@ export interface FindingTriage {
   quiet: PfFinding[]; // secondary texture — present, never suppressed, not headlined
 }
 
-/** Triage the NON-coverage findings (PV-family carries the coverage story, surfaced in
- *  its own honest section — routing it here would double-count it). */
+/** Triage a set of findings into loud (headline cards) vs quiet (texture). PV is filtered
+ *  defensively — the coverage family renders in its own section (see ../lib coverageFindings),
+ *  so routing it through the findings grid would double-count it. Feed this the health
+ *  patterns (PQ/PS/PX) or the construction findings (PC/PB). */
 export function triageFindings(findings: PfFinding[]): FindingTriage {
   const nonCoverage = findings.filter((f) => f.family !== "PV");
   const rank = (a: PfFinding, b: PfFinding) =>
@@ -170,11 +163,9 @@ export function triageFindings(findings: PfFinding[]): FindingTriage {
   };
 }
 
-/** The PV-family findings that carry the coverage story (loudest / most-severe first). */
-export function coverageFindings(findings: PfFinding[]): PfFinding[] {
-  return findings
-    .filter((f) => f.family === "PV")
-    .sort((a, b) => (a.loud === b.loud ? TONE_ORDER[a.tone] - TONE_ORDER[b.tone] : a.loud ? -1 : 1));
+/** Order PV coverage findings loudest-first (the coverage section renders these). */
+export function orderCoverageFindings(findings: PfFinding[]): PfFinding[] {
+  return [...findings].sort((a, b) => (a.loud === b.loud ? TONE_ORDER[a.tone] - TONE_ORDER[b.tone] : a.loud ? -1 : 1));
 }
 
 /** Is this a cross-pillar (PX) finding — the richest, naming a tension the single
@@ -224,10 +215,6 @@ export function bindChips(f: PfFinding): BindChip[] {
   if (minH != null) push("minScoredHealth", `min ${Math.round(minH)}`);
   const coverage = numv("coverage");
   if (coverage != null) push("coverage", `${pct1(coverage)} covered`);
-  const ceiling = numv("ceiling");
-  if (ceiling != null) push("ceiling", `held at ${Math.round(ceiling)}`);
-  const phsRaw = numv("phsRaw");
-  if (phsRaw != null) push("phsRaw", `verified reads ${Math.round(phsRaw)}`);
   const maxSectorW = numv("maxSectorWeight");
   if (maxSectorW != null) push("maxSectorWeight", `top sector ${pct1(maxSectorW)}`);
 
@@ -263,7 +250,7 @@ export function concentrationRead(holdings: Holding[]): ConcentrationRead {
  *  computed (carried on a PC5/PB1 finding bind, else the S3 ledger detail) so the shape
  *  matches the penalty; fall back to a display computation over priced weights. */
 export function effectiveBreadth(s: PortfolioSnapshot, holdings: Holding[]): { neff: number; stored: boolean } {
-  for (const f of s.firedFindings ?? []) {
+  for (const f of allFindings(s)) {
     const n = f.bind?.neff;
     if (typeof n === "number") return { neff: n, stored: true };
   }

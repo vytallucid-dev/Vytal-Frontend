@@ -19,6 +19,10 @@ interface HealthRingProps {
   label?: string;
   /** suffix shown after the value, e.g. "/100" */
   suffix?: string;
+  /** override the band colour. HealthRing colours on the STOCK condition scale by default
+   *  (healthColorVar); portfolio-health surfaces must pass their own band colour (the
+   *  portfolio scale differs: 80/65/50/35), so the same value reads the same everywhere. */
+  color?: string;
 }
 
 /**
@@ -35,6 +39,7 @@ export function HealthRing({
   showLabel = false,
   label,
   suffix,
+  color: colorOverride,
 }: HealthRingProps) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
@@ -42,7 +47,7 @@ export function HealthRing({
   const clamped = Math.max(0, Math.min(100, score));
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const color = healthColorVar(clamped);
+  const color = colorOverride ?? healthColorVar(clamped);
   const gradId = `hr-grad-${Math.round(clamped)}-${size}`;
 
   return (

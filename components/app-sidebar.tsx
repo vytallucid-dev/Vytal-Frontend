@@ -24,7 +24,7 @@ import { HealthRing } from "@/components/ui/health-ring";
 import { Icons, type Icon } from "@/lib/icons";
 import { usePortfolioSnapshot } from "@/lib/api/hooks/use-portfolio-snapshot";
 import { useMe } from "@/lib/api/hooks/use-me";
-import { PHS_BAND_META, phsColor } from "@/components/portfolio/lib";
+import { HEALTH_BAND_META, healthColor } from "@/components/portfolio/lib";
 import { cn } from "@/lib/utils";
 
 type NavItem = { title: string; url: string; icon: Icon; adminOnly?: boolean };
@@ -67,13 +67,13 @@ export function AppSidebar() {
   const pathname = usePathname();
   const collapsed = !isMobile && state === "collapsed";
 
-  // Real portfolio health pulse — the pre-computed PHS snapshot, never a fabricated
-  // score. null phs ⇒ an honest "no read yet" state (empty/unscored/pending book).
+  // Real portfolio health pulse — the pre-computed health snapshot, never a fabricated
+  // score. null health ⇒ an honest "no read yet" state (empty/unscored/pending book).
   const snapQ = usePortfolioSnapshot();
   const snapshot = snapQ.data?.snapshot ?? null;
-  const phs = snapshot?.phs ?? null;
-  const band = snapshot?.band ?? null;
-  const bandLabel = band ? PHS_BAND_META[band].label : null;
+  const health = snapshot?.healthRead?.value ?? null;
+  const band = snapshot?.healthRead?.band ?? null;
+  const bandLabel = band ? HEALTH_BAND_META[band].label : null;
 
   // Role gate — the "Admin Panel" item appears ONLY for admins. Role comes from
   // /api/v1/me/profile (never the JWT); the backend still enforces admin on the
@@ -140,16 +140,16 @@ export function AppSidebar() {
             </div>
           )}
 
-          {/* Portfolio health pulse — the real PHS snapshot (never a fabricated score).
+          {/* Portfolio health pulse — the real health snapshot (never a fabricated score).
               No score yet (empty / unscored / pending) → an honest neutral state. */}
           {collapsed ? (
-            phs != null ? (
+            health != null ? (
               <Link
                 href="/portfolio"
-                aria-label={`Portfolio health ${phs}`}
+                aria-label={`Portfolio health ${health}`}
                 className="mx-auto mt-3 grid place-items-center"
               >
-                <HealthRing score={phs} size={34} strokeWidth={4} showValue />
+                <HealthRing score={health} size={34} strokeWidth={4} showValue color={band ? healthColor(band) : undefined} />
               </Link>
             ) : (
               <Link
@@ -165,14 +165,14 @@ export function AppSidebar() {
               href="/portfolio"
               className="group mx-1 mt-3 flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-3 transition-colors hover:border-line3 hover:bg-surface-3"
             >
-              {phs != null ? (
+              {health != null ? (
                 <>
-                  <HealthRing score={phs} size={48} strokeWidth={5} showValue />
+                  <HealthRing score={health} size={48} strokeWidth={5} showValue color={band ? healthColor(band) : undefined} />
                   <div className="min-w-0">
                     <p className="text-[0.7rem] uppercase tracking-wider text-ink3">
                       Portfolio Health
                     </p>
-                    <p className="text-sm font-semibold" style={bandLabel ? { color: phsColor(band) } : undefined}>
+                    <p className="text-sm font-semibold" style={bandLabel ? { color: healthColor(band) } : undefined}>
                       {bandLabel ?? "Scored"}
                     </p>
                   </div>

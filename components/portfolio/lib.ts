@@ -1,11 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // PORTFOLIO OVERVIEW — pure derivations over the snapshot + holdings. No JSX.
 // Every value here is a READ or a tracker figure (value share, P&L, day move) — NEVER
-// a re-computed score, pillar, penalty or PHS weight. Those come from the snapshot
+// a re-computed score, pillar, penalty or health weight. Those come from the snapshot
 // verbatim. Findings are surfaced descriptive, with tone → colour, copy as-is.
 // ─────────────────────────────────────────────────────────────────────────────
 import { healthColorVar } from "@/lib/format";
 import type {
+  ConstructionBand,
   Holding,
   PfFinding,
   PfTone,
@@ -14,17 +15,45 @@ import type {
   StockBand,
 } from "@/types/portfolio";
 
-// ── PHS band → condition palette (best → worst; the app's locked identity) ──────
-export const PHS_BAND_META: Record<PhsBand, { label: string; color: string }> = {
-  Strong: { label: "Strong", color: "var(--c-pristine)" },
-  Steady: { label: "Steady", color: "var(--c-healthy)" },
-  Mixed: { label: "Mixed", color: "var(--c-steady)" },
-  Fragile: { label: "Fragile", color: "var(--c-below)" },
-  Weak: { label: "Weak", color: "var(--c-fragile)" },
-};
+// ── PALETTES (Part A3) — three DELIBERATELY-DISTINCT band languages, so the two reads
+//    never read as two scores of the same thing. Hexes are the design source of truth. ──
 
-export function phsColor(band: PhsBand | null): string {
-  return band ? PHS_BAND_META[band].color : "var(--ink3)";
+// Health band (best → worst) — rich & saturated: the premium read.
+export const HEALTH_BAND_META: Record<PhsBand, { label: string; color: string }> = {
+  Strong: { label: "Strong", color: "#4ea1e6" },
+  Steady: { label: "Steady", color: "#4fb6a4" },
+  Mixed: { label: "Mixed", color: "#d6a652" },
+  Fragile: { label: "Fragile", color: "#e08a4c" },
+  Weak: { label: "Weak", color: "#db6a6a" },
+};
+export function healthColor(band: PhsBand | null): string {
+  return band ? HEALTH_BAND_META[band].color : "var(--ink3)";
+}
+
+// Construction band (Structure, best → worst) — cooler / structural, so it never reads
+// as a health score. The blueprint palette.
+export const CONSTRUCTION_BAND_META: Record<ConstructionBand, { label: string; color: string }> = {
+  "Well-built": { label: "Well-built", color: "#5fa88f" },
+  Solid: { label: "Solid", color: "#6f9bb0" },
+  Concentrated: { label: "Concentrated", color: "#c9a94a" },
+  Lopsided: { label: "Lopsided", color: "#d98c4a" },
+  Fragile: { label: "Fragile", color: "#db6a6a" },
+};
+export function constructionColor(band: ConstructionBand | null): string {
+  return band ? CONSTRUCTION_BAND_META[band].color : "var(--ink3)";
+}
+
+// The blueprint accent (construction read's slate identity) + the two-tone waterfall drags
+// (construction = amber "shape cost", signal = red "flag cost", coverage = slate) + the
+// coverage-bar segment colours (scored / awaiting-with-shimmer / untracked).
+export const BLUEPRINT_ACCENT = "#6f9bb0";
+export const DRAG_COLOR = { construction: "#d0954e", signal: "#cf6a6a", coverage: "#6f9bb0" } as const;
+export const COVERAGE_COLOR = { scored: "#4ea1e6", awaiting: "#6f9bb0", untracked: "#3a4048" } as const;
+export const POSITIVE_COLOR = "#5bb98c";
+
+/** Route to a symbol's per-stock health page (the link-out target for holdings + findings). */
+export function stockHealthHref(symbol: string): string {
+  return `/research/stock-screener/${encodeURIComponent(symbol)}?tab=health`;
 }
 
 // ── finding tone → severity tokens (soft fill + border + ink) ───────────────────
@@ -64,6 +93,35 @@ export function pickSynthesis(findings: PfFinding[]): PfFinding | null {
     return order[a.tone] - order[b.tone];
   });
   return ranked[0] ?? null;
+}
+
+// ── finding family identity (Part B2e/B3d) — badge label + colour. Construction families
+//    (PC/PB) wear the blueprint slate; health families wear their own accents. ───────────
+export const FAMILY_META: Record<string, { label: string; color: string }> = {
+  PC: { label: "Concentration", color: BLUEPRINT_ACCENT },
+  PB: { label: "Breadth", color: BLUEPRINT_ACCENT },
+  PQ: { label: "Quality", color: "#5d92d8" },
+  PS: { label: "Signals", color: "#cf6a6a" },
+  PX: { label: "Cross-pillar", color: "#a085d8" },
+  PV: { label: "Coverage", color: BLUEPRINT_ACCENT },
+};
+
+// ── the two-read finding partition (read verbatim off the snapshot; never re-derived).
+//    Union of both reads = every fired finding (byte-identical to the flat firedFindings). ─
+export function allFindings(s: PortfolioSnapshot): PfFinding[] {
+  return [...s.constructionRead.findings, ...(s.healthRead?.findings ?? [])];
+}
+/** PC/PB — the construction read owns these (concentration & breadth). */
+export function concentrationFindings(s: PortfolioSnapshot): PfFinding[] {
+  return allFindings(s).filter((f) => f.family === "PC" || f.family === "PB");
+}
+/** PQ/PS/PX — the health read's "what the number hid" (coverage PV is surfaced separately). */
+export function healthPatternFindings(s: PortfolioSnapshot): PfFinding[] {
+  return allFindings(s).filter((f) => f.family === "PQ" || f.family === "PS" || f.family === "PX");
+}
+/** PV — the coverage/visibility story (rendered in the coverage section, not the findings grid). */
+export function coverageFindings(s: PortfolioSnapshot): PfFinding[] {
+  return allFindings(s).filter((f) => f.family === "PV");
 }
 
 // ── attention: holdings whose own health is weak (Fragile / Below par) ──────────
@@ -300,62 +358,38 @@ export function contributions(holdings: Holding[], n = 3): { contributors: Contr
   return { contributors, detractors };
 }
 
-// ── pillar mini-bars (from the snapshot; read-only) ─────────────────────────────
-export interface PillarRow {
-  key: "quality" | "structure" | "signals";
-  label: string;
-  value: number | null;
-  color: string;
-  note: string;
-  isSoft: boolean;
-}
-export function pillarRows(s: PortfolioSnapshot): PillarRow[] {
-  const soft = weakestPillar(s);
-  const base: Omit<PillarRow, "isSoft">[] = [
-    { key: "quality", label: "Quality", value: s.quality, color: "var(--p-found)", note: "health of your scored holdings" },
-    { key: "structure", label: "Structure", value: s.structure, color: "var(--p-own)", note: "concentration & breadth" },
-    { key: "signals", label: "Signals", value: s.signals, color: "var(--p-mom)", note: "active red flags" },
-  ];
-  return base.map((r) => ({ ...r, isSoft: r.key === soft }));
-}
+// ── Health score composition (v1.2 — the decoupling) — anchor − the ONE deduction ─────
+// Health is NOT a blend of three pillars. It is Quality (the anchor over your scored
+// holdings) reduced ONLY by active red flags: Health = Quality − 0.20×(100−Signals). No
+// structure term, no coverage cap — those belong to the standalone Construction read and
+// the coverage/confidence layer, never to this number. This decomposes the ALREADY-
+// PUBLISHED snapshot into that two-step story so a card can show WHY it lands where it
+// does; it never recomputes the score (quality/signals/health are read verbatim; the
+// flags-drag is a display split of the same stored numbers).
+// The ONE Health deduction, single source of truth (v1.2). Both the Overview-card
+// breakdown (scoreBreakdown, below) and the Health-tab waterfall (health/lib deductionStory)
+// reconcile through `flagsDragOf` — there is no second copy of the weight or the expression
+// anywhere on the client. Mirrors the engine's K.W_SIGNAL; never a recompute of the score.
+export const W_SIGNAL = 0.2; // Signals penalty weight (mirrors the engine's K.W_SIGNAL)
 
-/** Which pillar is the soft spot (lowest of the three real values). */
-export function weakestPillar(s: PortfolioSnapshot): "quality" | "structure" | "signals" {
-  const entries: [PillarRow["key"], number][] = [
-    ["quality", s.quality ?? 100],
-    ["structure", s.structure],
-    ["signals", s.signals],
-  ];
-  return entries.sort((a, b) => a[1] - b[1])[0][0];
+/** Points active red flags subtract from the Quality anchor: W_SIGNAL×(100−Signals). The
+ *  ONLY term besides Quality in the Health Score — a display split of the same stored
+ *  Quality/Signals the engine already published, never a recomputed number. */
+export function flagsDragOf(signals: number): number {
+  return W_SIGNAL * (100 - signals);
 }
-
-// ── score composition (Overview health card) — anchor + deductions ──────────────
-// The published model, NOT three peers: Quality is the ANCHOR; Structure & Signals are
-// penalty-only (start 100, only subtract). The engine's formula (portfolio-spec 1.0):
-//   PHS = Quality − 0.30×(100−Structure) − 0.20×(100−Signals), then coverage ceiling.
-// This decomposes the ALREADY-PUBLISHED snapshot into that story so the card shows WHY
-// 66 lands at 59 — it never recomputes the score (phs/quality/structure/signals are read
-// verbatim; the drags are a display split of the same stored numbers).
-const W_STRUCT = 0.3; // Structure penalty weight (mirrors the engine's K.W_STRUCT)
-const W_SIGNAL = 0.2; // Signals penalty weight (mirrors the engine's K.W_SIGNAL)
 
 export interface ScoreBreakdown {
   quality: number; // the anchor — where the score starts
-  constructionDrag: number; // 0.30×(100−structure) — points Structure took off (≥0)
-  flagsDrag: number; // 0.20×(100−signals) — points Signals took off (≥0; 0 = no red flags)
-  coverageDrag: number; // extra points the coverage ceiling held back (0 unless it binds)
-  composite: number; // the published PHS the deductions land on
+  flagsDrag: number; // 0.20×(100−signals) — the ONLY deduction in Health (0 = no red flags)
+  health: number; // the published Health Score the deduction lands on
 }
 
-/** Decompose the published PHS into anchor + deductions. Returns null when the book
- *  isn't evaluable (no scored holdings / no PHS) — the card shows its building state then.
- *  By construction quality − constructionDrag − flagsDrag − coverageDrag = composite. */
+/** Decompose the published Health Score into anchor − the one flags deduction. Returns null
+ *  when the book isn't evaluable (no scored holdings). By construction quality − flagsDrag ≈
+ *  health. Nothing about construction or coverage touches this — that is the whole v1.2 point. */
 export function scoreBreakdown(s: PortfolioSnapshot): ScoreBreakdown | null {
-  if (s.phs == null || s.quality == null) return null;
-  const constructionDrag = W_STRUCT * (100 - s.structure);
-  const flagsDrag = W_SIGNAL * (100 - s.signals);
-  // When the coverage ceiling binds, the published phs sits below the raw quality−drags
-  // read; surface that gap as its own honest deduction so the arithmetic still lands on phs.
-  const coverageDrag = s.ceilingApplied && s.phsRaw != null ? Math.max(0, s.phsRaw - s.phs) : 0;
-  return { quality: s.quality, constructionDrag, flagsDrag, coverageDrag, composite: s.phs };
+  const h = s.healthRead;
+  if (!h || h.value == null || h.quality == null) return null;
+  return { quality: h.quality, flagsDrag: flagsDragOf(h.signals), health: h.value };
 }

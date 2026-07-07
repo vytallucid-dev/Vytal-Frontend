@@ -5,13 +5,19 @@
 //   GET /api/v1/me/holdings    → HoldingsResponse (materialized positions + live read)
 //
 // The snapshot is READ-ONLY: every score / pillar / penalty / coverage figure is
-// computed server-side (portfolio-spec 1.0) and rendered as-is. The frontend NEVER
+// computed server-side (portfolio-spec 1.1) and rendered as-is. The frontend NEVER
 // recomputes a score, penalty or PHS weight. Position display weights and P&L are
 // tracker arithmetic (value share, current − invested) — not PHS internals.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** PHS band scale (A.9) — distinct from the stock condition scale. */
 export type PhsBand = "Strong" | "Steady" | "Mixed" | "Fragile" | "Weak";
+
+/** Copy-only tiers (portfolio-spec 1.1, Change 2). STORAGE + Part B copy selector — never
+ *  a score input (the PHS is byte-identical with or without them). structureTier from
+ *  holding count N; capitalTier from total book value. */
+export type StructureTier = "Starter" | "Building" | "Established";
+export type CapitalTier = "Modest" | "Moderate" | "Substantial";
 
 /** Fired portfolio finding tone (drives colour; rendered descriptive, never advice). */
 export type PfTone = "Constructive" | "Neutral" | "Caution" | "Concern";
@@ -28,7 +34,7 @@ export interface PfFinding {
 }
 
 // ── deduction ledgers (Structure + Signals) — the engine's penalty tables, persisted
-//    verbatim (portfolio-spec 1.0 A.6/A.7). The Health tab RENDERS these; it never
+//    verbatim (portfolio-spec 1.1 A.6/A.7). The Health tab RENDERS these; it never
 //    recomputes a penalty. Each entry's `points` is the positive magnitude subtracted
 //    from that pillar's 100 floor. Structure/Signals are penalty-only, so a book with
 //    an empty ledger simply took nothing off (calm, not blank).
@@ -59,36 +65,85 @@ export interface SignalsDeduction {
   points: number;
 }
 
-/** The pre-computed Portfolio Health Score snapshot. All numeric fields are numbers
- *  (or null where the engine returns null — e.g. quality/phs when construction-only). */
+// ─────────────────────────────────────────────────────────────────────────────
+// TWO-READ CONTRACT (portfolio-spec 1.2 — DECOUPLING) — one snapshot, two independent reads:
+//   • constructionRead — ALWAYS present. Standalone Structure (full strength) + its band +
+//     PC/PB findings + tier context. (Needs zero scored holdings.)
+//   • healthRead — NULLABLE (present only when scoredWeight > 0). The Health Score (= Quality
+//     − 0.20×(100−Signals), TRUE/UNCAPPED — no structure term, no ceiling) + band, Quality,
+//     Signals, a Provisional tag, pillarProfile + lensProfile, and PQ/PS/PX/PV findings.
+//   • headlineSlot — "health" if healthRead exists, else "construction".
+//   • coverageState — the coverage story BOTH reads reference (the honesty layer for Health).
+// The FE renders these verbatim; it never recomputes a score, penalty, weight or number.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Which read leads the surface: the health number when there's a scored book, else the
+ *  construction read (a 0-scored book is a construction read only). */
+export type HeadlineSlot = "health" | "construction";
+
+/** Construction band — a display band over the (already-computed) Structure pillar.
+ *  ≥90 Well-built · 75–89 Solid · 60–74 Concentrated · 40–59 Lopsided · <40 Fragile. */
+export type ConstructionBand = "Well-built" | "Solid" | "Concentrated" | "Lopsided" | "Fragile";
+
+/** The coverage story both reads reference. Weights are from the frozen snapshot; counts
+ *  are a live "N of M scored" read over the current book. */
+export interface CoverageState {
+  scoredWeight: number; // 0..1 (= the snapshot's coverage, c)
+  recognizedUnscoredWeight: number; // 0..1 (large/mid, not yet scored)
+  smallUnscoredWeight: number; // 0..1 (small/micro, not yet scored)
+  scoredCount: number; // holdings with a score (live count)
+  totalCount: number; // open holdings (live count)
+  totalValue: number; // ₹ book value (denominator; lets the UI reconstruct ₹ splits)
+  unlockTrigger: boolean; // recognized-unscored capital exists → scoring it raises coverage (1.2: lifts the confidence tag, never the number)
+}
+
+/** Construction read — ALWAYS present (the book's shape; needs no scored holdings). */
+export interface ConstructionRead {
+  value: number; // Structure pillar 0..100 (verbatim; penalty-only)
+  band: ConstructionBand;
+  structureTier: StructureTier | null; // Starter | Building | Established (pre-1.1 ⇒ null)
+  capitalTier: CapitalTier | null; // Modest | Moderate | Substantial (pre-1.1 ⇒ null)
+  findings: PfFinding[]; // PC + PB — OR every fired finding when there is NO health read
+  structureLedger: StructureDeduction[]; // the S-rule evidence (nullable-defaulted upstream)
+}
+
+/** (1.2 Change 4) Book pillar means — position-weighted over scored holdings, renormalized
+ *  over scored weight (Quality's denominator). Characterizes where the quality comes from. */
+export interface PillarProfile {
+  foundation: number; // 0..100
+  momentum: number;
+  market: number;
+  ownership: number;
+}
+
+/** (1.2 Change 5) findings-CHARACTER shares of the book's fired lens findings by nature.
+ *  Shares sum to 1. null ⇔ no lens patterns fired. NOT score attribution — the UI must never
+ *  say "X% of your health is peer-relative"; it is a character read of the FINDINGS. */
+export type LensProfile = { absolute: number; peer: number; trend: number } | null;
+
+/** Health read — NULLABLE, present only when scoredWeight > 0. The Health Score (TRUE,
+ *  uncapped) and everything that explains it. null for a 0-scored (construction-only) book. */
+export interface HealthRead {
+  value: number | null; // the Health Score — TRUE / UNCAPPED (was "PHS"); present ⇒ integer
+  band: PhsBand | null;
+  quality: number | null; // the anchor
+  signals: number; // penalty-only — the ONLY term in Health besides Quality
+  evaluable: boolean; // always true when this read is present
+  provisional: boolean; // (1.2 Change 3) coverage < 40% → "Provisional" tag (ceiling retired)
+  findings: PfFinding[]; // PQ + PS + PX + PV
+  signalsLedger: SignalsDeduction[]; // the red-flag evidence
+  pillarProfile: PillarProfile | null; // (1.2 Change 4)
+  lensProfile: LensProfile; // (1.2 Change 5) null ⇔ no lens patterns fired
+}
+
+/** The pre-computed Portfolio Health Score snapshot, presentation-split into two named
+ *  reads over the SAME stored values (no recompute; byte-identical to the flat shape). */
 export interface PortfolioSnapshot {
   id: string;
-  // headline
-  phs: number | null; // published integer; null ⇒ construction-only (no scored holdings)
-  phsRaw: number | null; // pre-ceiling
-  band: PhsBand | null;
-  provisional: boolean; // coverage < 0.40
-  evaluable: boolean; // false ⇔ coverage 0 (no scored holdings)
-  ceilingApplied: boolean; // did the coverage ceiling bind the score down?
-  ceilingValue: number | null; // ceiling in force; null when coverage ≥ 0.80
-  // pillars — Quality (anchor) · Structure + Signals (penalty-only)
-  quality: number | null; // null ⇔ not evaluable
-  structure: number;
-  signals: number;
-  // coverage + bucket value splits (the capital-across-health safeguard)
-  coverage: number; // 0..1 (share of book by value that is scored)
-  totalValue: number;
-  scoredValue: number;
-  recognizedUnscoredValue: number;
-  smallUnscoredValue: number;
-  // fired findings (Part B)
-  firedFindings: PfFinding[];
-  // deduction ledgers (A.6/A.7) — the concrete "why construction/flags cost you points".
-  // Rendered by the Health tab; harmless (unused) elsewhere. Nullable on the wire for
-  // pre-ledger snapshots → consumers default to [].
-  structureLedger: StructureDeduction[];
-  signalsLedger: SignalsDeduction[];
-  // provenance
+  headlineSlot: HeadlineSlot;
+  coverageState: CoverageState;
+  constructionRead: ConstructionRead; // ALWAYS present
+  healthRead: HealthRead | null; // null ⇔ scoredWeight = 0
   constantVersion: string;
   asOf: string; // ISO
 }

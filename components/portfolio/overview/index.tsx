@@ -16,7 +16,7 @@ import { Upcoming } from "./upcoming";
  * Portfolio OVERVIEW — the synthesizing home. Tracker-first (the money leads), with
  * health prominent in position two as a rich summary that HANDS OFF to the Health
  * tab. Everything here is READ over the pre-computed snapshot + holdings; no score,
- * penalty or PHS weight is computed client-side. Themed to the live stock-screener
+ * penalty or health weight is computed client-side. Themed to the live stock-screener
  * surface (SectionEyebrow rhythm · Panel cards · mono/serif split).
  */
 export function OverviewTab({

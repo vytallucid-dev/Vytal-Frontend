@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { LensPatternPill, PILLAR_META } from "@/components/stock-detail/health/shared";
 import type { PillarKey } from "@/types/health";
 import type { Holding, PortfolioSnapshot } from "@/types/portfolio";
-import { STOCK_BAND_LABEL, holdingHealthColor } from "../lib";
+import { STOCK_BAND_LABEL, holdingHealthColor, stockHealthHref } from "../lib";
 import { type HoldingRank, flaggedSymbols, rankedHoldings } from "./lib";
 
 const CARD = "rounded-xl border border-line bg-surface-1 p-3 sm:p-4";
@@ -146,32 +147,40 @@ function HoldingRow({ rank }: { rank: HoldingRank }) {
       className="overflow-hidden rounded-lg border border-line bg-surface-1"
       style={attention ? { borderLeftColor: accent, borderLeftWidth: 3 } : undefined}
     >
-      <button
-        type="button"
-        onClick={() => canExpand && setOpen((o) => !o)}
-        className={cn(
-          "flex w-full items-center gap-3 px-3 py-2.5 text-left sm:px-4",
-          canExpand ? "cursor-pointer hover:bg-surface-2" : "cursor-default",
-        )}
-      >
-        <span className="num w-11 shrink-0 text-right text-[12px] text-ink2">{(h.weight * 100).toFixed(1)}%</span>
-        <span className="num w-24 shrink-0 truncate text-[13px] font-semibold text-ink sm:w-28">{h.symbol}</span>
-        <span className="hidden w-32 shrink-0 items-center gap-2 text-[12px] sm:flex">
-          <span className="size-2 shrink-0 rounded-full" style={{ background: color }} />
-          <span className="text-ink2">{h.band ? STOCK_BAND_LABEL[h.band] : "Unscored"}</span>
-          {h.health != null && (
-            <span className="num font-medium" style={{ color }}>
-              {h.health}
-            </span>
+      <div className="flex items-stretch">
+        <button
+          type="button"
+          onClick={() => canExpand && setOpen((o) => !o)}
+          className={cn(
+            "flex flex-1 items-center gap-3 px-3 py-2.5 text-left sm:px-4",
+            canExpand ? "cursor-pointer hover:bg-surface-2" : "cursor-default",
           )}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[12px] text-ink3">{rowState(rank)}</span>
-        {canExpand && (
-          <Icons.caretDown
-            className={cn("size-4 shrink-0 text-ink3 transition-transform", open && "rotate-180")}
-          />
-        )}
-      </button>
+        >
+          <span className="num w-11 shrink-0 text-right text-[12px] text-ink2">{(h.weight * 100).toFixed(1)}%</span>
+          <span className="font-display w-24 shrink-0 truncate text-[13px] font-semibold text-ink sm:w-28">{h.symbol}</span>
+          <span className="hidden w-32 shrink-0 items-center gap-2 text-[12px] sm:flex">
+            <span className="size-2 shrink-0 rounded-full" style={{ background: color }} />
+            <span className="text-ink2">{h.band ? STOCK_BAND_LABEL[h.band] : "Unscored"}</span>
+            {h.health != null && (
+              <span className="num font-medium" style={{ color }}>
+                {h.health}
+              </span>
+            )}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12px] text-ink3">{rowState(rank)}</span>
+          {canExpand && (
+            <Icons.caretDown className={cn("size-4 shrink-0 text-ink3 transition-transform", open && "rotate-180")} />
+          )}
+        </button>
+        {/* link-out — the row leads somewhere (Part D): this stock's health page */}
+        <Link
+          href={stockHealthHref(h.symbol)}
+          title={`Open ${h.symbol} health`}
+          className="grid shrink-0 place-items-center border-l border-line px-3 text-ink3 transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <Icons.arrowUpRight className="size-3.5" />
+        </Link>
+      </div>
       {open && canExpand && (
         <div className="border-t border-line px-3 sm:px-4">
           <HoldingEvidence symbol={h.symbol} />
