@@ -33,28 +33,47 @@ import { Kicker } from "./shared";
 /** The two lenses over the same chart. */
 export type ChartLens = "value" | "returns";
 
-// The DEEPEST honest range is PER-BOOK, and the backend already knows it (meta.maxRange):
+// ── TWO INDEPENDENT HONESTY GATES ON THE RANGE PICKER ───────────────────────────────────────────
+//
+// (1) STORE DEPTH — the DEEPEST honest range is PER-BOOK, and the backend already knows it
+//     (meta.maxRange):
 //   • "ALL"  — a stock-only book, whose equity depth comes from daily_prices (not the 4-year weekly
-//              store) and can reach further back than 4 years → "All" genuinely is all, so it renders.
+//              store) and can reach further back than 4 years → "All" genuinely is all.
 //   • "4Y"   — a blended book: add any non-stock and the series caps at 4y (the weekly store is
-//              trimmed to 4y by a DB trigger), so "All" is dropped and 4Y is the ceiling.
-// The picker changing with the book is the honest signal — not a bug, and never a flat guess.
-const ALL_PERIODS: { key: string; days: number | null }[] = [
+//              trimmed to 4y by a DB trigger), so the whole-series button must NOT say "All".
+//   So the whole-series option is LABELLED by depth: "All" (stock-only — it truly is the full
+//   history) vs "Max" (blended — "everything we hold", never claiming to be all of it). It is
+//   ALWAYS present and ALWAYS enabled: it is whatever exists, so it cannot overclaim.
+//
+// (2) DATA SPAN — a fixed window is only OFFERED when the series actually REACHES it. A 4-day book
+//     under a "4Y" button is a label that overclaims the data by three orders of magnitude; the
+//     line doesn't change, only the claim above it does. So each fixed window is enabled iff
+//     spanDays >= its days, and a book younger than 1M has every fixed window greyed with only
+//     the whole-series option live. Span-driven: as history accrues they light up on their own
+//     (1M at ≥30d, 6M at ≥182d…) with no future code change. On a data-rich book (years of NAV)
+//     every window clears its threshold, so this gate is a NO-OP there.
+//
+// The two gates are orthogonal: (1) is about how deep our STORE goes, (2) about how old this BOOK
+// is. Both must pass for a button to be live.
+const FIXED_PERIODS: { key: string; days: number }[] = [
   { key: "1M", days: 30 },
   { key: "6M", days: 182 },
   { key: "1Y", days: 365 },
   { key: "3Y", days: 1095 },
   { key: "4Y", days: 1461 },
-  { key: "All", days: null },
 ];
-/** Visible presets for a book whose series honestly reaches `maxRange`: "ALL" keeps the "All"
- *  button, anything else (blended → "4Y") drops it. Undefined (meta not in yet) is conservative. */
-function periodsFor(maxRange: string | undefined): { key: string; days: number | null }[] {
-  return maxRange === "ALL" ? ALL_PERIODS : ALL_PERIODS.slice(0, 5);
+
+/** The whole-series option's key — gate (1). "All" only when the book's depth honestly IS all. */
+function wholeSeriesKey(maxRange: string | undefined): string {
+  return maxRange === "ALL" ? "All" : "Max";
 }
-/** Default preset: the whole history ("All") when it's honestly offered, else the 4Y ceiling. */
-function defaultPeriod(maxRange: string | undefined): string {
-  return maxRange === "ALL" ? "All" : "4Y";
+
+/** The visible presets: the fixed windows + the whole-series option, which is ALWAYS present.
+ *  (It previously vanished on a blended book, leaving "4Y" to double as "show everything" — which
+ *  is precisely the label that overclaims on a young book, and would leave a <1M book with NO
+ *  selectable range once gate (2) applies.) */
+function periodsFor(maxRange: string | undefined): { key: string; days: number | null }[] {
+  return [...FIXED_PERIODS, { key: wholeSeriesKey(maxRange), days: null }];
 }
 
 const NIFTY_COLOR = "var(--ctx)"; // muted blue-grey reference line
@@ -112,6 +131,7 @@ export function NavChart({
   compact = false,
   brokerGap,
   maxRange,
+  accountId,
 }: {
   series: NavPoint[];
   range?: { start: string | null; end: string | null };
@@ -123,21 +143,49 @@ export function NavChart({
   compact?: boolean;
   /** (Ruling C) The broker-linked holdings the ledgered series can't reach, from the NAV meta.
    *  When non-zero, the chart discloses the gap — the series covers less than the overview, and
-   *  says so. `null`/absent ⇒ no broker holdings ⇒ no disclosure. */
+   *  says so. `null`/absent ⇒ no broker holdings ⇒ no disclosure. On an account chart this is the
+   *  ACCOUNT's gap (zero for a manual book), never the whole book's. */
   brokerGap?: BrokerExcluded | null;
   /** The book's honest deepest range (NAV meta): "ALL" (stock-only) offers the "All" button; "4Y"
    *  (blended) drops it. Drives the uncontrolled picker + its default. Absent ⇒ conservative (no All). */
   maxRange?: string;
+  /** ★ THE CRITICAL PAIRING. When set (the account chart), the chart's INTERNAL TWR + benchmark
+   *  hooks scope to THIS account — so the Returns (TWR) lens and the vs-Nifty overlay measure the
+   *  SAME account as the `series` value line. Absent ⇒ whole-book, exactly as before (Overview /
+   *  Performance / Dashboard). A per-account value line with a whole-book overlay would put two
+   *  different populations on one chart — the incoherence this prop exists to prevent. */
+  accountId?: string;
 }) {
   // CONTROLLED when a `range` is supplied (the Performance tab owns one period selector that
   // drives the whole tab): the chart hides its own period buttons and slices to the parent's
-  // window. UNCONTROLLED (Overview) keeps its internal 1M/6M/1Y/3Y/4Y selector.
+  // window — so NEITHER the internal selector NOR its span gating applies there. UNCONTROLLED
+  // (Overview / account) keeps its internal selector: the fixed windows + the always-valid
+  // whole-series option, each fixed one gated by the book's real span.
   const controlled = range !== undefined;
   const [lens, setLens] = useState<ChartLens>(defaultLens);
-  // Uncontrolled (Overview): the picker + its default come from the book's honest maxRange. Available
+  // Uncontrolled (Overview / account): the picker comes from the book's honest maxRange. Available
   // at mount (this chart only renders once NAV data — and its meta — has arrived).
-  const [period, setPeriod] = useState(() => defaultPeriod(maxRange));
+  const wholeKey = wholeSeriesKey(maxRange);
   const periods = periodsFor(maxRange);
+  // The WHOLE SERIES' real span (first → last point) — gate (2). Measured off the DATA, never off
+  // the selected range label, so the picker can never offer a window the book hasn't lived through.
+  // NOTE: distinct from `spanDays` further down, which is the span of the VISIBLE (sliced) window
+  // and drives axis date formatting only. This one is the book's age; that one is the view's width.
+  const seriesSpanDays =
+    series.length >= 2
+      ? Math.round((Date.parse(series[series.length - 1].date) - Date.parse(series[0].date)) / 86_400_000)
+      : 0;
+  /** Is this window honest for this book? The whole-series option (days null) always is — it is
+   *  whatever exists. A fixed window needs the span to actually reach it. */
+  const rangeEnabled = (days: number | null) => days == null || seriesSpanDays >= days;
+  // Default to the whole-series option: the honest "show everything" view, ALWAYS valid whatever
+  // exists — so a young book opens correctly with no range special-casing, and a mature one opens
+  // on its full history rather than under a fixed label that may outrun the data.
+  const [period, setPeriod] = useState(wholeKey);
+  // Guard: a selection that no longer fits the span, or a whole-series key that changed with the
+  // book's depth (meta arriving late), falls back to the whole-series option.
+  const picked = periods.find((p) => p.key === period);
+  const effPeriod = picked && rangeEnabled(picked.days) ? period : wholeKey;
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [benchmark, setBenchmark] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -155,8 +203,10 @@ export function NavChart({
   const benchOn = benchmark && showBenchmarkToggle;
 
   // Returns needs TWR; the comparison additionally needs the Nifty series. Both lazy.
-  const twrQ = usePortfolioTwr(returnsMode);
-  const benchQ = usePortfolioBenchmark(benchOn);
+  // ★ SCOPED BY `accountId` — so the Returns lens and the vs-Nifty overlay are the SAME account as
+  //   the `series` value line above (whole-book when accountId is absent, exactly as before).
+  const twrQ = usePortfolioTwr(returnsMode, accountId);
+  const benchQ = usePortfolioBenchmark(benchOn, accountId);
 
   // Client-side slice for the selectors — honest-short: a window younger than the history
   // simply returns fewer points (never padded).
@@ -170,12 +220,15 @@ export function NavChart({
       if (end) w = w.filter((p) => p.date <= end);
       return w.length >= 2 ? w : series.slice(-2);
     }
-    const days = ALL_PERIODS.find((p) => p.key === period)?.days ?? null;
+    // effPeriod, not period — a window the span can't honestly support never slices the series.
+    // Read off the static FIXED_PERIODS: the whole-series key ("All"/"Max") isn't in it, so it
+    // falls through to null = everything we have.
+    const days = FIXED_PERIODS.find((p) => p.key === effPeriod)?.days ?? null;
     if (days == null) return series;
     const cutoff = isoMinusDays(series[series.length - 1].date, days);
     const w = series.filter((p) => p.date >= cutoff);
     return w.length >= 2 ? w : series.slice(-2); // keep the chart drawable
-  }, [series, period, controlled, range]);
+  }, [series, effPeriod, controlled, range]);
 
   const n = sliced.length;
   const dates = useMemo(() => sliced.map((p) => p.date), [sliced]);
@@ -355,19 +408,30 @@ export function NavChart({
           {/* internal period selector — hidden when a parent drives the window (controlled) */}
           {!controlled && (
             <div className="flex gap-0.5 rounded-lg border border-line2 bg-surface-2 p-0.5">
-              {periods.map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => { setPeriod(p.key); setActiveIdx(null); }}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    period === p.key ? "bg-surface-3 text-ink" : "text-ink3 hover:text-ink2",
-                  )}
-                >
-                  {p.key}
-                </button>
-              ))}
+              {periods.map((p) => {
+                // Greyed + unclickable when the book hasn't lived through this window. It enables
+                // itself the day the span reaches it — no future code change.
+                const enabled = rangeEnabled(p.days);
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() => { setPeriod(p.key); setActiveIdx(null); }}
+                    title={enabled ? undefined : "Not enough history yet for this range"}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      !enabled
+                        ? "cursor-not-allowed text-ink3/40"
+                        : effPeriod === p.key
+                          ? "bg-surface-3 text-ink"
+                          : "text-ink3 hover:text-ink2",
+                    )}
+                  >
+                    {p.key}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -375,7 +439,11 @@ export function NavChart({
 
       {n < 2 ? (
         <div className="flex h-[180px] items-center justify-center rounded-xl border border-dashed border-line2 bg-surface-2/50 px-6 text-center text-[12px] text-ink3">
-          Only {n} point in this window yet — pick a longer period.
+          {/* Never advise a longer period when there ISN'T one: on the whole-series option this is
+              already everything we have, so the honest line is that the history is still building. */}
+          {effPeriod === wholeKey
+            ? `Only ${n} point so far — a line needs two. It draws itself as this book's history grows.`
+            : `Only ${n} point in this window yet — pick a longer period.`}
         </div>
       ) : returnsPending ? (
         <div className="h-[210px] w-full animate-pulse rounded-xl bg-surface-2/50 sm:h-[240px]" />

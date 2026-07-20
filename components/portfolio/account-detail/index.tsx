@@ -12,6 +12,9 @@ import { useAccounts, useBrokerCatalog, usePatchAccount } from "@/lib/api/hooks/
 import { useBrokerStatus } from "@/lib/api/hooks/use-brokers";
 import { useHoldings } from "@/lib/api/hooks/use-holdings";
 import { useTransactions } from "@/lib/api/hooks/use-transactions";
+import { usePortfolioNav } from "@/lib/api/hooks/use-portfolio-nav";
+import { usePortfolioTwr } from "@/lib/api/hooks/use-portfolio-twr";
+import { usePortfolioBenchmark } from "@/lib/api/hooks/use-portfolio-benchmark";
 import { accountKind, accountStatsMap, brokerLabel, countLabel } from "@/components/portfolio/accounts/lib";
 import { type AllocationMode, type HoldingSortKey, type SortDir } from "@/components/portfolio/lib";
 import { LedgerTable } from "@/components/portfolio/transactions/ledger-table";
@@ -21,7 +24,8 @@ import { PositionsTable } from "@/components/portfolio/holdings/positions-table"
 import { Attribution } from "@/components/portfolio/performance/attribution";
 import { ReturnsBreakdown } from "@/components/portfolio/performance/breakdown";
 import { ReturnsSummary } from "@/components/portfolio/performance/summary";
-import { dividendIncome } from "@/components/portfolio/performance/lib";
+import { dividendIncome, windowReturns } from "@/components/portfolio/performance/lib";
+import { NavChart } from "@/components/portfolio/overview/nav-chart";
 import { AccountHeader } from "./header";
 import { StatedActions } from "./stated-actions";
 import { VerifiedActions } from "./verified-actions";
@@ -30,23 +34,30 @@ import { cashflowsFromLedger, computeXirr } from "./xirr";
 // ─────────────────────────────────────────────────────────────────────────────
 // ACCOUNT DETAIL — one book, on its own, as a SCOPED MINI-PORTFOLIO. One scroll, no tab bar:
 // the portfolio's Holdings + Performance surfaces reused verbatim, each fed this account's slice
-// (`accountHoldings = holdings.filter(h => h.accountId === id)`). Five surfaces:
-//   1 · Returns scalars — Total return, XIRR (client-computed over THIS book's ledger), Current /
-//       Invested, Day change ₹. (ReturnsSummary in `scoped` mode.)
-//   2 · Allocation donut — composition of just this account (its own 100%). (AllocationLayer.)
-//   3 · Holdings — the RICH positions table in `scoped` mode: full cost-basis expand, fund NAV
+// (`accountHoldings = holdings.filter(h => h.accountId === id)`). Six surfaces:
+//   1 · Returns scalars — Total return, XIRR (client-computed over THIS book's ledger), the account's
+//       TWR + vs-Nifty (backend account-scoped /twr + /benchmark), Current / Invested, Day change ₹.
+//       (ReturnsSummary in `scoped` mode.)
+//   2 · Value & returns over time — the shared NavChart, fed THIS account's NAV series AND scoped by
+//       `accountId`, so the value line, the Returns (TWR) lens and the vs-Nifty overlay are ALL this
+//       one account — never a whole-book overlay on an account value line. Empty ledger ⇒ honest empty
+//       state; a young book ⇒ the honest short/sparse line (nothing synthesized).
+//   3 · Allocation donut — composition of just this account (its own 100%). (AllocationLayer.)
+//   4 · Holdings — the RICH positions table in `scoped` mode: full cost-basis expand, fund NAV
 //       sparkline, class chips, realized P&L per row, account-RELATIVE weight — and ZERO health.
-//   4 · Attribution — this account's contributors / detractors. (Attribution.)
-//   5 · Returns breakdown — P&L by sector/class + realized/unrealized, fed per-account inputs.
+//   5 · Attribution — this account's contributors / detractors. (Attribution.)
+//   6 · Returns breakdown — P&L by sector/class + realized/unrealized, fed per-account inputs.
 //
 // THE LAW OF THIS PAGE — HEALTH-FREE. No score / band / pillar / finding / coverage-of-health /
 // red-flag / health colour anywhere. The rich table is mounted `scoped`, which drops its Health
 // column, band-dot colour, "awaiting score" note and the entire HealthMini pillar block (so
-// `useStockHealth` is never even fetched); the four other surfaces read only money fields.
+// `useStockHealth` is never even fetched); every other surface (chart included) reads only money /
+// return fields — NAV, TWR and the Nifty benchmark carry no health.
 //
-// OMITTED, on purpose (no per-account source — never faked): the value-over-time chart, TWR,
-// vs-Nifty alpha and best/worst-day are all whole-book, series-based measures with no per-account
-// NAV series. They stay on the portfolio Performance tab; here the day-change ₹ is the "today" read.
+// STILL WHOLE-BOOK-ONLY, by choice: best/worst-day. The day-change ₹ tile is this book's "today"
+// read. The broker-gap note the chart draws is THIS account's (a manual book = zero gap = no note);
+// a Verified book has no dated ledger, so its NAV series is empty and the chart is the honest empty
+// state — the broker-feed note below carries the "why".
 //
 // Two composed shapes, still honest: Verified (broker feed) keeps its "no transaction history"
 // note; Stated (manual) keeps its own read-only ledger below the surfaces.
@@ -260,6 +271,22 @@ function ScopedPortfolio({
   sort: { key: HoldingSortKey; dir: SortDir };
   onSort: (key: HoldingSortKey) => void;
 }) {
+  // ── This account's OWN value / return / benchmark series (backend account-scoped — reconciles to the
+  //    paisa with the header's current value). The value line, the Returns (TWR) lens and the vs-Nifty
+  //    overlay are ALL this one account, never the whole book. TWR + benchmark eager: the summary's TWR
+  //    and vs-Nifty tiles need them up front (the same account-scoped queries the chart's internal
+  //    overlay issues, so React Query serves both from one request each). ──
+  const navQ = usePortfolioNav(account.id);
+  const twrQ = usePortfolioTwr(true, account.id);
+  const benchQ = usePortfolioBenchmark(true, account.id);
+  const navSeries = navQ.data?.series ?? [];
+  // The account's own TWR + alpha over its FULL NAV window — feeds the scoped summary's TWR / vs-Nifty
+  // tiles. < 2 points ⇒ windowReturns yields nulls (honest "needs more history"), never a fabricated %.
+  const win = windowReturns(navSeries.map((p) => p.date), twrQ.data?.series, benchQ.data?.series);
+  // The ACCOUNT's broker gap (NAV meta) — zero for a manual book (no disclosure); a linked book's own
+  // connection only. NEVER the whole-book gap.
+  const scopedBrokerGap = navQ.data?.meta.brokerHoldingsExcluded;
+
   // ── Same-population money (the honesty the by-account chart uses): a PRICED row feeds both the
   //    invested and current sums; an unpriced row feeds neither. Current = Σ marketValue over priced
   //    rows — byte-for-byte the header's "Value" (accountStatsMap). ──
@@ -322,8 +349,8 @@ function ScopedPortfolio({
 
   return (
     <>
-      {/* 1 · Returns — the four honest per-account scalars */}
-      <SectionEyebrow label="This account's returns" pill="return · XIRR" icon={Icons.trendUp} accent="var(--success)" />
+      {/* 1 · Returns — the honest per-account scalars (now incl. this account's TWR + vs-Nifty) */}
+      <SectionEyebrow label="This account's returns" pill="return · XIRR · TWR · vs Nifty" icon={Icons.trendUp} accent="var(--success)" />
       <Reveal>
         <ReturnsSummary
           scoped
@@ -332,16 +359,48 @@ function ScopedPortfolio({
           xirr={xirr}
           xirrLoading={txnsLoading}
           dayChange={dayChange}
+          win={win}
+          periodLoading={navQ.isLoading || twrQ.isLoading || benchQ.isLoading}
         />
       </Reveal>
 
-      {/* 2 · Allocation — composition scoped to this account (its own 100%) */}
+      {/* 2 · Value & returns over time — SCOPED to this account. The value line, the Returns (TWR) lens
+          and the vs-Nifty overlay are ALL this one account (accountId → the chart's internal overlay).
+          Empty ledger ⇒ honest empty state; a young book ⇒ the honest short/sparse line. */}
+      <SectionEyebrow label="This account's value over time" pill="₹ value · % return · vs Nifty" icon={Icons.chartLine} accent="var(--p-mkt)" />
+      <Reveal>
+        <div className="overflow-hidden rounded-xl border border-line bg-surface-1 p-5 sm:p-6">
+          {navQ.isLoading ? (
+            <div className="h-[210px] w-full animate-pulse rounded-xl bg-surface-2/50 sm:h-[240px]" />
+          ) : navSeries.length > 0 ? (
+            <NavChart
+              series={navSeries}
+              accountId={account.id}
+              brokerGap={scopedBrokerGap}
+              maxRange={navQ.data?.meta.maxRange}
+            />
+          ) : (
+            // Empty NAV series (a Verified book has no dated ledger; an empty book has nothing to chart).
+            // Honest empty state — never a broken chart, never a synthesized curve.
+            <div className="flex h-[200px] flex-col items-center justify-center rounded-xl border border-dashed border-line2 bg-surface-2/50 px-6 text-center">
+              <Icons.chartLine weight="duotone" className="mb-2 size-7 text-ink3 opacity-70" />
+              <p className="text-[13px] font-medium text-ink2">No value history yet</p>
+              <p className="mt-1 max-w-md text-[11.5px] text-ink3">
+                This book has no dated ledger to chart from — its value over time begins once it records transactions.
+                Nothing is back-filled or estimated.
+              </p>
+            </div>
+          )}
+        </div>
+      </Reveal>
+
+      {/* 3 · Allocation — composition scoped to this account (its own 100%) */}
       <SectionEyebrow label="How this account is spread" pill="by value" icon={Icons.sector} accent="var(--p-own)" />
       <Reveal>
         <AllocationLayer holdings={accountHoldings} cut={cut} onCutChange={onCut} />
       </Reveal>
 
-      {/* 3 · Holdings — the rich table, health-free & account-scoped */}
+      {/* 4 · Holdings — the rich table, health-free & account-scoped */}
       <SectionEyebrow
         label="Holdings"
         pill={countLabel(accountHoldings.length, "holding")}
@@ -361,13 +420,13 @@ function ScopedPortfolio({
         />
       </Reveal>
 
-      {/* 4 · Attribution — this account's contributors / detractors (shares renormalize to the slice) */}
+      {/* 5 · Attribution — this account's contributors / detractors (shares renormalize to the slice) */}
       <SectionEyebrow label="What drove this account" pill="by ₹ · share of net" icon={Icons.scales} accent="var(--p-own)" />
       <Reveal>
         <Attribution holdings={accountHoldings} />
       </Reveal>
 
-      {/* 5 · Returns breakdown — P&L by sector/class + realized/unrealized, all per-account */}
+      {/* 6 · Returns breakdown — P&L by sector/class + realized/unrealized, all per-account */}
       <SectionEyebrow label="Returns breakdown" pill="realized · unrealized · by sector / class" icon={Icons.coins} accent="var(--p-found)" />
       <Reveal>
         <ReturnsBreakdown holdings={accountHoldings} totals={totals} dividends={dividends} />

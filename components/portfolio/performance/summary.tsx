@@ -76,8 +76,10 @@ export function ReturnsSummary({
   totals: HoldingsTotals;
   xirr: XirrResponse | undefined;
   xirrLoading: boolean;
-  /** the whole-book period window (TWR / alpha / best-worst). Absent in `scoped` mode — those measures
-   *  are portfolio-level (no per-account NAV series exists) and are not shown per account. */
+  /** The return window (TWR / alpha / best-worst). Whole-book mode: the period-selected window. `scoped`
+   *  mode: computed over the ACCOUNT's full NAV dates (the account's own TWR + vs-Nifty now exist —
+   *  backend account-scoped) so the TWR + vs-Nifty tiles pair with the account's value line. Best/worst
+   *  day stays a whole-book-only read. */
   win?: WindowReturns;
   bestWorst?: { best: DayReturn; worst: DayReturn } | null;
   periodLabel?: string;
@@ -87,9 +89,10 @@ export function ReturnsSummary({
    *  can DISCLOSE — not reconcile — that "Current" (union) and XIRR (ledger) count different populations
    *  on a broker-linked book. Null / absent ⇒ no gap, render nothing. */
   brokerGap?: BrokerExcluded | null;
-  /** ACCOUNT-SCOPED (single account) mode: render only the tiles that are honestly per-account —
-   *  Total return, XIRR (client-computed over this account's ledger), Current/Invested, Day change ₹ —
-   *  and OMIT TWR / vs-Nifty / best-worst-day, which have no per-account source. */
+  /** ACCOUNT-SCOPED (single account) mode: the per-account tiles — Total return, XIRR (client-computed
+   *  over this account's ledger), the account's TWR + vs-Nifty (from `win`, computed over the account's
+   *  own NAV/TWR/benchmark), Current/Invested, and Day change ₹. Best/worst-day is the one measure kept
+   *  whole-book-only here (the day-change ₹ tile is this book's "today" read instead). */
   scoped?: boolean;
   /** Σ dayChangeValue over the account's priced rows — the scoped "today" ₹ signal (replaces the
    *  whole-book best/worst-day % tile). null ⇒ no priced row carried a day move. */
@@ -105,12 +108,19 @@ export function ReturnsSummary({
   const xirrPct = xirr?.xirrPct ?? null;
   const xirrNote = xirr && xirr.state !== "ok" ? XIRR_STATE_NOTE[xirr.state] ?? "Not available yet." : null;
 
-  // ── ACCOUNT-SCOPED: four honest per-account tiles, and a line saying WHY TWR / benchmark / best-worst
-  //    aren't here (they're portfolio-level — there is no per-account NAV series to compute them from). ──
+  // ── ACCOUNT-SCOPED: the honest per-account tiles. TWR + vs-Nifty now scope cleanly (backend
+  //    account-scoped /twr + /benchmark, paired with the account's own value line via `win`), so they
+  //    join the row here. Best/worst-day is the one measure kept whole-book-only; the day-change ₹ tile
+  //    is this book's "today" read. Sparse honesty: an account with < 2 NAV points has no resolvable TWR,
+  //    so `win.portfolioPct` is null and the tile reads "needs more history" — never a fabricated figure. ──
   if (scoped) {
+    // The account's TWR + alpha, over its OWN full NAV window (same source as its value line above).
+    const twrPct = win?.portfolioPct ?? null;
+    const alphaPct = win?.alphaPct ?? null;
+    const niftyPct = win?.niftyPct ?? null;
     return (
       <div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <Tile
             label="Total return"
             value={signINR(unrealized)}
@@ -123,6 +133,34 @@ export function ReturnsSummary({
             value={xirrPct != null ? signPct(xirrPct) : "—"}
             sub={xirrPct != null ? "money-weighted · annualized" : xirrNote ?? "needs this book's own ledger"}
             color={pctColor(xirrPct)}
+          />
+          {/* TWR — this account's time-weighted return (deposits/sells stripped), over its whole history.
+              Sparse (< 2 points) ⇒ "needs more history", never a fabricated number. */}
+          <Tile
+            label="TWR"
+            loading={periodLoading}
+            value={twrPct != null ? signPct(twrPct) : "—"}
+            sub={twrPct != null ? "time-weighted · since inception" : "needs more history"}
+            color={pctColor(twrPct)}
+          />
+          {/* vs Nifty 50 — the account's alpha (its TWR − Nifty over the SAME window). Same account as the
+              value line and the TWR tile — never a whole-book overlay. */}
+          <Tile
+            label="vs Nifty 50"
+            loading={periodLoading}
+            value={alphaPct != null ? signPct(alphaPct) : "—"}
+            sub={
+              niftyPct != null ? (
+                <>
+                  Nifty <span className={pctColor(niftyPct)}>{signPct(niftyPct)}</span>
+                </>
+              ) : twrPct != null ? (
+                "benchmark unavailable"
+              ) : (
+                "needs more history"
+              )
+            }
+            color={pctColor(alphaPct)}
           />
           <Tile
             label="Current / Invested"
@@ -137,9 +175,10 @@ export function ReturnsSummary({
           />
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-ink3">
-          <span className="font-medium text-ink2">XIRR</span> (money-weighted) is computed over this account&apos;s own
-          ledger and current value. Time-weighted return, the Nifty comparison and best/worst day are portfolio-level
-          measures — they need a per-account value series we don&apos;t keep, so they&apos;re shown only for your whole book.
+          <span className="font-medium text-ink2">TWR</span> (time-weighted) and the Nifty comparison strip this
+          account&apos;s deposits &amp; sells to show how its holdings performed; <span className="font-medium text-ink2">
+          XIRR</span> (money-weighted) keeps them — over this account&apos;s own ledger — to show what its timing &amp;
+          sizing earned. Best/worst day stays a whole-book read.
         </p>
       </div>
     );
