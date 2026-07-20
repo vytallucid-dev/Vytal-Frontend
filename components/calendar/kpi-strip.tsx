@@ -24,16 +24,20 @@ function KpiCard({
 }) {
   const Ic = icon;
   return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-line bg-surface-1 p-3">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border" style={tint(accent)}>
+    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-line bg-surface-1 p-2.5 sm:gap-2.5 sm:p-3">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border sm:h-8 sm:w-8" style={tint(accent)}>
         <Ic weight="duotone" className="h-4 w-4" />
       </span>
       <div className="min-w-0">
         <p className="truncate text-[10px] uppercase tracking-[0.1em] text-ink3">{label}</p>
-        <p className={muted ? "font-display text-[14px] font-semibold text-ink2 leading-tight" : "font-display text-[20px] font-semibold leading-tight text-ink"}>
+        <p className={
+          muted
+            ? "truncate font-display text-[13px] font-semibold leading-tight text-ink2 sm:text-[14px]"
+            : "truncate font-display text-[17px] font-semibold leading-tight text-ink sm:text-[20px]"
+        }>
           {value}
         </p>
-        <p className="mt-0.5 truncate text-[11px] text-ink3">{sub}</p>
+        <p className="mt-0.5 truncate text-[10.5px] text-ink3 sm:text-[11px]">{sub}</p>
       </div>
     </div>
   );
@@ -44,7 +48,7 @@ export function KpiStrip({ kpis }: { kpis: Kpis }) {
   const earningsHeld = kpis.nextHeldEarnings != null;
 
   return (
-    <div className="grid h-full grid-cols-2 grid-rows-2 gap-2.5">
+    <div className="grid h-full grid-cols-2 grid-rows-2 gap-2 sm:gap-2.5">
       {/* 1 — your holdings with events this week */}
       <KpiCard
         icon={Icons.portfolio}

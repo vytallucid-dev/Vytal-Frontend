@@ -155,7 +155,7 @@ export function MonthGrid({ events, bounds }: { events: CalEvent[]; bounds: Boun
   return (
     <div className="rounded-2xl border border-line bg-surface-1 p-3 sm:p-4">
       {/* month nav — arrows + month/year picker */}
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center justify-center gap-2">
         <button
           type="button"
           onClick={() => canPrev && setCursor((c) => startOfMonth(addMonths(c, -1)))}
@@ -187,7 +187,7 @@ export function MonthGrid({ events, bounds }: { events: CalEvent[]; bounds: Boun
       </div>
 
       {/* day cells */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {days.map((day) => {
           const dEvents = byDay.get(dayKey(day)) ?? [];
           const inMonth = isSameMonth(day, cursor);
@@ -206,7 +206,7 @@ export function MonthGrid({ events, bounds }: { events: CalEvent[]; bounds: Boun
               disabled={!has}
               aria-label={`${format(day, "d MMM")}${has ? ` — ${dEvents.length} events` : ""}`}
               className={cn(
-                "relative flex h-16 flex-col items-center gap-1 rounded-lg border p-1.5 transition-colors sm:h-20",
+                "relative flex h-16 flex-col items-center gap-1 overflow-hidden rounded-lg border p-1 transition-colors sm:h-20 sm:p-1.5",
                 has ? "cursor-pointer hover:border-line3 hover:bg-surface-2/60" : "cursor-default",
                 isSelected
                   ? "border-primary/60 bg-surface-2"
@@ -218,7 +218,7 @@ export function MonthGrid({ events, bounds }: { events: CalEvent[]; bounds: Boun
             >
               {/* held marker — a small corner star (subtle, single accent) */}
               {hasHeld && (
-                <Icons.star weight="fill" className="absolute right-1 top-1 size-2.5 text-primary" aria-hidden />
+                <Icons.star weight="fill" className="absolute right-0.5 top-0.5 size-2.5 text-primary sm:right-1 sm:top-1" aria-hidden />
               )}
 
               <span
@@ -231,11 +231,11 @@ export function MonthGrid({ events, bounds }: { events: CalEvent[]; bounds: Boun
               </span>
 
               {has && (
-                <div className="flex items-center gap-0.5">
+                <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
                   {dots.map((c, i) => (
                     <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: c }} />
                   ))}
-                  {extra > 0 && <span className="num text-[9px] font-medium text-ink3">+{extra}</span>}
+                  {extra > 0 && <span className="num text-[9px] font-medium leading-none text-ink3">+{extra}</span>}
                 </div>
               )}
             </button>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Vytal — Health history v2</title>
+<style>
+  :root{
+    --bg:#0a0c10; --card:#0f1319; --card2:#141922; --line:#1e242e; --line2:#28303b;
+    --ink:#e9edf2; --ink2:#8d97a4; --ink3:#586170;
+    --health:#5bb89a; --construction:#d9a75a;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+    --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;padding:30px 22px 90px}
+  .wrap{max-width:900px;margin:0 auto}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  .eyebrow{display:flex;align-items:center;gap:13px;margin-bottom:14px}
+  .eyebrow .ic{width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--health);font-size:13px}
+  .eyebrow h2{font-size:11.5px;letter-spacing:.13em;color:var(--ink2);font-weight:600;text-transform:uppercase}
+  .eyebrow .rule{height:1px;background:var(--line);flex:1}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:22px 24px}
+
+  /* controls row: toggle chips + period */
+  .controls{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+  .chips{display:flex;gap:7px}
+  .chip{display:flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line2);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12.5px;color:var(--ink2);user-select:none}
+  .chip .sw{width:12px;height:4px;border-radius:2px}
+  .chip.off{opacity:.4}
+  .chip.off .sw{background:var(--ink3)!important}
+  .chip .val{font-family:var(--mono);font-size:12px;margin-left:2px}
+  .period{margin-left:auto;display:flex;gap:4px}
+  .period button{font-family:var(--mono);font-size:11px;color:var(--ink3);background:none;border:1px solid transparent;border-radius:7px;padding:4px 11px;cursor:pointer}
+  .period button.on{border-color:var(--line2);color:var(--ink)}
+
+  /* story sentence — the narration */
+  .story{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin:16px 0 18px;color:var(--ink2);font-size:13.5px;line-height:1.6;font-family:var(--serif)}
+  .story b{color:var(--ink);font-weight:600;font-family:inherit}
+  .story .h{color:var(--health);font-family:var(--mono);font-weight:600;font-style:normal}
+  .story .c{color:var(--construction);font-family:var(--mono);font-weight:600;font-style:normal}
+
+  .chartbox{position:relative}
+  .chartbox svg{display:block;width:100%;overflow:visible}
+  .ylab{position:absolute;left:-2px;font-family:var(--mono);font-size:10px;color:var(--ink3);pointer-events:none}
+  .xaxis{display:flex;justify-content:space-between;margin-top:10px;padding:0 4px 0 30px;font-family:var(--mono);font-size:10px;color:var(--ink3)}
+
+  .scrubline{stroke:var(--ink3);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+  .tip{position:absolute;pointer-events:none;background:#05070a;border:1px solid var(--line2);border-radius:9px;padding:10px 12px;opacity:0;transition:opacity .1s;z-index:10;box-shadow:0 10px 30px rgba(0,0,0,.6);min-width:150px}
+  .tip .d{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-bottom:8px}
+  .tip .r{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .tip .r .sw{width:9px;height:9px;border-radius:2px}
+  .tip .r .k{color:var(--ink2);font-size:11px}
+  .tip .r .v{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:600}
+
+  /* how to read */
+  .howto{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+  .howto .t{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:9px}
+  .howto .rows{display:grid;gap:8px}
+  .howto .row{display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--ink3);line-height:1.5}
+  .howto .row .sw{width:12px;height:4px;border-radius:2px;margin-top:6px;flex-shrink:0}
+  .howto .row b{color:var(--ink2);font-weight:600}
+  .caption{color:var(--ink3);font-size:11px;margin-top:14px;font-family:var(--mono)}
+
+  .note{color:var(--ink3);font-size:12px;margin-bottom:20px;max-width:80ch}
+  .note b{color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="note">v2 — coverage removed. <b>Toggle</b> either score on/off, <b>select the window</b>, and watch the <b>story sentence</b> recompute from the window's real endpoints (describes movement, never advises). Health = area, Construction = line (the crossover-clean treatment).</p>
+
+  <div class="eyebrow"><div class="ic">◹</div><h2>How your scores have moved</h2><div class="rule"></div></div>
+
+  <div class="card">
+    <div class="controls">
+      <div class="chips">
+        <div class="chip" id="chipH" data-k="h"><span class="sw" style="background:var(--health)"></span>Health <span class="val" style="color:var(--health)" id="valH">71</span></div>
+        <div class="chip" id="chipC" data-k="c"><span class="sw" style="background:var(--construction)"></span>Construction <span class="val" style="color:var(--construction)" id="valC">83</span></div>
+      </div>
+      <div class="period" id="period">
+        <button data-w="6M">6M</button><button data-w="1Y">1Y</button><button data-w="3Y">3Y</button><button data-w="5Y" class="on">5Y</button><button data-w="MAX">Max</button>
+      </div>
+    </div>
+
+    <div class="story" id="story"></div>
+
+    <div class="chartbox" id="box">
+      <div class="ylab" style="top:0">100</div><div class="ylab" style="top:50%">50</div><div class="ylab" style="bottom:0">0</div>
+      <svg viewBox="0 0 1000 240" preserveAspectRatio="none" style="height:240px;padding-left:30px" id="svg">
+        <defs><linearGradient id="gH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5bb89a" stop-opacity=".32"/><stop offset="1" stop-color="#5bb89a" stop-opacity="0"/></linearGradient></defs>
+        <line x1="0" y1="120" x2="1000" y2="120" stroke="#1a2029" stroke-width="1"/>
+        <path id="areaH" d="" fill="url(#gH)"/>
+        <path id="lineH" d="" fill="none" stroke="#5bb89a" stroke-width="2.2"/>
+        <path id="lineC" d="" fill="none" stroke="#d9a75a" stroke-width="2.2"/>
+        <circle id="startC" r="3" fill="#d9a75a" opacity="0"/>
+        <circle id="endH" r="4" fill="#0a0c10" stroke="#5bb89a" stroke-width="2" opacity="0"/>
+        <circle id="endC" r="4" fill="#0a0c10" stroke="#d9a75a" stroke-width="2" opacity="0"/>
+        <line class="scrubline" id="scrub" x1="0" y1="0" x2="0" y2="240"/>
+        <circle id="dotH" r="4" fill="#5bb89a" opacity="0"/><circle id="dotC" r="4" fill="#d9a75a" opacity="0"/>
+      </svg>
+      <div class="tip" id="tip"></div>
+      <div class="xaxis" id="xaxis"></div>
+    </div>
+
+    <div class="howto">
+      <div class="t">How to read this</div>
+      <div class="rows">
+        <div class="row"><span class="sw" style="background:var(--health)"></span><span><b>Health</b> — the quality of the businesses in your book we can score, from 0 to 100. It answers "are the things I own sound?" It only reflects the part of your book that's individual companies.</span></div>
+        <div class="row"><span class="sw" style="background:var(--construction)"></span><span><b>Construction</b> — how well your whole book is built: concentration, breadth, balance. From 0 to 100. It answers "is this book safely put together?" — independent of the businesses' quality.</span></div>
+        <div class="row"><span class="sw" style="background:var(--line2)"></span><span>They move <b>independently</b> and are never combined. A book can hold great businesses assembled riskily (high Health, low Construction) — or the reverse. Watching them apart is the point.</span></div>
+      </div>
+      <div class="caption" id="cap">Tracking since 18 Jul 2021 · Construction from Nov 2021</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// full series (label, health, construction|null)
+const FULL = [
+  ["Jul 2021",68,null],["Nov 2021",67,88],["May 2022",66,90],["Jul 2022",64,80],
+  ["Feb 2023",58,72],["Aug 2023",55,68],["Mar 2024",62,70],["Nov 2024",68,78],
+  ["Jun 2025",70,85],["Jul 2026",71,83]
+];
+const WINDOWS={ "6M":1,"1Y":2,"3Y":6,"5Y":10,"MAX":FULL.length };
+let state={ h:true, c:true, w:"5Y" };
+
+const $=id=>document.getElementById(id);
+const W=1000,H=240,PAD=30;
+
+function windowed(){ const n=Math.min(WINDOWS[state.w],FULL.length); return FULL.slice(FULL.length-n); }
+const yOf=v=> H-(v/100*H);
+
+function pathArea(pts,key){ // key idx 1=h 2=c
+  const xs=pts.map((_,i)=> (i/(pts.length-1))*W);
+  let d=""; pts.forEach((p,i)=>{ if(p[key]==null)return; d+=(d?"L":"M")+` ${xs[i]},${yOf(p[key])} `; });
+  return {d,xs};
+}
+function areaPath(pts){ const xs=pts.map((_,i)=>(i/(pts.length-1))*W); let d="";
+  pts.forEach((p,i)=>{ d+=(d?"L":"M")+` ${xs[i]},${yOf(p[1])} `; });
+  if(d){ const lastX=xs[pts.length-1], firstX=xs[0]; d+=`L ${lastX},${H} L ${firstX},${H} Z`; } return d; }
+
+function render(){
+  const pts=windowed();
+  // lines
+  const h=pathArea(pts,1), c=pathArea(pts,2);
+  $("lineH").setAttribute("d", state.h? h.d : "");
+  $("areaH").setAttribute("d", state.h? areaPath(pts):"");
+  $("lineC").setAttribute("d", state.c? c.d : "");
+  // endpoints
+  const lastH=pts[pts.length-1][1]; $("endH").style.opacity=state.h?1:0;
+  $("endH").setAttribute("cx",h.xs[pts.length-1]); $("endH").setAttribute("cy",yOf(lastH));
+  const cIdx=pts.map(p=>p[2]).lastIndexOf(pts.slice().reverse().find(p=>p[2]!=null)?.[2]);
+  const lastCval=[...pts].reverse().find(p=>p[2]!=null);
+  if(state.c && lastCval){ const li=pts.lastIndexOf(lastCval); $("endC").style.opacity=1;
+    $("endC").setAttribute("cx",c.xs[li]); $("endC").setAttribute("cy",yOf(lastCval[2])); } else $("endC").style.opacity=0;
+  // construction start dot (where its data begins in window)
+  const firstCi=pts.findIndex(p=>p[2]!=null);
+  if(state.c && firstCi>0){ $("startC").style.opacity=1; $("startC").setAttribute("cx",c.xs[firstCi]); $("startC").setAttribute("cy",yOf(pts[firstCi][2])); } else $("startC").style.opacity=0;
+
+  // chip values (latest in window)
+  $("valH").textContent=lastH; $("valC").textContent=lastCval?lastCval[2]:"—";
+  $("chipH").classList.toggle("off",!state.h); $("chipC").classList.toggle("off",!state.c);
+
+  // xaxis
+  const xa=$("xaxis"); xa.innerHTML="";
+  const show=pts.filter((_,i)=> i===0||i===pts.length-1|| i===Math.floor(pts.length/2));
+  pts.forEach((p,i)=>{ if(i===0||i===pts.length-1||i===Math.floor((pts.length-1)/2)){ const s=document.createElement("span"); s.textContent=p[0]; xa.appendChild(s);} });
+
+  story(pts);
+}
+
+function dir(a,b){ const d=b-a; if(Math.abs(d)<=2) return {w:"held steady",n:Math.abs(d)}; return {w: d>0?"rose":"fell", n:Math.abs(d), up:d>0}; }
+
+function story(pts){
+  const first=pts[0], last=pts[pts.length-1];
+  const label = state.w==="MAX"?"Since you started tracking": `Over the last ${ {"6M":"6 months","1Y":"year","3Y":"3 years","5Y":"5 years"}[state.w] }`;
+  let parts=[];
+
+  if(state.h){
+    const d=dir(first[1],last[1]);
+    if(d.w==="held steady") parts.push(`your <span class="h">Health held steady</span> around <span class="h">${last[1]}</span>`);
+    else parts.push(`your <span class="h">Health ${d.w}</span> from <span class="h">${first[1]}</span> to <span class="h">${last[1]}</span>`);
+  }
+  // construction — use first non-null in window
+  const cFirst=pts.find(p=>p[2]!=null), cLast=[...pts].reverse().find(p=>p[2]!=null);
+  if(state.c && cFirst && cLast){
+    const d=dir(cFirst[2],cLast[2]);
+    if(d.w==="held steady") parts.push(`<span class="c">Construction stayed near</span> <span class="c">${cLast[2]}</span>`);
+    else parts.push(`<span class="c">Construction ${d.w}</span> from <span class="c">${cFirst[2]}</span> to <span class="c">${cLast[2]}</span>`);
+  }
+
+  // meaning clause — describe, never advise
+  let meaning="";
+  if(state.h && state.c && cFirst && cLast){
+    const hd=dir(first[1],last[1]).up, cd=dir(cFirst[2],cLast[2]).up;
+    const hSteady=dir(first[1],last[1]).w==="held steady", cSteady=dir(cFirst[2],cLast[2]).w==="held steady";
+    if(!hSteady && !cSteady && hd!==cd){
+      meaning = hd
+        ? " — your businesses strengthened even as the book's structure loosened."
+        : " — the book was rebuilt more soundly even as business quality softened.";
+    } else if((hSteady||!hd) && !cSteady && !cd){
+      meaning = " — the businesses you own stayed sound, but the book became more concentrated.";
+    } else if(hd && cd){
+      meaning = " — both the businesses and the way they're assembled improved.";
+    } else if(!hd && !cd && !hSteady && !cSteady){
+      meaning = " — both softened; worth understanding which holdings drove it on the Health tab.";
+    } else {
+      meaning = " — the two moved largely in step.";
+    }
+  } else if(state.h && !state.c){
+    meaning = " — this is the quality of your scoreable businesses only, not how the book is built.";
+  } else if(state.c && !state.h){
+    meaning = " — this is how your book is assembled, independent of the businesses' quality.";
+  }
+
+  const sentence = parts.length? `${label}, ${parts.join(" while ")}${meaning}` : "Select a score to see how it moved.";
+  $("story").innerHTML = sentence;
+}
+
+// interactions
+$("chipH").onclick=()=>{ if(state.h&&!state.c)return; state.h=!state.h; render(); };
+$("chipC").onclick=()=>{ if(state.c&&!state.h)return; state.c=!state.c; render(); };
+$("period").querySelectorAll("button").forEach(b=> b.onclick=()=>{
+  $("period").querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+  state.w=b.dataset.w; render();
+});
+
+// scrub tooltip
+const svg=$("svg"),tip=$("tip"),scrub=$("scrub"),dH=$("dotH"),dC=$("dotC"),box=$("box");
+svg.addEventListener('mousemove',e=>{
+  const pts=windowed(); const rect=svg.getBoundingClientRect();
+  const relX=(e.clientX-rect.left-PAD)/(rect.width-PAD)*W;
+  const xs=pts.map((_,i)=>(i/(pts.length-1))*W);
+  let i=0,best=1e9; xs.forEach((x,idx)=>{const dd=Math.abs(x-relX);if(dd<best){best=dd;i=idx;}});
+  const p=pts[i],px=xs[i];
+  scrub.setAttribute('x1',px);scrub.setAttribute('x2',px);scrub.style.opacity=.5;
+  if(state.h){dH.setAttribute('cx',px);dH.setAttribute('cy',yOf(p[1]));dH.style.opacity=1;}else dH.style.opacity=0;
+  if(state.c&&p[2]!=null){dC.setAttribute('cx',px);dC.setAttribute('cy',yOf(p[2]));dC.style.opacity=1;}else dC.style.opacity=0;
+  let html=`<div class="d">${p[0]}</div>`;
+  if(state.h) html+=`<div class="r"><span class="sw" style="background:#5bb89a"></span><span class="k">Health</span><span class="v">${p[1]}</span></div>`;
+  if(state.c) html+= p[2]!=null?`<div class="r"><span class="sw" style="background:#d9a75a"></span><span class="k">Construction</span><span class="v">${p[2]}</span></div>`
+                               :`<div class="r"><span class="sw" style="background:#28303b"></span><span class="k" style="color:#586170">Construction</span><span class="v" style="color:#586170;font-weight:400">not yet tracked</span></div>`;
+  tip.innerHTML=html;
+  const bx=box.getBoundingClientRect(); const localX=e.clientX-bx.left;
+  tip.style.left=Math.min(Math.max(localX+14,0),bx.width-170)+'px'; tip.style.top='6px'; tip.style.opacity=1;
+});
+svg.addEventListener('mouseleave',()=>{tip.style.opacity=0;scrub.style.opacity=0;dH.style.opacity=0;dC.style.opacity=0;});
+
+render();
+</script>
+</body>
+</html>

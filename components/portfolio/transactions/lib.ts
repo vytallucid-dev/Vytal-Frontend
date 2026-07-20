@@ -19,6 +19,14 @@ export const TXN_TYPE_META: Record<TransactionType, { label: string; color: stri
 /** Selector order — buy first (the 90% case), then the other common types. */
 export const TXN_TYPES: TransactionType[] = ["buy", "sell", "dividend", "bonus", "split"];
 
+// ── asset-class vocabulary MOVED OUT (→ @/lib/asset-class) ─────────────────────────────────────
+// ASSET_CLASS_LABEL / assetClassLabel / isCouponBearing used to live here. They describe the
+// CATALOGUE's asset_class enum, not the ledger — this module was only their first reader. They left
+// because THIS file imports @/lib/api/client (for parseTxnError below), which builds the Supabase
+// client at module scope: any module wanting a label was silently buying Supabase with it. Importers
+// take them from @/lib/asset-class directly — deliberately NOT re-exported from here, which would
+// be the same import wearing a hat.
+
 /** The single ₹ figure a row represents, or null when the event carries no cash value:
  *   • buy/sell → qty × price   • dividend → the amount (stored in the price slot)
  *   • split/bonus → null (a lot reshape, no cash) */
@@ -59,25 +67,38 @@ export function ledgerSummary(txns: Transaction[]): LedgerSummary {
 }
 
 // ── filter + sort (pure) ─────────────────────────────────────────────────────────
+// The list is fetched WHOLE-BOOK (useTransactions() with no accountId), so every narrowing here is
+// IN-MEMORY — the scoped `?accountId` endpoint exists but the tab never needs it. The instrument
+// filter is GONE: search already finds a ticker/name, so account + type + date + search is complete.
 export interface LedgerFilter {
-  search: string; // over symbol + notes
-  symbol: string | "all";
+  search: string; // over symbol + name + notes
+  account: string | "all"; // accountId (the KEY); "all" = every book
   type: TransactionType | "all";
   from: string; // "YYYY-MM-DD" or ""
   to: string; // "YYYY-MM-DD" or ""
 }
-export const EMPTY_FILTER: LedgerFilter = { search: "", symbol: "all", type: "all", from: "", to: "" };
+export const EMPTY_FILTER: LedgerFilter = { search: "", account: "all", type: "all", from: "", to: "" };
 
 export function filterTransactions(txns: Transaction[], f: LedgerFilter): Transaction[] {
   const q = f.search.trim().toLowerCase();
   return txns.filter((t) => {
-    if (f.symbol !== "all" && t.symbol !== f.symbol) return false;
+    if (f.account !== "all" && t.accountId !== f.account) return false;
     if (f.type !== "all" && t.type !== f.type) return false;
     if (f.from && t.tradeDate < f.from) return false; // ISO dates sort lexicographically
     if (f.to && t.tradeDate > f.to) return false;
-    if (q && !t.symbol.toLowerCase().includes(q) && !(t.notes ?? "").toLowerCase().includes(q)) return false;
+    // Search matches the ticker, the human name (so "kotak" finds the fund) OR the note.
+    if (q && !t.symbol.toLowerCase().includes(q) && !(t.name ?? "").toLowerCase().includes(q) && !(t.notes ?? "").toLowerCase().includes(q)) return false;
     return true;
   });
+}
+
+/** The distinct accounts across a ledger, {id, name}, first-seen order — the account filter's options
+ *  and the "hide when one account" gate. Names, never UUIDs (`accountName` is on the wire); an id with
+ *  no name degrades to "Unnamed account" rather than leaking the raw id. */
+export function ledgerAccounts(txns: Transaction[]): { id: string; name: string }[] {
+  const m = new Map<string, string>();
+  for (const t of txns) if (t.accountId) m.set(t.accountId, t.accountName || "Unnamed account");
+  return [...m.entries()].map(([id, name]) => ({ id, name }));
 }
 
 export type LedgerSortKey = "tradeDate" | "type" | "symbol" | "value";
@@ -119,11 +140,15 @@ export function ratioValid(s: string): boolean {
 }
 
 // ── wire-error → field-level messages (per the controller's error contract) ─────────
-export type TxnField = "symbol" | "type" | "tradeDate" | "quantity" | "price" | "fees" | "ratio" | "notes";
+export type TxnField = "symbol" | "type" | "tradeDate" | "quantity" | "price" | "fees" | "ratio" | "notes" | "account";
 export interface ParsedTxnError {
   fields: Partial<Record<TxnField, string>>;
   formError?: string;
   reauth?: boolean;
+  /** On a 409 `ambiguous_symbol`: the candidate instruments the backend refused to pick between.
+   *  The caller renders these as a picker (NEVER auto-picks) and re-submits the chosen ISIN. Empty
+   *  or absent otherwise. */
+  disambiguation?: { isin: string; name: string; assetClass: string }[];
 }
 
 function extractApiError(err: unknown): ApiError | null {
@@ -150,8 +175,42 @@ export function parseTxnError(err: unknown): ParsedTxnError {
   if (body.error === "oversell") {
     return { fields: { quantity: `You hold ${body.available}; this sells ${body.attempted}. Reduce the quantity.` } };
   }
-  if (body.error === "stock_not_found") {
-    return { fields: { symbol: e.message || "That symbol isn't in the tracked universe." } };
+  // Account-resolution refusals (resolveWritableAccount). The sheet is built to PREVENT these — it
+  // offers Stated accounts only and always sends an accountId — so these are DEFENSIVE: an account
+  // deleted/linked in another tab between open and save, or a stale client. Map to the account field
+  // (or the form when there is no account to point at).
+  if (body.error === "account_required") {
+    return { fields: { account: "Choose which account this transaction belongs to." } };
+  }
+  if (body.error === "account_not_found") {
+    return { fields: { account: "That account no longer exists — pick another." } };
+  }
+  if (body.error === "account_linked") {
+    return { fields: { account: "That account is broker-managed — hand-entered transactions aren't allowed there." } };
+  }
+  if (body.error === "no_account") {
+    return { fields: {}, formError: e.message || "Create an account first, then add transactions to it." };
+  }
+  // (Step 20) A holding can now be ANY instrument — a stock, an ETF, a fund, a REIT, a bond — so the
+  // backend resolves against the catalogue, not just `stocks`, and its refusals got more specific.
+  // `stock_not_found` is kept because the other endpoints (watchlist, alerts, reminders) are still
+  // equity-only and still emit it.
+  if (body.error === "stock_not_found" || body.error === "instrument_not_found") {
+    return { fields: { symbol: e.message || "That symbol isn't in our catalogue." } };
+  }
+  // A SYMBOL IS NOT A KEY, and the backend refuses to guess which one you meant. Three bonds share
+  // the ticker "IMC1"; a mutual fund has no ticker at all. The 409 carries the candidate ISINs so the
+  // user can say which one they actually hold, rather than have us attach their money to a coin flip.
+  if (body.error === "ambiguous_symbol") {
+    const candidates = (body as { candidates?: { isin: string; name: string; assetClass?: string }[] }).candidates ?? [];
+    return {
+      fields: {
+        symbol: e.message || "That identifier names more than one instrument — pick the one you hold.",
+      },
+      // Surfaced structurally so the sheet renders a PICKER of the candidates rather than a text hint;
+      // never auto-resolved. (The picker submits an ISIN, so this is a backstop — see the sheet.)
+      disambiguation: candidates.map((c) => ({ isin: c.isin, name: c.name, assetClass: c.assetClass ?? "" })),
+    };
   }
   if (body.error === "validation_error") {
     const fields: Partial<Record<TxnField, string>> = {};

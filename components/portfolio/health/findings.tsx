@@ -5,7 +5,17 @@ import type { PfFinding } from "@/types/portfolio";
 import type { PortfolioTab } from "../tabs";
 import { FAMILY_META, TONE_META, stockHealthHref } from "../lib";
 import { bindChips, findingRead, isCrossPillar, type FindingTriage } from "./lib";
-import { OpenLink } from "./parts";
+import { OpenLink, Tip } from "./parts";
+
+// what each finding family is about — plain-language, for the hover-reveal on the family badge
+const FAMILY_TIP: Record<string, string> = {
+  PC: "Concentration — one issuer or position holding an outsized share of the book.",
+  PB: "Breadth — how thinly your weight is spread across effective positions and sectors.",
+  PQ: "Quality — the fundamental strength of the businesses you own.",
+  PS: "Signals — active red flags firing on your holdings.",
+  PX: "Cross-pillar — a tension between reads that the single number blended away.",
+  PV: "Coverage — how much of your book we can see and score.",
+};
 
 // ── the exact-value receipts (60% · Neff 1.92 · 42% of value), verbatim from bind ────
 function Chips({ f }: { f: PfFinding }) {
@@ -43,20 +53,33 @@ export function FindingCard({ f, onOpenTab }: { f: PfFinding; onOpenTab?: (t: Po
   return (
     <div className="rounded-xl border p-3.5" style={{ borderColor: tm.border, borderLeftColor: fam.color, borderLeftWidth: 3, background: tm.bg }}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: fam.color }}>
-          {fam.label}
-        </span>
-        {isCrossPillar(f) && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-line2 bg-surface-2 px-1.5 py-px text-[9px] uppercase tracking-wide text-ink3">
-            <Icons.scales weight="bold" className="size-2.5" />
-            tension
+        {FAMILY_TIP[f.family] ? (
+          <Tip content={FAMILY_TIP[f.family]}>
+            <span className="cursor-help text-[9px] font-semibold uppercase tracking-widest" style={{ color: fam.color }}>
+              {fam.label}
+            </span>
+          </Tip>
+        ) : (
+          <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: fam.color }}>
+            {fam.label}
           </span>
+        )}
+        {isCrossPillar(f) && (
+          <Tip content="A cross-pillar tension — two reads pulling different ways that the single number blended away.">
+            <span className="inline-flex cursor-help items-center gap-1 rounded-full border border-line2 bg-surface-2 px-1.5 py-px text-[9px] uppercase tracking-wide text-ink3">
+              <Icons.scales weight="bold" className="size-2.5" />
+              tension
+            </span>
+          </Tip>
         )}
         <span className="num ml-auto text-[9.5px] text-ink3">{f.id}</span>
       </div>
       <p className="font-display mt-1.5 text-[14px] font-semibold text-ink">{f.label}</p>
       {showRead && <p className="mt-1 text-[12px] leading-relaxed text-ink2">{read}</p>}
       <Chips f={f} />
+      {f.doesntMean && (
+        <p className="mt-2.5 border-l-2 border-line2 pl-2.5 text-[11px] italic leading-relaxed text-ink3">{f.doesntMean}</p>
+      )}
       <div className="mt-2">
         <FindingLink f={f} onOpenTab={onOpenTab} />
       </div>
@@ -75,9 +98,18 @@ export function FindingRow({ f, onOpenTab }: { f: PfFinding; onOpenTab?: (t: Por
       <span className="mt-1.5 size-1.5 shrink-0 rounded-full" style={{ background: fam.color }} />
       <div className="min-w-0 flex-1">
         <span className="font-display text-[12.5px] font-medium text-ink">{f.label}</span>
-        <span className="ml-1.5 text-[10px] uppercase tracking-wide text-ink3">{fam.label}</span>
+        {FAMILY_TIP[f.family] ? (
+          <Tip content={FAMILY_TIP[f.family]}>
+            <span className="ml-1.5 cursor-help text-[10px] uppercase tracking-wide text-ink3">{fam.label}</span>
+          </Tip>
+        ) : (
+          <span className="ml-1.5 text-[10px] uppercase tracking-wide text-ink3">{fam.label}</span>
+        )}
         {showRead && <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink3">{read}</p>}
         <Chips f={f} />
+        {f.doesntMean && (
+          <p className="mt-1.5 border-l-2 border-line2 pl-2 text-[10.5px] italic leading-relaxed text-ink3">{f.doesntMean}</p>
+        )}
       </div>
       <FindingLink f={f} onOpenTab={onOpenTab} />
     </div>

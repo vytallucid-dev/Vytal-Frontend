@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Reveal } from "@/components/ui/reveal";
-import { Icons } from "@/lib/icons";
-import { Panel } from "@/components/stock-detail/health/shared";
+import { Icons, type Icon } from "@/lib/icons";
+import { Panel, SectionEyebrow, BAND_META } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
+import { compositeBand } from "./lib";
 import {
   Dialog,
   DialogContent,
@@ -260,18 +261,50 @@ function LensPatternCard({ p }: { p: PreparedCensus }) {
   );
 }
 
-function Tier({ title, count, children }: { title: string; count?: string; children: React.ReactNode }) {
+// ── section heading system ────────────────────────────────────────────────────
+// Two levels, both on the app's SectionEyebrow theme so every label reads with life:
+//  · Tier (L1)     — SectionEyebrow with a tinted icon chip + accent hairline + count pill.
+//  · SubEyebrow (L2) — SectionEyebrow's lighter no-icon variant (accent bar + tinted
+//    hairline + compact count), for the concern / LM-LP sub-groups nested inside a tier.
+function Tier({
+  title,
+  count,
+  icon,
+  accent,
+  children,
+}: {
+  title: string;
+  count?: string;
+  icon?: Icon;
+  accent?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mb-5">
-      <h4 className="mb-2.5 flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink3">
-        {title}
-        <span className="h-px flex-1 bg-line" />
-        {count && <span className="num tracking-normal text-ink2">{count}</span>}
-      </h4>
+    <div className="mb-6">
+      <SectionEyebrow className="mb-3 mt-0" label={title} icon={icon} accent={accent} pill={count} />
       {children}
     </div>
   );
 }
+
+function SubEyebrow({ label, count, accent = "var(--p-found)" }: { label: string; count?: string; accent?: string }) {
+  return (
+    <div className="mb-2 flex items-center gap-2.5">
+      <span className="h-3 w-[3px] shrink-0 rounded-full" style={{ background: accent }} />
+      <span className="eyebrow shrink-0">{label}</span>
+      <span className="h-px min-w-4 flex-1" style={{ background: `color-mix(in oklch, ${accent} 20%, var(--line))` }} />
+      {count && <span className="num shrink-0 text-[10px] tracking-normal text-ink3">{count}</span>}
+    </div>
+  );
+}
+
+// concern → pillar identity accent (mirrors the "By concern" distribution colours)
+const CONCERN_ACCENT: Record<Concern, string> = {
+  ownership: "var(--p-own)",
+  fundamentals: "var(--p-found)",
+  momentum: "var(--p-mom)",
+  other: "var(--ink3)",
+};
 
 function FeedStatusCard({
   title,
@@ -324,6 +357,81 @@ const BAND_EDGES: Record<string, { lower: number; upper: number; nextDown: strin
 
 type EdgeWatcher = { symbol: string; composite: number; gap: number; direction: "down" | "up"; toBand: string };
 
+const EDGE_THRESHOLD = 3; // the "within N pts of a band line" window (mirrors edgeWatchers)
+
+// Direction identity — a name either sits just ABOVE a floor (about to drop, amber) or just
+// BELOW a ceiling (about to rise, green). Colour + icon carry the risk/opportunity read.
+const EDGE_META = {
+  down: { accent: "var(--high)", bd: "var(--high-bd)", bg: "var(--high-bg)", icon: Icons.trendDown, title: "Near dropping a band", lead: "drops to" },
+  up: { accent: "var(--rec)", bd: "var(--rec-bd)", bg: "var(--rec-bg)", icon: Icons.trendUp, title: "Near rising a band", lead: "reaches" },
+} as const;
+
+// One watcher row — reads as: {symbol} · {current composite, band-coloured} · a proximity
+// meter that fills as the score nears the line (full = imminent crossing) · how many points
+// and which band it would move to. The whole row jumps to the stock's trajectory tool.
+function EdgeRow({ w, dir }: { w: EdgeWatcher; dir: "down" | "up" }) {
+  const m = EDGE_META[dir];
+  const bandColor = BAND_META[compositeBand(w.composite)].cssVar;
+  // fill = imminence: gap 0 → full (touching the line), gap = THRESHOLD → nearly empty.
+  const fill = Math.max(6, Math.min(100, (1 - w.gap / EDGE_THRESHOLD) * 100));
+  const gap = w.gap.toFixed(1);
+  return (
+    <Link
+      href={`/research/trajectory?symbol=${w.symbol}`}
+      className="group -mx-1.5 block rounded-lg px-1.5 py-2 transition-colors hover:bg-surface-2"
+    >
+      <div className="flex items-center gap-2">
+        <span className="num min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{w.symbol}</span>
+        <span
+          className="num shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-semibold"
+          style={{ color: bandColor, background: `color-mix(in oklch, ${bandColor} 12%, transparent)` }}
+        >
+          {w.composite.toFixed(1)}
+        </span>
+        <Icons.arrowUpRight className="size-3 shrink-0 text-ink3 opacity-0 transition-opacity group-hover:opacity-100" />
+      </div>
+      <div className="mt-1.5 flex items-center gap-2.5">
+        <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
+          <span
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{ width: `${fill}%`, background: m.accent, opacity: 0.9 }}
+          />
+        </span>
+        <span className="shrink-0 whitespace-nowrap text-[10.5px] text-ink3">
+          <span className="num font-medium" style={{ color: m.accent }}>
+            {gap}
+          </span>{" "}
+          pt{gap === "1.0" ? "" : "s"} {dir === "down" ? "↓" : "↑"} {m.lead}{" "}
+          <span className="text-ink2">{w.toBand}</span>
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function EdgeCard({ dir, watchers }: { dir: "down" | "up"; watchers: EdgeWatcher[] }) {
+  const m = EDGE_META[dir];
+  const Glyph = m.icon;
+  return (
+    <div className="rounded-xl border bg-surface-1 p-3.5" style={{ borderColor: m.bd }}>
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <span className="grid size-7 shrink-0 place-items-center rounded-lg" style={{ background: m.bg, color: m.accent }}>
+          <Glyph className="size-4" />
+        </span>
+        <span className="text-[12.5px] font-semibold text-ink">{m.title}</span>
+        <span className="num ml-auto text-[12px] font-medium" style={{ color: m.accent }}>
+          {watchers.length}
+        </span>
+      </div>
+      <div className="flex flex-col divide-y divide-line">
+        {watchers.map((w) => (
+          <EdgeRow key={w.symbol + dir} w={w} dir={dir} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ThresholdWatchSection({ atRisk, approaching }: { atRisk: EdgeWatcher[]; approaching: EdgeWatcher[] }) {
   if (atRisk.length === 0 && approaching.length === 0) {
     return (
@@ -332,40 +440,13 @@ function ThresholdWatchSection({ atRisk, approaching }: { atRisk: EdgeWatcher[];
       </div>
     );
   }
-  // Each row jumps to the stock's TRAJECTORY tool — threshold watch is about movement
-  // toward a band line, so the movement-over-time tool is the right destination.
-  const WatchRow = ({ w }: { w: EdgeWatcher }) => (
-    <Link
-      href={`/research/trajectory?symbol=${w.symbol}`}
-      className="group -mx-2 flex items-baseline gap-2 rounded-md px-2 py-2 text-[12px] transition-colors hover:bg-surface-2"
-    >
-      <span className="num w-20 shrink-0 font-medium text-ink group-hover:text-pristine">{w.symbol}</span>
-      <span className="num text-ink2">{w.composite.toFixed(1)}</span>
-      <span className="ml-auto text-right text-[11.5px] text-ink3">
-        {w.gap.toFixed(1)} pt{w.gap.toFixed(1) !== "1.0" ? "s" : ""}{" "}
-        {w.direction === "down" ? `above ${w.toBand} floor` : `below ${w.toBand} floor`}
-      </span>
-      <Icons.arrowUpRight className="size-3 shrink-0 self-center text-ink3 opacity-0 transition-opacity group-hover:opacity-100" />
-    </Link>
-  );
+  const both = atRisk.length > 0 && approaching.length > 0;
   return (
     <div className="flex flex-col gap-3">
-      {atRisk.length > 0 && (
-        <div>
-          <div className="mb-1.5 text-[10px] uppercase tracking-wide text-ink3">Near dropping a band</div>
-          <div className="divide-y divide-line rounded-xl border border-line bg-surface-1 px-3">
-            {atRisk.map((w) => <WatchRow key={w.symbol + "d"} w={w} />)}
-          </div>
-        </div>
-      )}
-      {approaching.length > 0 && (
-        <div>
-          <div className="mb-1.5 text-[10px] uppercase tracking-wide text-ink3">Near rising a band</div>
-          <div className="divide-y divide-line rounded-xl border border-line bg-surface-1 px-3">
-            {approaching.map((w) => <WatchRow key={w.symbol + "u"} w={w} />)}
-          </div>
-        </div>
-      )}
+      <div className={cn("grid grid-cols-1 gap-3", both && "lg:grid-cols-2")}>
+        {atRisk.length > 0 && <EdgeCard dir="down" watchers={atRisk} />}
+        {approaching.length > 0 && <EdgeCard dir="up" watchers={approaching} />}
+      </div>
       <p className="text-[11px] italic text-ink3">
         Band-edge proximity only — derived from composite vs canonical thresholds (55 / 62 / 68 / 74).
         Flag-trigger proximity (e.g. pledge ratio approaching R1) requires per-stock detail not yet in the universe contract.
@@ -496,13 +577,13 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
   return (
     <Reveal>
       {/* header */}
-      <div className="mb-3 flex flex-wrap items-center gap-2.5">
-        <span className="eyebrow shrink-0">Warnings console</span>
-        <span className="h-px min-w-4 flex-1 bg-line" />
-        <span className="shrink-0 rounded-full border border-line2 bg-surface-2 px-2.5 py-0.5 text-[11px] text-ink2">
-          across the scored universe · {view.scoredUniverseSize} names
-        </span>
-      </div>
+      <SectionEyebrow
+        className="mb-3 mt-0"
+        label="Warnings console"
+        icon={Icons.warning}
+        accent="var(--high)"
+        pill={`across the scored universe · ${view.scoredUniverseSize} names`}
+      />
 
       {/* filters (functional) */}
       <div className="mb-4 flex flex-wrap gap-1.5">
@@ -526,7 +607,7 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
       <div className="grid grid-cols-12 gap-3.5">
         {/* main column */}
         <div className="col-span-12 lg:col-span-8">
-          <Tier title="Critical · Watch with care" count={`${shownFlags.length} firing`}>
+          <Tier title="Critical · Watch with care" count={`${shownFlags.length} firing`} icon={Icons.warning} accent="var(--crit)">
             {shownFlags.length > 0 ? (
               <div className="flex flex-col gap-2.5">
                 {shownFlags.map((p) => (
@@ -540,14 +621,10 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
             )}
           </Tier>
 
-          <Tier title="Patterns" count={`${matchedPatternCount} firing`}>
+          <Tier title="Patterns" count={`${matchedPatternCount} firing`} icon={Icons.stack} accent="var(--p-mkt)">
             {(["ownership", "fundamentals", "momentum"] as Concern[]).map((c) => (
               <div key={c} className="mb-4">
-                <div className="mb-1.5 flex items-center gap-2.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink3">{c} patterns</span>
-                  <span className="h-px flex-1 bg-line" />
-                  <span className="num text-[10px] tracking-normal text-ink3">{patternsByConcern[c].length} firing</span>
-                </div>
+                <SubEyebrow label={`${c} patterns`} count={`${patternsByConcern[c].length} firing`} accent={CONCERN_ACCENT[c]} />
                 {patternsByConcern[c].length > 0 ? (
                   patternsByConcern[c].map((p) => <PatternCard key={p.key} p={p} />)
                 ) : (
@@ -564,7 +641,7 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
             )}
           </Tier>
 
-          <Tier title="Lens patterns · Cross-lens signals" count={`${lens.length} firing`}>
+          <Tier title="Lens patterns · Cross-lens signals" count={`${lens.length} firing`} icon={Icons.compare} accent="var(--p-own)">
             <p className="mb-2.5 text-[11px] text-ink3">
               The three-lens (LM/LP) library — where a metric or pillar disagrees across its
               absolute bar, its peer field, and its own history. Descriptive reads on where the
@@ -573,11 +650,7 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
             {lens.length > 0 ? (
               <div className="flex flex-col gap-4">
                 <div>
-                  <div className="mb-1.5 flex items-center gap-2.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink3">Metric-level (LM)</span>
-                    <span className="h-px flex-1 bg-line" />
-                    <span className="num text-[10px] tracking-normal text-ink3">{lensMetric.length} firing</span>
-                  </div>
+                  <SubEyebrow label="Metric-level (LM)" count={`${lensMetric.length} firing`} accent="var(--p-found)" />
                   {lensMetric.length > 0 ? (
                     lensMetric.map((p) => <LensPatternCard key={p.key} p={p} />)
                   ) : (
@@ -587,11 +660,7 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
                   )}
                 </div>
                 <div>
-                  <div className="mb-1.5 flex items-center gap-2.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink3">Pillar-level (LP)</span>
-                    <span className="h-px flex-1 bg-line" />
-                    <span className="num text-[10px] tracking-normal text-ink3">{lensPillar.length} firing</span>
-                  </div>
+                  <SubEyebrow label="Pillar-level (LP)" count={`${lensPillar.length} firing`} accent="var(--p-mom)" />
                   {lensPillar.length > 0 ? (
                     lensPillar.map((p) => <LensPatternCard key={p.key} p={p} />)
                   ) : (
@@ -608,29 +677,13 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
             )}
           </Tier>
 
-          <Tier title="Threshold watch · Near a band edge">
+          <Tier title="Threshold watch · Near a band edge" icon={Icons.target} accent="var(--high)">
             <ThresholdWatchSection
               atRisk={edgeWatchers.atRisk}
               approaching={edgeWatchers.approaching}
             />
           </Tier>
 
-          <Tier title="Ownership feed status">
-            <FeedStatusCard
-              title="C · Insider-trade activity"
-              live={cCounts.live}
-              dormant={cCounts.dormant}
-              total={cCounts.total}
-              rulesNote="Scores C1 cluster-buy, C2 cluster-sell, and C3 sub-cluster signals from NSE PIT insider disclosures."
-            />
-            <FeedStatusCard
-              title="D · Block-deal flow"
-              live={dCounts.live}
-              dormant={dCounts.dormant}
-              total={dCounts.total}
-              rulesNote="Scores net block-deal activity against market-cap — drives the promoter-defense signal."
-            />
-          </Tier>
         </div>
 
         {/* side summary */}

@@ -5,12 +5,15 @@ import { SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { Icons } from "@/lib/icons";
 import type { Holding, HoldingsTotals, PortfolioSnapshot } from "@/types/portfolio";
 import type { PortfolioTab } from "../tabs";
+import { activeSignals } from "../health/lib";
 import { ValueHero } from "./value-hero";
 import { HealthBand } from "./health-band";
 import { AllocationGlance } from "./allocation-glance";
 import { WhatsMoving } from "./whats-moving";
 import { HoldingsPreview } from "./holdings-preview";
 import { Upcoming } from "./upcoming";
+import { RedFlagStrip, redFlagAccent } from "./red-flags";
+import { HealthHistoryChart } from "../health-history-chart";
 
 /**
  * Portfolio OVERVIEW — the synthesizing home. Tracker-first (the money leads), with
@@ -30,6 +33,13 @@ export function OverviewTab({
   totals: HoldingsTotals;
   onOpenTab: (tab: PortfolioTab) => void;
 }) {
+  // The health area is THREE distinct questions, so it reads as three labeled sections (current
+  // state → attention → history) — the same "separate the reads" principle as the Health tab.
+  // The attention section is present ONLY when a holding actually fires a red flag.
+  const hasFlags = snapshot ? activeSignals(snapshot).length > 0 : false;
+  // the eyebrow matches the strip's level colour (muted red for a red flag), not a fixed amber.
+  const attentionAccent = redFlagAccent(snapshot) ?? "var(--high)";
+
   return (
     <div className="flex flex-col pb-4">
       {/* A · Value hero — the money anchor */}
@@ -38,15 +48,42 @@ export function OverviewTab({
         <ValueHero holdings={holdings} totals={totals} />
       </Reveal>
 
-      {/* B · Health summary band — position two, prominent, still a connector */}
+      {/* B1 · Portfolio health — the current-state read (the number, its headline finding, View health) */}
       <SectionEyebrow
-        label="How healthy your book is"
+        label="Portfolio health"
         pill="weighted · coverage-aware"
         icon={Icons.pulse}
         accent="var(--p-found)"
       />
       <Reveal>
         <HealthBand snapshot={snapshot} holdings={holdings} onOpenHealth={() => onOpenTab("health")} />
+      </Reveal>
+
+      {/* B2 · Needs attention — its OWN section, present ONLY when a holding fires a red flag. A muted
+          pointer to the Health analysis, never advice; the eyebrow + strip both self-hide on zero flags. */}
+      {hasFlags && (
+        <>
+          <SectionEyebrow
+            label="Needs attention"
+            pill="active red flags"
+            icon={Icons.warning}
+            accent={attentionAccent}
+          />
+          <Reveal>
+            <RedFlagStrip snapshot={snapshot} onOpenHealth={() => onOpenTab("health")} />
+          </Reveal>
+        </>
+      )}
+
+      {/* B3 · How your scores have moved — the history read (matches the Health-tab section label). */}
+      <SectionEyebrow
+        label="How your scores have moved"
+        pill="health · construction"
+        icon={Icons.chartLine}
+        accent="var(--p-found)"
+      />
+      <Reveal>
+        <HealthHistoryChart compact onOpen={() => onOpenTab("health")} />
       </Reveal>
 
       {/* C · Allocation & diversification glance */}

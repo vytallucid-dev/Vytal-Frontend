@@ -10,10 +10,23 @@ import {
   healthColor,
   scoreBreakdown,
 } from "../lib";
-import { BandRibbon, BlueprintShell, CapitalPill, CoverageBar, HealthShell, StageBadge } from "./parts";
+import { BandRibbon, BlueprintShell, CoverageBar, HealthShell, InfoTip, Tip } from "./parts";
 import { UnlockLine, queueSymbols } from "./coverage";
 
 const r0 = (v: number) => Math.round(v);
+
+// (Construction v2 Stage 6) the archetype chip — descriptive composition ("Stock-led"…), never a badge
+// about the investor. Replaces the retired StageBadge (structure_tier) + CapitalPill. null → nothing.
+function ArchetypeChip({ label }: { label: string | null }) {
+  if (!label) return null;
+  return (
+    <Tip content="A plain description of how your book is composed — e.g. stock-led or fund-led. Descriptive, never a judgement.">
+      <span className="cursor-help rounded-lg border px-2.5 py-1 text-[11px] font-semibold" style={{ color: BLUEPRINT_ACCENT, borderColor: `color-mix(in oklch, ${BLUEPRINT_ACCENT} 34%, transparent)`, background: `color-mix(in oklch, ${BLUEPRINT_ACCENT} 11%, transparent)` }}>
+        {label}
+      </span>
+    </Tip>
+  );
+}
 
 // ── the whisper line — names the ONE Health deduction (active flags) so the number never
 //    floats naked. Nothing positional: construction is a different read and never appears
@@ -31,23 +44,26 @@ function whisper(s: PortfolioSnapshot): string {
 //    under 40% coverage the number is true but thinly-seen. No cap, ever. ────────────────
 function ProvisionalTag() {
   return (
-    <span
-      className="ml-2 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-      style={{ color: "#d6a652", background: "color-mix(in oklch, #d6a652 14%, transparent)" }}
-    >
-      Provisional
-    </span>
+    <Tip content="Under 40% of your book value is scored, so the number is seen through a thin slice. It's still true as shown — it is never capped or discounted.">
+      <span
+        className="ml-2 inline-flex cursor-help items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+        style={{ color: "#d6a652", background: "color-mix(in oklch, #d6a652 14%, transparent)" }}
+      >
+        Provisional
+      </span>
+    </Tip>
   );
 }
 
 // ── the co-hero question label — the anti-averaging device. Each read states its OWN
 //    question above its OWN number, so the pair reads as two answers, never two scores to
 //    average. Health tinted its band colour; Construction tinted blueprint slate. ─────────
-function QuestionLabel({ children, color, icon: Glyph }: { children: React.ReactNode; color: string; icon: typeof Icons.pulse }) {
+function QuestionLabel({ children, color, icon: Glyph, tip }: { children: React.ReactNode; color: string; icon: typeof Icons.pulse; tip?: React.ReactNode }) {
   return (
     <p className="mb-2 flex items-center gap-1.5 text-[11.5px] font-medium" style={{ color }}>
       <Glyph weight="duotone" className="size-3.5 shrink-0" />
       {children}
+      {tip && <InfoTip className="ml-0.5 text-current opacity-70 hover:opacity-100">{tip}</InfoTip>}
     </p>
   );
 }
@@ -63,22 +79,40 @@ function HealthCoHero({ snapshot }: { snapshot: PortfolioSnapshot }) {
 
   return (
     <HealthShell accent={color} className="h-full">
-      <QuestionLabel color={color} icon={Icons.pulse}>Are the things you own sound?</QuestionLabel>
+      <QuestionLabel
+        color={color}
+        icon={Icons.pulse}
+        tip="Health = your holdings' quality − active red flags, uncapped. It answers whether the things you own are sound — not how the book is arranged."
+      >
+        Are the things you own sound?
+      </QuestionLabel>
       <div className="flex items-end gap-3">
-        <span className="num text-[52px] font-medium leading-none" style={{ color }}>
-          {h.value}
-        </span>
+        <Tip content={<><span className="font-semibold text-ink">Health {h.value} · {HEALTH_BAND_META[band].label}</span><span className="mt-1 block text-ink2">Your holdings' quality after active red flags. Higher is sounder; the band is the plain-word label for the number.</span></>}>
+          <span className="num cursor-help text-[52px] font-medium leading-none" style={{ color }}>
+            {h.value}
+          </span>
+        </Tip>
         <span className="font-display mb-1.5 text-[22px] font-medium" style={{ color }}>
           {HEALTH_BAND_META[band].label}
         </span>
       </div>
-      {h.value != null && <BandRibbon value={h.value} color={color} />}
+      {h.value != null && (
+        <Tip content={`This marker shows where ${h.value} sits on the 0–100 Health scale.`}>
+          <div className="max-w-[240px] cursor-help"><BandRibbon value={h.value} color={color} /></div>
+        </Tip>
+      )}
       <p className="mt-3 max-w-[26em] text-[12px] leading-relaxed text-ink2">{whisper(snapshot)}</p>
 
       {/* mandatory coverage line — always present; the number is TRUE as shown (no cap) */}
       <p className="mt-2 max-w-[26em] text-[12px] leading-relaxed text-ink3">
-        Covers <span className="num text-ink2">{cs.scoredCount}</span> of{" "}
-        <span className="num text-ink2">{cs.totalCount}</span> holdings ·{" "}
+        {/* (Stage 9) the counts and the % are now counted over ONE population and frozen together. A
+            pre-2.0 row carries no counts — show the % alone rather than "0 of 0". */}
+        {cs.scoredCount != null && cs.totalCount != null && (
+          <>
+            Covers <span className="num text-ink2">{cs.scoredCount}</span> of{" "}
+            <span className="num text-ink2">{cs.totalCount}</span> holdings ·{" "}
+          </>
+        )}
         <span className="num text-ink2">{coveragePct}%</span> of book value.
         {h.provisional && <ProvisionalTag />}
       </p>
@@ -96,19 +130,28 @@ function ConstructionCoHero({ snapshot }: { snapshot: PortfolioSnapshot }) {
 
   return (
     <BlueprintShell className="h-full">
-      <QuestionLabel color={BLUEPRINT_ACCENT} icon={Icons.chartBar}>Is this book safely held?</QuestionLabel>
+      <QuestionLabel
+        color={BLUEPRINT_ACCENT}
+        icon={Icons.chartBar}
+        tip="Construction = how your holdings are weighted: single-name concentration, effective breadth and sector shape over the whole book. Independent of the health read."
+      >
+        Is this book safely held?
+      </QuestionLabel>
       <div className="flex items-end gap-3">
-        <span className="num text-[52px] font-medium leading-none" style={{ color }}>
-          {r0(c.value)}
-        </span>
+        <Tip content={<><span className="font-semibold text-ink">Construction {r0(c.value)} · {CONSTRUCTION_BAND_META[c.band].label}</span><span className="mt-1 block text-ink2">How well your money is spread across the whole book. Higher means more safely held; the band is the plain-word label.</span></>}>
+          <span className="num cursor-help text-[52px] font-medium leading-none" style={{ color }}>
+            {r0(c.value)}
+          </span>
+        </Tip>
         <span className="font-display mb-1.5 text-[22px] font-medium" style={{ color }}>
           {CONSTRUCTION_BAND_META[c.band].label}
         </span>
       </div>
-      <BandRibbon value={c.value} color={color} />
+      <Tip content={`This marker shows where ${r0(c.value)} sits on the 0–100 Construction scale.`}>
+        <div className="max-w-[240px] cursor-help"><BandRibbon value={c.value} color={color} /></div>
+      </Tip>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <StageBadge tier={c.structureTier} />
-        <CapitalPill tier={c.capitalTier} />
+        <ArchetypeChip label={c.archetype} />
       </div>
       <p className="mt-3 max-w-[26em] text-[12px] leading-relaxed text-ink3">
         How your holdings are weighted — concentration, breadth and sector shape. Independent of the health read.
@@ -129,19 +172,28 @@ function ConstructionPrimary({ snapshot, holdings }: { snapshot: PortfolioSnapsh
     <BlueprintShell>
       <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
         <div className="lg:border-r lg:border-line lg:pr-7">
-          <QuestionLabel color={BLUEPRINT_ACCENT} icon={Icons.chartBar}>Is this book safely held?</QuestionLabel>
+          <QuestionLabel
+            color={BLUEPRINT_ACCENT}
+            icon={Icons.chartBar}
+            tip="Construction = how your holdings are weighted across the whole book — concentration, breadth and sector shape. Health unlocks as we score your holdings."
+          >
+            Is this book safely held?
+          </QuestionLabel>
           <div className="flex items-end gap-3">
-            <span className="num text-[52px] font-medium leading-none" style={{ color }}>
-              {r0(c.value)}
-            </span>
+            <Tip content={<><span className="font-semibold text-ink">Construction {r0(c.value)} · {CONSTRUCTION_BAND_META[c.band].label}</span><span className="mt-1 block text-ink2">How well your money is spread across the whole book. Higher means more safely held.</span></>}>
+              <span className="num cursor-help text-[52px] font-medium leading-none" style={{ color }}>
+                {r0(c.value)}
+              </span>
+            </Tip>
             <span className="font-display mb-1.5 text-[22px] font-medium" style={{ color }}>
               {CONSTRUCTION_BAND_META[c.band].label}
             </span>
           </div>
-          <BandRibbon value={c.value} color={color} />
+          <Tip content={`This marker shows where ${r0(c.value)} sits on the 0–100 Construction scale.`}>
+            <div className="max-w-[240px] cursor-help"><BandRibbon value={c.value} color={color} /></div>
+          </Tip>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <StageBadge tier={c.structureTier} />
-            <CapitalPill tier={c.capitalTier} />
+            <ArchetypeChip label={c.archetype} />
           </div>
           <p className="mt-3 max-w-[26em] text-[12px] leading-relaxed text-ink2">
             Health unlocks as we score your holdings

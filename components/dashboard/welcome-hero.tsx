@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { Sparkline } from "@/components/ui/sparkline";
+import { NavChart } from "@/components/portfolio/overview/nav-chart";
+import { diversificationRead, sectorCoverageShort } from "@/components/portfolio/lib";
 import { Icons, type Icon } from "@/lib/icons";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useHoldings } from "@/lib/api/hooks/use-holdings";
@@ -47,11 +48,11 @@ function AskVytalBar() {
       aria-disabled
       className="mt-5 flex h-12 items-center gap-2 rounded-xl border border-line bg-surface-2/60 px-3"
     >
-      <Icons.brain weight="duotone" className="size-5 text-primary/70" />
+      <Icons.brain weight="duotone" className="size-5 shrink-0 text-primary/70" />
       <input
         disabled
         placeholder="Ask Vytal about your book — coming soon"
-        className="h-full flex-1 cursor-not-allowed bg-transparent text-sm text-ink3 outline-none placeholder:text-ink3/70"
+        className="h-full min-w-0 flex-1 cursor-not-allowed bg-transparent text-sm text-ink3 outline-none placeholder:text-ink3/70"
       />
       <span className="shrink-0 rounded-md border border-line2 bg-surface-3/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink3">
         Soon
@@ -154,8 +155,11 @@ export function WelcomeHero() {
   const returnPct = investedPriced > 0 ? (totalReturn / investedPriced) * 100 : 0;
   const dayVal = totals.dayChangeValue;
   const dayPct = totals.dayChangePct;
-  const sectorsCount = new Set(holdings.map((h) => h.sector ?? "Unclassified")).size;
-  const navSeries = navQ.data?.series.map((p) => p.value) ?? [];
+  // The SHARED sector read — was an inline Set that counted an "ETF" bucket as one sector.
+  const div = diversificationRead(holdings);
+  // Glance chart is the RETURNS trajectory (TWR), not ₹ value — so the mini-line agrees with
+  // the "total return" number beside it instead of climbing green while the return is red.
+  const navPoints = navQ.data?.series ?? [];
 
   // health line — real band, or an honest "building" when there's no health read
   const bandLabel = snapshot?.healthRead?.band ? HEALTH_BAND_META[snapshot.healthRead.band].label : null;
@@ -191,7 +195,20 @@ export function WelcomeHero() {
       color: changeColor(returnPct),
       sub: signINR(totalReturn),
     },
-    { label: "Holdings", value: totals.positions, icon: Icons.stack, color: "text-foreground", sub: `${sectorsCount} sector${sectorsCount === 1 ? "" : "s"}` },
+    {
+      label: "Holdings",
+      value: totals.positions,
+      icon: Icons.stack,
+      color: "text-foreground",
+      // The sector count carries its coverage in the same breath: "1 sector · across 44% of book".
+      // A pure-equity book appends nothing — there is no absence to disclose. A fund-only book has
+      // no sector read at all and says so, rather than claiming "0 sectors".
+      sub:
+        div.sectorCount == null
+          ? "no sector read"
+          : `${div.sectorCount} sector${div.sectorCount === 1 ? "" : "s"}` +
+            (sectorCoverageShort(div) ? ` · ${sectorCoverageShort(div)}` : ""),
+    },
   ];
 
   return (
@@ -243,7 +260,7 @@ export function WelcomeHero() {
         {/* portfolio value mini panel */}
         <div className="shrink-0 rounded-2xl border border-line bg-surface-2/60 p-4 lg:w-72">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Portfolio value</p>
-          <p className="mt-1 font-display text-3xl font-extrabold">
+          <p className="mt-1 truncate font-display text-2xl font-extrabold sm:text-3xl">
             <AnimatedNumber value={displayValue} prefix="₹" locales="en-IN" />
           </p>
           <div className="mt-1 flex items-center gap-2 text-sm">
@@ -257,24 +274,33 @@ export function WelcomeHero() {
             </span>
             <span className="text-muted-foreground">total return</span>
           </div>
-          {navSeries.length >= 2 && (
-            <Sparkline data={navSeries} width={256} height={56} className="mt-3 w-full" />
+          {navPoints.length >= 2 && (
+            <div className="mt-3">
+              <NavChart
+                series={navPoints}
+                defaultLens="returns"
+                lockLens
+                compact
+                brokerGap={navQ.data?.meta.brokerHoldingsExcluded}
+                maxRange={navQ.data?.meta.maxRange}
+              />
+            </div>
           )}
         </div>
       </div>
 
       {/* KPI tiles */}
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         {kpis.map((k) => (
           <div
             key={k.label}
-            className="rounded-2xl border border-line bg-surface-2/60 p-3.5 transition-colors hover:border-primary/25"
+            className="min-w-0 rounded-2xl border border-line bg-surface-2/60 p-3 transition-colors hover:border-primary/25 sm:p-3.5"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{k.label}</span>
-              <k.icon weight="duotone" className="size-4 text-primary/80" />
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="truncate text-[11px] text-muted-foreground sm:text-xs">{k.label}</span>
+              <k.icon weight="duotone" className="size-4 shrink-0 text-primary/80" />
             </div>
-            <p className={cn("mt-1.5 font-display text-xl font-bold", k.color)}>
+            <p className={cn("mt-1.5 truncate font-display text-lg font-bold leading-tight sm:text-xl", k.color)}>
               <AnimatedNumber
                 value={k.value}
                 prefix={k.prefix}
@@ -283,7 +309,7 @@ export function WelcomeHero() {
                 locales="en-IN"
               />
             </p>
-            {k.sub && <p className={cn("text-xs", k.color === "text-foreground" ? "text-muted-foreground" : k.color)}>{k.sub}</p>}
+            {k.sub && <p className={cn("truncate text-[11px] sm:text-xs", k.color === "text-foreground" ? "text-muted-foreground" : k.color)}>{k.sub}</p>}
           </div>
         ))}
       </div>

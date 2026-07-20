@@ -120,7 +120,7 @@ function HoldingRow({ h, i }: { h: Holding; i: number }) {
     >
       <Link
         href={`/research/stock-screener/${h.symbol}`}
-        className="group flex items-center gap-3 rounded-xl border border-transparent p-2 transition-colors hover:border-line2 hover:bg-surface-2/60"
+        className="group flex items-center gap-2.5 rounded-xl border border-transparent p-2 transition-colors hover:border-line2 hover:bg-surface-2/60 sm:gap-3"
       >
         <HealthChip health={h.health} band={h.band} />
         <div className="min-w-0 flex-1">
@@ -128,11 +128,11 @@ function HoldingRow({ h, i }: { h: Holding; i: number }) {
           <p className="truncate text-xs text-ink3">{h.name}</p>
         </div>
         {spark ? (
-          <Sparkline data={spark.closes} width={60} height={26} />
+          <Sparkline data={spark.closes} width={60} height={26} className="hidden shrink-0 min-[400px]:block" />
         ) : (
-          <span className="w-15" />
+          <span className="hidden w-15 min-[400px]:block" />
         )}
-        <div className="w-24 text-right">
+        <div className="w-20 shrink-0 text-right sm:w-24">
           <p className="num text-sm text-ink">
             {h.marketValue != null ? formatINR(h.marketValue, { compact: true }) : "—"}
           </p>

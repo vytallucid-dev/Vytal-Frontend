@@ -3,13 +3,16 @@
 import { Reveal } from "@/components/ui/reveal";
 import { SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { Icons } from "@/lib/icons";
-import type { Holding, HoldingsTotals, PortfolioSnapshot } from "@/types/portfolio";
+import type { Holding, HoldingsTotals, PfFinding, PortfolioDisclosure, PortfolioSnapshot } from "@/types/portfolio";
 import type { PortfolioTab } from "../tabs";
 import { BLUEPRINT_ACCENT, constructionColor, healthColor } from "../lib";
 import { HeroSection } from "./hero";
+import { StoryBlock, NullStoryNote } from "./story-block";
+import { HealthHistoryChart } from "../health-history-chart";
 import { HealthReadBody } from "./health-read";
 import { ConstructionReadBody } from "./construction-read";
 import { CoverageUnlockSection } from "./coverage";
+import { PdDisclosures } from "./disclosures";
 import { HoldingsSection } from "./holdings";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,11 +58,17 @@ function Provenance({ snapshot }: { snapshot: PortfolioSnapshot }) {
 export function HealthTab({
   snapshot,
   holdings,
+  disclosure,
+  referenceFindings,
   onOpenTab,
 }: {
   snapshot: PortfolioSnapshot | null;
   holdings: Holding[];
   totals: HoldingsTotals;
+  disclosure?: PortfolioDisclosure;
+  /** (Stage 10a) The PD family — served BESIDE the snapshot on the response, threaded here from the hub.
+   *  Reference-only, always-on; rendered in its own "what we can't tell you" section. */
+  referenceFindings?: PfFinding[];
   onOpenTab?: (t: PortfolioTab) => void;
 }) {
   // pending: no snapshot persisted yet (fresh book, before its first mutation / rescore)
@@ -71,20 +80,61 @@ export function HealthTab({
 
   return (
     <div className="flex flex-col pb-4">
+      {/* the story — the read on your book, as a designed object (or the calm null-story note when the
+          book was scored before the story engine). Renders above everything; nothing below depends on it. */}
+      <SectionEyebrow
+        label="The read on your book"
+        pill="the story"
+        icon={Icons.pulse}
+        accent={healthAccent}
+      />
+      <Reveal>
+        {snapshot.story ? <StoryBlock snapshot={snapshot} /> : <NullStoryNote />}
+      </Reveal>
+
       {/* the hero — the resolver fills the slot: health when it exists, else construction */}
       {hasHealth ? (
-        <SectionEyebrow label="Two reads of your book" pill="health · construction" icon={Icons.pulse} accent={healthAccent} />
+        <SectionEyebrow
+          label="Two reads of your book"
+          pill="health · construction"
+          icon={Icons.pulse}
+          accent={healthAccent}
+        />
       ) : (
-        <SectionEyebrow label="How your book is built" pill="structure & stage" icon={Icons.chartBar} accent={constructionAccent} />
+        <SectionEyebrow
+          label="How your book is built"
+          pill="structure & stage"
+          icon={Icons.chartBar}
+          accent={constructionAccent}
+        />
       )}
       <Reveal>
         <HeroSection snapshot={snapshot} holdings={holdings} />
       </Reveal>
 
+      {/* the history — the same two reads, over time. Read-only over portfolio_score_history;
+          a young, fills-forward series (the chart owns its own controls + honest-sparse states). */}
+      <SectionEyebrow
+        label="How your scores have moved"
+        pill="health · construction"
+        icon={Icons.chartLine}
+        accent={healthAccent}
+      />
+      <Reveal>
+        <div className="rounded-2xl border border-line bg-surface-1 p-5 sm:p-6">
+          <HealthHistoryChart />
+        </div>
+      </Reveal>
+
       {/* the health read — only when there's a scored book */}
       {hasHealth && (
         <>
-          <SectionEyebrow label="Are the things you own sound?" pill="quality − flags" icon={Icons.pulse} accent={healthAccent} />
+          <SectionEyebrow
+            label="Are the things you own sound?"
+            pill="quality − flags"
+            icon={Icons.pulse}
+            accent={healthAccent}
+          />
           <Reveal>
             <HealthReadBody snapshot={snapshot} holdings={holdings} onOpenTab={onOpenTab} />
           </Reveal>
@@ -92,7 +142,12 @@ export function HealthTab({
       )}
 
       {/* the construction read — always present (its own question, blueprint identity) */}
-      <SectionEyebrow label="Is this book safely held?" pill="structure & shape" icon={Icons.chartBar} accent={BLUEPRINT_ACCENT} />
+      <SectionEyebrow
+        label="Is this book safely held?"
+        pill="structure & shape"
+        icon={Icons.chartBar}
+        accent={BLUEPRINT_ACCENT}
+      />
       <Reveal>
         <ConstructionReadBody snapshot={snapshot} holdings={holdings} onOpenTab={onOpenTab} />
       </Reveal>
@@ -105,11 +160,33 @@ export function HealthTab({
         accent={BLUEPRINT_ACCENT}
       />
       <Reveal>
-        <CoverageUnlockSection snapshot={snapshot} holdings={holdings} onOpenTab={onOpenTab} />
+        <CoverageUnlockSection snapshot={snapshot} holdings={holdings} disclosure={disclosure} onOpenTab={onOpenTab} />
       </Reveal>
 
-      {/* holdings floor — attention names lead; expand for per-stock evidence; link out */}
-      <SectionEyebrow label="Your holdings" pill="attention names lead · expand for evidence" icon={Icons.portfolio} accent="#4ea1e6" />
+      {/* disclosures (PD) — what we can't tell you about THIS book. Reference-only, unsuppressible;
+          served beside the snapshot. Its own section, distinct from findings (it describes our data). */}
+      {referenceFindings && referenceFindings.length > 0 && (
+        <>
+          <SectionEyebrow
+            label="What we can't tell you about this book"
+            pill="disclosures"
+            icon={Icons.warning}
+            accent={BLUEPRINT_ACCENT}
+          />
+          <Reveal>
+            <PdDisclosures findings={referenceFindings} />
+          </Reveal>
+        </>
+      )}
+
+      {/* holdings floor — one row per issuer, combined across accounts (matches Construction); attention
+          names lead; expand for per-stock evidence; link out */}
+      <SectionEyebrow
+        label="Your Combined Holdings"
+        pill="combined across accounts · attention leads"
+        icon={Icons.portfolio}
+        accent="#4ea1e6"
+      />
       <Reveal>
         <HoldingsSection snapshot={snapshot} holdings={holdings} />
       </Reveal>

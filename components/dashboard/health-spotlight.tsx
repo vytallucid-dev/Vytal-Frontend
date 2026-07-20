@@ -102,7 +102,7 @@ export function HealthSpotlight() {
     return (
       <CardShell title="How your book is built" sub="Is this book safely held?">
         <div className="mt-4 flex items-end gap-2.5">
-          <span className="num font-display text-[52px] font-bold leading-none" style={{ color }}>
+          <span className="num font-display text-[42px] font-bold leading-none sm:text-[52px]" style={{ color }}>
             {Math.round(c.value)}
           </span>
           <span className="mb-1 font-display text-base font-semibold" style={{ color }}>
@@ -147,7 +147,7 @@ export function HealthSpotlight() {
       <div className="mt-4 flex items-end justify-between">
         <div>
           <div className="flex items-end gap-2">
-            <span className="num font-display text-[52px] font-bold leading-none" style={{ color }}>
+            <span className="num font-display text-[42px] font-bold leading-none sm:text-[52px]" style={{ color }}>
               {h.value}
             </span>
             <span className="mb-1 font-display text-base font-semibold" style={{ color }}>
@@ -156,8 +156,14 @@ export function HealthSpotlight() {
           </div>
           {/* mandatory coverage micro-line — true / uncapped */}
           <p className="mt-1.5 text-xs text-ink3">
-            Covers <span className="num text-ink">{cs.scoredCount}</span> of{" "}
-            <span className="num text-ink">{cs.totalCount}</span> · {coveragePct}% of value
+            {/* (Stage 9) counts and % are counted over ONE population, frozen together; null on pre-2.0 rows. */}
+            {cs.scoredCount != null && cs.totalCount != null && (
+              <>
+                Covers <span className="num text-ink">{cs.scoredCount}</span> of{" "}
+                <span className="num text-ink">{cs.totalCount}</span> ·{" "}
+              </>
+            )}
+            {coveragePct}% of value
           </p>
         </div>
         {h.provisional && (

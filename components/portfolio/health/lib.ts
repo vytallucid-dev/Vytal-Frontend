@@ -16,21 +16,23 @@ import type {
   SignalSource,
   SignalsDeduction,
   StockBand,
-  StructureDeduction,
-  StructureRule,
+  CDeduction,
+  ConstructionRule,
 } from "@/types/portfolio";
-import { allFindings, flagsDragOf } from "../lib";
+import { allFindings, flagsDragOf, holdingClass } from "../lib";
 // The flags-drag weight + expression live in ONE place (../lib flagsDragOf) — Signals is the
 // only term besides Quality in the v1.2 Health Score, and this file reconciles through that
 // shared helper rather than carrying its own copy of W_SIGNAL.
 
-// ── structure rule identity (A.6) — a short human name + the "why" per rule ─────────
-export const STRUCTURE_RULE_META: Record<StructureRule, { title: string; what: string }> = {
-  S1: { title: "Single position", what: "one holding carries an outsized share of the book" },
-  S2: { title: "Sector pile-up", what: "one sector carries an outsized share of the book" },
-  S3: { title: "Thin breadth", what: "weight concentrates into few effective positions" },
-  S4: { title: "Over-diversification", what: "more holdings than can be tracked by hand" },
-  S5: { title: "Unverified mega-position", what: "a large position we can't yet score" },
+// ── (Construction v2 Stage 6) construction rule identity — a short human name + the "why" per C-rule.
+//    Keyed on C1…C6 (the S-rule meta is gone; the S-rules feed no display now). ─────────
+export const CONSTRUCTION_RULE_META: Record<ConstructionRule, { title: string; what: string }> = {
+  C1: { title: "Entity concentration", what: "one issuer carries an outsized share of the book" },
+  C2: { title: "Entity breadth", what: "name-risk weight sits in too few effective issuers" },
+  C3: { title: "Sector concentration", what: "one sector carries an outsized share of the book" },
+  C4: { title: "Sector breadth", what: "sectored weight sits in too few effective sectors" },
+  C5: { title: "Fund-house concentration", what: "one AMC carries an outsized share of your funds" },
+  C6: { title: "Monitorability", what: "more holdings than can comfortably be tracked by hand" },
 };
 
 // ── signal source identity (A.7) — the winning red-flag kind per flagged holding ────
@@ -45,23 +47,27 @@ export const SIGNAL_SOURCE_META: Record<SignalSource, { label: string; tone: PfT
 
 // ── ledgers — each nested in its read (structure on construction, signals on health).
 //    Defensive: nullable on the wire; signalsLedger empty when there's no health read. ──
-export function structureLedger(s: PortfolioSnapshot): StructureDeduction[] {
-  return (s.constructionRead.structureLedger as StructureDeduction[] | undefined) ?? [];
+/** (Stage 6) the C1–C6 ledger, verbatim off the wire. null (legacy/no-holding row) → []. */
+export function constructionRules(s: PortfolioSnapshot): CDeduction[] {
+  return s.constructionRead.rules ?? [];
 }
 export function signalsLedger(s: PortfolioSnapshot): SignalsDeduction[] {
   return (s.healthRead?.signalsLedger as SignalsDeduction[] | undefined) ?? [];
 }
 
-/** Fired S-rules that actually took points off, largest first. Not-evaluable entries
- *  (points 0 — e.g. S2 killed by unknown-sector weight) are surfaced separately as
- *  honest context, never mixed in as a deduction. */
-export function activeStructure(s: PortfolioSnapshot): StructureDeduction[] {
-  return structureLedger(s)
+/** Fired C-rules that actually took points off, largest first. */
+export function firedRules(s: PortfolioSnapshot): CDeduction[] {
+  return constructionRules(s)
     .filter((e) => e.points > 0.005)
     .sort((a, b) => b.points - a.points);
 }
-export function notEvaluableStructure(s: PortfolioSnapshot): StructureDeduction[] {
-  return structureLedger(s).filter((e) => e.points <= 0.005);
+/** Rules with NO subject to measure — not-evaluable ≠ clean. §9.4's panel lists these as "not applicable". */
+export function notEvaluableRules(s: PortfolioSnapshot): CDeduction[] {
+  return constructionRules(s).filter((e) => !e.evaluable);
+}
+/** Rules that HAD a subject and took nothing off — "checked, clean". */
+export function cleanRules(s: PortfolioSnapshot): CDeduction[] {
+  return constructionRules(s).filter((e) => e.evaluable && e.points <= 0.005);
 }
 
 /** Per-holding Signals deductions, largest first. Empty ⇒ no active red flags. */
@@ -246,18 +252,21 @@ export function concentrationRead(holdings: Holding[]): ConcentrationRead {
   };
 }
 
-/** Effective breadth (Neff = inverse Herfindahl). Prefer the STORED value the engine
- *  computed (carried on a PC5/PB1 finding bind, else the S3 ledger detail) so the shape
- *  matches the penalty; fall back to a display computation over priced weights. */
+/** Effective breadth (Neff = inverse Herfindahl). Prefer the STORED value the engine computed —
+ *  (Stage 7) C2's `metrics.neff`, else a PC5/PB1 finding bind — so the shape matches the penalty; fall
+ *  back to a display computation over priced weights. NEVER parses ledger prose.
+ *
+ *  (Stage 7) This reads `metrics`, not `firedSubject`. It is a strict improvement: `firedSubject` is null
+ *  when a rule is CLEAN, so a well-diversified book — the one whose Neff is most worth showing — used to
+ *  fall through to the client-side recomputation below and render `stored: false`. The engine's own Neff
+ *  is now available whether or not the rule fired. C2 is preferred over C4: C2's Neff is over ENTITIES
+ *  (what "effective positions" means to a reader); C4's is over sector totals, a different question. */
 export function effectiveBreadth(s: PortfolioSnapshot, holdings: Holding[]): { neff: number; stored: boolean } {
+  const c2 = constructionRules(s).find((e) => e.rule === "C2");
+  if (typeof c2?.metrics?.neff === "number") return { neff: c2.metrics.neff, stored: true };
   for (const f of allFindings(s)) {
     const n = f.bind?.neff;
     if (typeof n === "number") return { neff: n, stored: true };
-  }
-  const s3 = structureLedger(s).find((e) => e.rule === "S3");
-  if (s3) {
-    const m = /Neff\s+([\d.]+)/.exec(s3.detail);
-    if (m) return { neff: Number(m[1]), stored: true };
   }
   const priced = holdings.filter((h) => h.marketValue != null && h.marketValue > 0);
   const total = priced.reduce((sum, h) => sum + (h.marketValue ?? 0), 0);
@@ -280,7 +289,7 @@ export function sectorSlices(holdings: Holding[]): SectorSlice[] {
   if (total <= 0) return [];
   const by = new Map<string, number>();
   for (const h of priced) {
-    const key = h.sector ?? "Unclassified";
+    const key = holdingClass(h);
     by.set(key, (by.get(key) ?? 0) + (h.marketValue ?? 0));
   }
   return [...by.entries()].map(([sector, v]) => ({ sector, weight: v / total })).sort((a, b) => b.weight - a.weight);
@@ -323,6 +332,228 @@ export interface HoldingRank {
   flagged: boolean; // fired a Signals deduction
   unscored: boolean;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// COMBINED-BOOK AGGREGATION — one row per ISSUER ENTITY, matching the Construction engine.
+//
+// The Health tab is a WHOLE-PORTFOLIO view — it is NOT account-scoped, and the Construction engine
+// already collapses holdings by issuer (`entityKeyOf` = `isin.slice(0,7)` for name-risk). The raw
+// /me/holdings list is per-(account,instrument), so RELIANCE-in-two-accounts renders twice while the
+// engine counts it once. This groups the LIVE list on the SAME key the engine used — `entityKey` for
+// name-risk (RELIANCE's two accounts, an NTPC stock+bond → one row), falling back to `isin` for
+// baskets/gold/sovereign (never aggregated by issuer, but still merged across accounts by instrument).
+//
+//   · weight is SUMMED across every account & instrument in the entity.
+//   · the headline score is the entity's EQUITY — a bond carries no score, so it never competes; the
+//     expand breaks the parts out. We NEVER key on instrumentId, and NEVER blend a stock and a bond.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+/** (Holdings tab) One account's stake in an instrument or entity — its ₹ and its book-weight share.
+ *  Preserved through aggregation so a collapsed row can say WHICH accounts hold it (RELIANCE →
+ *  "Grow 1 · demo") without a second fetch. Additive: the Health tab reads none of these fields. */
+export interface AccountShare {
+  accountId: string;
+  accountName: string;
+  marketValue: number | null;
+  weight: number; // 0..1 book weight
+}
+/** (Holdings tab) One instrument of an entity, merged across accounts, plus WHICH accounts hold it.
+ *  Powers the entity expand: a multi-instrument entity (NTPC stock+bond) breaks out by instrument. */
+export interface EntityInstrument {
+  instrument: Holding; // instrument-merged (its own avg cost, invested, current, P&L)
+  accounts: AccountShare[]; // the accounts holding THIS instrument
+}
+
+export interface EntityHolding {
+  key: string; // the group key — entityKey ?? isin ?? symbol
+  displayName: string; // the representative's symbol — the equity's ticker where there is one
+  representative: Holding; // drives display name + tier (equity if present, else scored, else heaviest)
+  constituents: Holding[]; // the entity's instruments, each already merged across accounts (weight summed)
+  weight: number; // Σ book weight across every account & instrument in the entity
+  marketValue: number | null;
+  health: number | null; // the SCORED equity's score — null ⇒ no scored equity (a by-design disclosure row)
+  band: Holding["band"];
+  tier: Holding["tier"];
+  multiInstrument: boolean; // >1 distinct instrument (an NTPC stock+bond) → the expand breaks them out
+  equity: Holding | null; // the stock constituent — what the row-expand's pillars/three-lens read
+  disclosureNotes: NonNullable<Holding["disclosureNotes"]>;
+  // ── (Holdings tab, ADDITIVE — the Health tab reads none of the fields below) ──────────────────────
+  //   The entity-level tracker figures a positions row needs. Money SUMS across the collapsed
+  //   instruments; avgCost / LTP / price-stamp are per-instrument and DO NOT sum — they are carried only
+  //   for a single-instrument entity, and are `null` for a genuine multi-instrument one (never a
+  //   fabricated blend across a stock and a bond — the expand shows each instrument's own basis instead).
+  invested: number; // Σ constituents.investedValue
+  unrealizedPnl: number | null; // marketValue − invested (guarded)
+  realizedPnl: number; // Σ constituents.realizedPnl
+  dayChangeValue: number | null; // Σ per-instrument ₹ day moves (over the instruments that have one)
+  dayChangePct: number | null; // dayChangeValue ÷ prevValue of exactly those instruments
+  avgCost: number | null; // single-instrument → blended over accounts; multi → null (don't fabricate)
+  currentPrice: number | null; // single-instrument → the LTP; multi → null
+  priceSource: string | null; // single-instrument → who priced it (for the price stamp); multi → null
+  priceAsOf: string | null; // single-instrument → the day the price belongs to; multi → null
+  accounts: AccountShare[]; // distinct accounts this entity touches, ₹-desc (the "held in" indicator)
+  instruments: EntityInstrument[]; // per-instrument breakdown, each with its accounts (the expand)
+}
+
+/** Sum two possibly-null ₹ figures, staying null only when BOTH are absent (`null ≠ 0`). */
+function sumMaybe(a: number | null, b: number | null): number | null {
+  if (a == null && b == null) return null;
+  return (a ?? 0) + (b ?? 0);
+}
+
+/** The per-account shares of ONE instrument's raw rows (the union is per-(account,instrument), so
+ *  there is at most one row per account here). ₹-desc so the heaviest account leads. */
+function accountSharesOf(rows: Holding[]): AccountShare[] {
+  const m = new Map<string, AccountShare>();
+  for (const r of rows) {
+    const id = r.accountId ?? "—";
+    const cur = m.get(id);
+    if (cur) {
+      cur.marketValue = sumMaybe(cur.marketValue, r.marketValue);
+      cur.weight += r.weight;
+    } else {
+      // The label is the account NAME; the id is the key ONLY, never a fallback label — a raw UUID is
+      // not a human-readable account. accountName is served on every live row.
+      m.set(id, { accountId: id, accountName: r.accountName || "Unnamed account", marketValue: r.marketValue, weight: r.weight });
+    }
+  }
+  return [...m.values()].sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0));
+}
+
+/** Merge the per-(account,instrument) rows of ONE instrument into a single line. Value / quantity /
+ *  invested / day-change / realized SUM across accounts; avg cost blends (Σinvested ÷ Σqty); current
+ *  price and day-change % are per-share and identical across accounts, so the first row's carry through.
+ *  (Money-complete since the Holdings tab reads these fields; the Health tab reads none of them, so its
+ *  constituents are behaviourally unchanged — a single-account instrument merges to exactly itself.) */
+function mergeAccounts(rows: Holding[]): Holding {
+  const base: Holding = { ...rows[0]! };
+  if (rows.length === 1) return base;
+  let qty = 0, mv = 0, mvHas = false, inv = 0, dcv = 0, dcvHas = false, wt = 0, rp = 0;
+  for (const h of rows) {
+    wt += h.weight;
+    qty += h.quantity;
+    inv += h.investedValue;
+    rp += h.realizedPnl;
+    if (h.marketValue != null) { mv += h.marketValue; mvHas = true; }
+    if (h.dayChangeValue != null) { dcv += h.dayChangeValue; dcvHas = true; }
+  }
+  base.weight = wt;
+  base.quantity = qty;
+  base.investedValue = inv;
+  base.realizedPnl = rp;
+  base.marketValue = mvHas ? mv : null;
+  base.dayChangeValue = dcvHas ? dcv : null;
+  base.avgCost = qty > 0 ? inv / qty : rows[0]!.avgCost; // blended weighted-avg cost of the same instrument
+  base.unrealizedPnl = base.marketValue != null ? base.marketValue - inv : null;
+  // currentPrice / dayChangePct / priceSource / priceAsOf are per-share facts, identical across the
+  // accounts holding one instrument — the spread of rows[0] already carries the right values.
+  return base;
+}
+
+/** Collapse the raw per-account holdings list into one entry per issuer entity (the engine's key). */
+export function aggregateHoldings(holdings: Holding[]): EntityHolding[] {
+  // 1 — group by the engine's issuer key, falling back to the instrument's isin (then symbol).
+  const byEntity = new Map<string, Holding[]>();
+  for (const h of holdings) {
+    const key = h.entityKey ?? h.isin ?? h.symbol;
+    const g = byEntity.get(key);
+    if (g) g.push(h);
+    else byEntity.set(key, [h]);
+  }
+  const out: EntityHolding[] = [];
+  for (const [key, rows] of byEntity) {
+    // 2 — inside an entity, merge each instrument across accounts (RELIANCE's two account lines → one),
+    //     KEEPING each instrument's per-account rows so the expand can break them out.
+    const byInstrument = new Map<string, Holding[]>();
+    for (const h of rows) {
+      const ik = h.isin ?? h.symbol;
+      const g = byInstrument.get(ik);
+      if (g) g.push(h);
+      else byInstrument.set(ik, [h]);
+    }
+    const instruments: EntityInstrument[] = [...byInstrument.values()]
+      .map((accountRows) => ({ instrument: mergeAccounts(accountRows), accounts: accountSharesOf(accountRows) }))
+      .sort((a, b) => (b.instrument.marketValue ?? 0) - (a.instrument.marketValue ?? 0));
+    const constituents = instruments.map((i) => i.instrument);
+    // 3 — the equity drives the headline (a bond has no score). displayName follows the engine's
+    //     `displayNameFor` (prefer the equity's ticker), never a blended anything.
+    const equity = constituents.find((c) => c.assetClass === "stock") ?? null;
+    const scored = constituents.find((c) => c.health != null) ?? null; // a scored holding is always a stock
+    const representative = equity ?? scored ?? constituents[0]!;
+    const mvs = constituents.map((c) => c.marketValue).filter((v): v is number => v != null);
+    const marketValue = mvs.length ? mvs.reduce((s, v) => s + v, 0) : null;
+    const invested = constituents.reduce((s, c) => s + c.investedValue, 0);
+    const realizedPnl = constituents.reduce((s, c) => s + c.realizedPnl, 0);
+    const unrealizedPnl = marketValue != null ? marketValue - invested : null;
+    // Day figures over exactly the instruments that HAVE one — a NAV-priced fund has no previous NAV, so
+    // it contributes value but no day-change; the % is measured against the capital it was measured on.
+    const movers = constituents.filter((c) => c.dayChangeValue != null && c.marketValue != null);
+    const dayChangeValue = movers.length ? movers.reduce((s, c) => s + (c.dayChangeValue ?? 0), 0) : null;
+    const prevValue = movers.reduce((s, c) => s + ((c.marketValue ?? 0) - (c.dayChangeValue ?? 0)), 0);
+    const dayChangePct = dayChangeValue != null && prevValue > 0 ? (dayChangeValue / prevValue) * 100 : null;
+    const single = constituents.length === 1;
+    // entity accounts = union across the entity's instruments (an account's ₹ summed over the
+    // instruments of this issuer it holds).
+    const acctMap = new Map<string, AccountShare>();
+    for (const inst of instruments) {
+      for (const a of inst.accounts) {
+        const cur = acctMap.get(a.accountId);
+        if (cur) { cur.marketValue = sumMaybe(cur.marketValue, a.marketValue); cur.weight += a.weight; }
+        else acctMap.set(a.accountId, { ...a });
+      }
+    }
+    const accounts = [...acctMap.values()].sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0));
+    out.push({
+      key,
+      displayName: representative.symbol,
+      representative,
+      constituents,
+      weight: constituents.reduce((s, c) => s + c.weight, 0),
+      marketValue,
+      health: scored?.health ?? null,
+      band: scored?.band ?? null,
+      tier: representative.tier,
+      multiInstrument: constituents.length > 1,
+      equity,
+      disclosureNotes: representative.disclosureNotes ?? [],
+      invested,
+      unrealizedPnl,
+      realizedPnl,
+      dayChangeValue,
+      dayChangePct,
+      avgCost: single ? constituents[0]!.avgCost : null,
+      currentPrice: single ? constituents[0]!.currentPrice : null,
+      priceSource: single ? (constituents[0]!.priceSource ?? null) : null,
+      priceAsOf: single ? (constituents[0]!.priceAsOf ?? null) : null,
+      accounts,
+      instruments,
+    });
+  }
+  return out;
+}
+
+export interface EntityRank {
+  entity: EntityHolding;
+  weak: boolean;
+  flagged: boolean;
+  unscored: boolean;
+}
+/** Sort entities by weight × attention — the SAME rule as `rankedHoldings`, over the aggregated set. */
+export function rankedEntities(entities: EntityHolding[], flagged: Set<string>): EntityRank[] {
+  return entities
+    .map((e) => ({
+      entity: e,
+      weak: e.band === "fragile" || e.band === "below_par",
+      flagged: e.constituents.some((c) => flagged.has(c.symbol)),
+      unscored: e.health == null,
+    }))
+    .sort((a, b) => {
+      const attnA = (a.weak || a.flagged ? 1 : 0) - (a.unscored ? 0.5 : 0);
+      const attnB = (b.weak || b.flagged ? 1 : 0) - (b.unscored ? 0.5 : 0);
+      if (attnA !== attnB) return attnB - attnA;
+      return b.entity.weight - a.entity.weight;
+    });
+}
+
 /** Sort by weight × attention: weak/flagged names lead (they earn the look), then heavier
  *  first; sound scored names stay calm; unscored sink but are never hidden. */
 export function rankedHoldings(holdings: Holding[], flagged: Set<string>): HoldingRank[] {

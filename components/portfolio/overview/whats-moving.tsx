@@ -3,28 +3,53 @@
 import { cn } from "@/lib/utils";
 import { formatINR } from "@/lib/format";
 import type { Holding } from "@/types/portfolio";
-import { type ContributionRow, contributions, todaysMovers } from "../lib";
+import { type ContributionRow, contributions, holdingClass, todaysMovers } from "../lib";
 import { Funnel, Kicker } from "./shared";
 
 const pnlColor = (v: number) => (v > 0 ? "text-success" : v < 0 ? "text-danger" : "text-ink2");
 const signPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 const signINR = (v: number) => `${v >= 0 ? "+" : "−"}${formatINR(Math.abs(v), { compact: true })}`;
 
+/** NAME leads over a raw ISIN: a fund whose ticker fell back to its ISIN (`symbol === isin`) shows
+ *  its instrument name — never a bare "INF179K01UT0". A stock keeps its real ticker (mono). */
+function moverName(h: Holding): { text: string; ticker: boolean } {
+  const isIsinFallback = !!h.isin && h.symbol === h.isin;
+  return isIsinFallback ? { text: h.name ?? h.symbol, ticker: false } : { text: h.symbol, ticker: true };
+}
+
+/** The mover's identity: NAME (name-over-ISIN) — mono when it's a ticker. `chip` adds the small
+ *  asset-class label (`holdingClass`) so a fund/ETF mover reads AS a fund, not a bare symbol that
+ *  assumes equity. The chip rides the roomy "Today's movers" column; the cramped contributors
+ *  column (which also carries "% of return") shows the NAME alone so nothing overlaps. */
+function MoverIdentity({ h, chip }: { h: Holding; chip?: boolean }) {
+  const name = moverName(h);
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className={cn("min-w-0 truncate font-medium text-ink", name.ticker && "num")}>{name.text}</span>
+      {chip && (
+        <span className="shrink-0 rounded border border-line2 px-1 py-px text-[8.5px] uppercase tracking-wide text-ink3">
+          {holdingClass(h)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function MoverRow({ h }: { h: Holding }) {
   const d = h.dayChangePct ?? 0;
   return (
-    <div className="flex items-center justify-between py-1.5 text-[12.5px]">
-      <span className="num font-medium text-ink">{h.symbol}</span>
-      <span className={cn("num", pnlColor(d))}>{signPct(d)}</span>
+    <div className="flex items-center justify-between gap-2 py-1.5 text-[12.5px]">
+      <MoverIdentity h={h} chip />
+      <span className={cn("num shrink-0", pnlColor(d))}>{signPct(d)}</span>
     </div>
   );
 }
 
 function ContribRow({ r }: { r: ContributionRow }) {
   return (
-    <div className="flex items-center justify-between py-1.5 text-[12.5px]">
-      <span className="num font-medium text-ink">{r.holding.symbol}</span>
-      <span className="flex items-center gap-2.5">
+    <div className="flex items-center justify-between gap-2 py-1.5 text-[12.5px]">
+      <MoverIdentity h={r.holding} />
+      <span className="flex shrink-0 items-center gap-2.5">
         {r.contribution != null && (
           <span className="num text-[10.5px] text-ink3">{Math.round(r.contribution * 100)}% of return</span>
         )}

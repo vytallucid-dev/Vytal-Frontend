@@ -129,7 +129,6 @@ export function CalendarHub() {
     <div className="mx-auto w-full min-w-0 max-w-7xl">
       {/* header */}
       <div className="pt-1">
-        <span className="text-[12.5px] text-ink2">Calendar</span>
         <div className="mt-1.5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div>
             <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">Catalyst calendar</h1>

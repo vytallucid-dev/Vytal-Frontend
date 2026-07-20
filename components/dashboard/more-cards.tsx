@@ -7,10 +7,17 @@ import { createPortal } from "react-dom";
 import { Icons, type Icon } from "@/lib/icons";
 import { useHoldings } from "@/lib/api/hooks/use-holdings";
 import { useWatchlist } from "@/lib/api/hooks/use-watchlist";
-import { useEventsCalendar, type CalendarEvent } from "@/lib/api/hooks/use-events-calendar";
-import { buildAllocation, diversificationRead, type AllocSegment } from "@/components/portfolio/lib";
+import { useEventsCalendar } from "@/lib/api/hooks/use-events-calendar";
+import {
+  buildAllocation,
+  diversificationRead,
+  sectorCountLabel,
+  sectorCoverageNote,
+  type AllocSegment,
+} from "@/components/portfolio/lib";
 import { healthColorVar, formatINR } from "@/lib/format";
 import { signPct } from "./lib";
+import { UpcomingEventRow, heldUpcomingEvents } from "./upcoming-events";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -180,11 +187,17 @@ export function AllocationCard() {
         </div>
       )}
       {segs.length > 0 && (
-        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
-          <Stat label="Top-3" value={`${Math.round(div.top3 * 100)}%`} />
-          <Stat label="Sectors" value={String(div.sectorCount)} />
-          <Stat label="Largest" value={div.largest ? `${Math.round(div.largest.weight * 100)}%` : "—"} sub={div.largest?.symbol} />
-        </div>
+        <>
+          <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
+            <Stat label="Top-3" value={`${Math.round(div.top3 * 100)}%`} />
+            <Stat label="Sectors" value={sectorCountLabel(div)} />
+            <Stat label="Largest" value={div.largest ? `${Math.round(div.largest.weight * 100)}%` : "—"} sub={div.largest?.symbol} />
+          </div>
+          {/* MANDATORY coverage for the sector read — absent on a pure-equity book. */}
+          {sectorCoverageNote(div) && (
+            <p className="mt-3 text-[10.5px] leading-relaxed text-ink3">{sectorCoverageNote(div)}</p>
+          )}
+        </>
       )}
 
       {/* cursor-anchored tooltip — sector · weight % · value (portaled past card overflow) */}
@@ -221,48 +234,12 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 /* ---------- Upcoming events — holdings-scoped (client filter of the market calendar) ---------- */
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const EVENT_LABEL: Record<string, string> = {
-  earnings: "Earnings",
-  dividend: "Dividend",
-  agm: "AGM",
-  board_meeting: "Board Meeting",
-  bonus: "Bonus",
-  split: "Split",
-  buyback: "Buyback",
-  rights: "Rights",
-  record_date: "Record Date",
-};
-const IMPACT_TINT: Record<string, string> = {
-  high: "text-danger bg-danger/10 border-danger/25",
-  medium: "text-warning bg-warning/10 border-warning/25",
-  low: "text-info bg-info/10 border-info/25",
-};
-
-function fmtDate(iso: string): { day: string; mon: string } {
-  const [, m, d] = iso.split("-");
-  return { day: d ?? "--", mon: MONTHS[Number(m) - 1] ?? "" };
-}
-function eventLabel(t: string): string {
-  return EVENT_LABEL[t] ?? t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-function eventDetail(e: CalendarEvent): string | null {
-  if (e.eventType === "dividend") {
-    const amt = e.dividendAmount != null ? `₹${e.dividendAmount}/sh` : null;
-    const ex = e.exDate ? `ex ${fmtDate(e.exDate).mon} ${fmtDate(e.exDate).day}` : null;
-    return [amt, ex].filter(Boolean).join(" · ") || null;
-  }
-  if (e.eventType === "bonus" && e.bonusRatio) return `Bonus ${e.bonusRatio}`;
-  if (e.eventType === "split" && e.splitRatio) return `Split ${e.splitRatio}`;
-  return null;
-}
-
 export function EventsCard() {
   const holdQ = useHoldings();
   const evQ = useEventsCalendar(90);
   const held = new Set((holdQ.data?.holdings ?? []).map((h) => h.symbol));
   // The calendar is already upcoming-first (eventDate asc, impact tiebreak); just keep held names.
-  const mine = (evQ.data ?? []).filter((e) => held.has(e.symbol)).slice(0, 5);
+  const mine = heldUpcomingEvents(evQ.data, held, 5);
   const loading = holdQ.isLoading || evQ.isLoading;
 
   return (
@@ -299,39 +276,9 @@ export function EventsCard() {
         </div>
       ) : (
         <div className="space-y-2">
-          {mine.map((e, i) => {
-            const d = fmtDate(e.eventDate);
-            const detail = eventDetail(e);
-            return (
-              <motion.div
-                key={e.id}
-                initial={{ opacity: 0, y: 8 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center gap-3 rounded-xl border border-line2 bg-surface-2/40 p-2.5"
-              >
-                <div className="grid size-10 shrink-0 place-items-center rounded-lg border border-line2 bg-surface-3/50 text-center leading-none">
-                  <span className="num font-display text-xs font-bold text-ink">{d.day}</span>
-                  <span className="text-[0.6rem] uppercase text-ink3">{d.mon}</span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">
-                    {e.symbol} <span className="font-normal text-ink3">· {eventLabel(e.eventType)}</span>
-                  </p>
-                  {detail && <p className="truncate text-xs text-ink3">{detail}</p>}
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-md border px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase",
-                    IMPACT_TINT[e.impactLevel] ?? "text-ink3 border-line2",
-                  )}
-                >
-                  {e.impactLevel}
-                </span>
-              </motion.div>
-            );
-          })}
+          {mine.map((e, i) => (
+            <UpcomingEventRow key={e.id} e={e} index={i} />
+          ))}
         </div>
       )}
     </CardShell>

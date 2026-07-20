@@ -9,7 +9,8 @@
 import { motion, useInView } from "framer-motion";
 import { useRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { type Icon } from "@/lib/icons";
+import { Icons, type Icon } from "@/lib/icons";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   LabelBand,
   PillarKey,
@@ -98,14 +99,20 @@ export function SectionEyebrow({
   pill,
   icon: Glyph,
   accent = "var(--p-found)",
+  tip,
+  className,
 }: {
   label: string;
   pill?: string;
   icon?: Icon;
   accent?: string;
+  /** Optional hover-reveal explaining what this section is — a themed tooltip on a small "i" marker. */
+  tip?: ReactNode;
+  /** Override the default `mb-4 mt-8` wrapper spacing (e.g. for a section nested in a grid item). */
+  className?: string;
 }) {
   return (
-    <div className="mb-4 mt-8 flex flex-wrap items-center gap-2.5">
+    <div className={cn("mb-4 mt-8 flex flex-wrap items-center gap-2.5", className)}>
       {Glyph ? (
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border" style={tint(accent)}>
           <Glyph weight="duotone" className="h-4 w-4" />
@@ -114,6 +121,26 @@ export function SectionEyebrow({
         <span className="h-3.5 w-[3px] shrink-0 rounded-full" style={{ background: accent }} />
       )}
       <span className="eyebrow shrink-0">{label}</span>
+      {tip && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={`About: ${label}`}
+              className="inline-grid size-4 shrink-0 cursor-help place-items-center rounded-full text-ink3 outline-none transition-colors hover:text-ink2 focus-visible:text-ink2"
+            >
+              <Icons.info weight="regular" className="size-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent
+            sideOffset={6}
+            collisionPadding={12}
+            className="max-w-[min(320px,calc(100vw-24px))] text-left text-[11.5px] leading-relaxed"
+          >
+            {tip}
+          </TooltipContent>
+        </Tooltip>
+      )}
       <span className="h-px min-w-4 flex-1" style={{ background: `color-mix(in oklch, ${accent} 20%, var(--line))` }} />
       {pill && (
         <span className="num shrink-0 rounded-full border w-full sm:w-max px-2.5 py-1 text-[11px] tracking-normal" style={tint(accent, 10, 26)}>
@@ -177,11 +204,17 @@ export function MiniSpark({
   color,
   width = 80,
   height = 26,
+  fill = false,
 }: {
   points: (number | null)[];
   color: string;
   width?: number;
   height?: number;
+  /** Stretch the SVG to 100% of its container width instead of the fixed `width` px. The `width` still
+   *  defines the viewBox coordinate space (point spacing); `preserveAspectRatio="none"` then scales the
+   *  path horizontally to fill, keeping `height` px so it stays a short strip. Off by default, so every
+   *  existing fixed-size spark (Fundamentals, Overview cards) is byte-for-byte unchanged. */
+  fill?: boolean;
 }) {
   const real = points.filter((p): p is number => p != null);
   if (real.length < SPARK_MIN_POINTS) return null; // never a blank / 2-point spark
@@ -200,7 +233,14 @@ export function MiniSpark({
   const d = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
   const last = coords[coords.length - 1];
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
+    <svg
+      width={fill ? "100%" : width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className={fill ? "block w-full" : undefined}
+      aria-hidden
+    >
       <path d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />
       {last && <circle cx={last.x} cy={last.y} r={1.9} fill={color} />}
     </svg>

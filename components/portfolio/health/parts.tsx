@@ -10,10 +10,87 @@
 import Link from "next/link";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CoverageState, StructureTier, CapitalTier } from "@/types/portfolio";
 import { BLUEPRINT_ACCENT, COVERAGE_COLOR, stockHealthHref } from "../lib";
 
 export const CARD = "rounded-2xl border border-line bg-surface-1 p-5 sm:p-6";
+
+// ── themed tooltip helpers — ONE home for the health tab's hover-reveals, so every section
+//    header, chart, bar and card explains itself in the same voice and the same visual
+//    language. The shadcn Tooltip already carries the theme (surface-3 · line2 · ink); these
+//    just standardise width, placement and the info marker so call-sites stay terse. ─────────
+type TipSide = "top" | "bottom" | "left" | "right";
+
+/** Wrap any element so it reveals a themed tooltip on hover / keyboard-focus. The child IS the
+ *  trigger — a chart, bar, chip or value — so nothing visible is added around it. */
+export function Tip({
+  content,
+  children,
+  side = "top",
+  className,
+}: {
+  content: React.ReactNode;
+  children: React.ReactNode;
+  side?: TipSide;
+  className?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        side={side}
+        sideOffset={6}
+        collisionPadding={12}
+        className={cn("max-w-[min(280px,calc(100vw-24px))] text-left text-[11.5px] leading-relaxed", className)}
+      >
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** A small "i" marker that reveals a themed tooltip — for attaching context to a header or
+ *  kicker without disturbing its layout. Keyboard-focusable, and never swallows a parent's
+ *  click/expand (it preventDefaults + stops propagation). */
+export function InfoTip({
+  children,
+  side = "top",
+  className,
+}: {
+  children: React.ReactNode;
+  side?: TipSide;
+  className?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label="More information"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className={cn(
+            "inline-grid size-3.5 shrink-0 cursor-help place-items-center rounded-full text-ink3 outline-none transition-colors hover:text-ink2 focus-visible:text-ink2",
+            className,
+          )}
+        >
+          <Icons.info weight="regular" className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side={side}
+        sideOffset={6}
+        collisionPadding={12}
+        className="max-w-[min(280px,calc(100vw-24px))] text-left text-[11.5px] leading-relaxed"
+      >
+        {children}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 // ── the premium (health) surface — raised, warm band-tinted glow ──────────────────────
 export function HealthShell({ accent, children, className }: { accent: string; children: React.ReactNode; className?: string }) {
@@ -30,24 +107,17 @@ export function HealthShell({ accent, children, className }: { accent: string; c
   );
 }
 
-// ── the blueprint (construction) surface — cooler, bracketed corners + faint grid ─────
+// ── the blueprint (construction) surface — cooler, bracketed corners + faint slate glow ─
 export function BlueprintShell({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn("relative overflow-hidden rounded-2xl border p-5 sm:p-6", className)}
       style={{
         borderColor: "color-mix(in oklch, " + BLUEPRINT_ACCENT + " 22%, var(--line))",
-        background:
-          "linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px), var(--surface-1)",
-        backgroundSize: "22px 22px, 22px 22px, auto",
-        backgroundPosition: "center",
+        background: `radial-gradient(120% 130% at 100% 0%, color-mix(in oklch, ${BLUEPRINT_ACCENT} 8%, transparent), transparent 55%), var(--surface-1)`,
       }}
     >
       {/* bracketed corners — the blueprint motif */}
-      <span className="pointer-events-none absolute left-2.5 top-2.5 h-3 w-3 rounded-tl-[3px] border-l border-t" style={{ borderColor: BLUEPRINT_ACCENT, opacity: 0.55 }} />
-      <span className="pointer-events-none absolute right-2.5 top-2.5 h-3 w-3 rounded-tr-[3px] border-r border-t" style={{ borderColor: BLUEPRINT_ACCENT, opacity: 0.55 }} />
-      <span className="pointer-events-none absolute bottom-2.5 left-2.5 h-3 w-3 rounded-bl-[3px] border-b border-l" style={{ borderColor: BLUEPRINT_ACCENT, opacity: 0.55 }} />
-      <span className="pointer-events-none absolute bottom-2.5 right-2.5 h-3 w-3 rounded-br-[3px] border-b border-r" style={{ borderColor: BLUEPRINT_ACCENT, opacity: 0.55 }} />
       <div className="relative">{children}</div>
     </div>
   );
@@ -95,29 +165,44 @@ export function BandRibbon({ value, color }: { value: number; color: string }) {
 //    3-segment read of the book by value across health coverage. ────────────────────────
 export function CoverageBar({ cs, height = "h-7" }: { cs: CoverageState; height?: string }) {
   const segs = [
-    { key: "scored", label: "Scored", w: cs.scoredWeight, color: COVERAGE_COLOR.scored, shimmer: false },
-    { key: "awaiting", label: "Awaiting coverage", w: cs.recognizedUnscoredWeight, color: COVERAGE_COLOR.awaiting, shimmer: true },
-    { key: "untracked", label: "Untracked", w: cs.smallUnscoredWeight, color: COVERAGE_COLOR.untracked, shimmer: false },
+    { key: "scored", label: "Scored", w: cs.scoredWeight, color: COVERAGE_COLOR.scored, shimmer: false, desc: "Holdings we've scored on fundamentals — the businesses behind the Health number." },
+    { key: "awaiting", label: "Awaiting coverage", w: cs.recognizedUnscoredWeight, color: COVERAGE_COLOR.awaiting, shimmer: true, desc: "Recognised names we cover but haven't scored yet. They light up as coverage completes — never faked into the number." },
+    { key: "untracked", label: "Untracked", w: cs.smallUnscoredWeight, color: COVERAGE_COLOR.untracked, shimmer: false, desc: "Small or by-design holdings we don't score (funds, ETFs, gold, government paper). Not a gap." },
   ].filter((s) => s.w > 0);
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <p className="kicker">Your capital, across health coverage</p>
+        <p className="kicker flex items-center gap-1.5">
+          Your capital, across health coverage
+          <InfoTip>
+            How your book value splits across health coverage: <b className="font-semibold text-ink">scored</b> (we can judge it),{" "}
+            <b className="font-semibold text-ink">awaiting</b> (covered, not yet scored) and <b className="font-semibold text-ink">untracked</b> (small
+            or by-design). Coverage is confidence, never a penalty on the number.
+          </InfoTip>
+        </p>
         <span className="text-[10.5px] text-ink3">% of book value</span>
       </div>
       <div className={cn("flex gap-0.5 overflow-hidden rounded-lg", height)}>
         {segs.map((s) => {
           const p = s.w * 100; // display arithmetic
           return (
-            <div
+            <Tip
               key={s.key}
-              className="num relative flex items-center justify-center overflow-hidden text-[11px] font-medium"
-              style={{ flex: Math.max(p, 2), background: s.color, color: "#0a0b0e" }}
-              title={`${s.label} ${p.toFixed(1)}%`}
+              content={
+                <>
+                  <span className="font-semibold text-ink">{s.label} · {p.toFixed(1)}% of book value</span>
+                  <span className="mt-1 block text-ink2">{s.desc}</span>
+                </>
+              }
             >
-              {s.shimmer && <span className="shimmer absolute inset-0" aria-hidden />}
-              <span className="relative">{p >= 9 ? `${Math.round(p)}%` : ""}</span>
-            </div>
+              <div
+                className="num relative flex cursor-help items-center justify-center overflow-hidden text-[11px] font-medium"
+                style={{ flex: Math.max(p, 2), background: s.color, color: "#0a0b0e" }}
+              >
+                {s.shimmer && <span className="shimmer absolute inset-0" aria-hidden />}
+                <span className="relative">{p >= 9 ? `${Math.round(p)}%` : ""}</span>
+              </div>
+            </Tip>
           );
         })}
       </div>

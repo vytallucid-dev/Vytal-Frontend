@@ -73,6 +73,14 @@ export function healthLabel(score: number) {
   return BAND_LABEL[healthBand(score)];
 }
 
+/** Display a health/condition SCORE as a whole number — the ONE place the app rounds a score for
+ *  display, so every surface reads it the same way. A score is a judgement shown to a person: the
+ *  fourth decimal of `55.9149` is noise, not signal. ⚠ NOT for calculation receipts — a deduction
+ *  ledger's `−6.21` is a proof and keeps its decimals; this is only for the headline score a user reads. */
+export function roundScore(score: number): number {
+  return Math.round(score);
+}
+
 /** Returns the CSS color VAR string for a health score (use in inline styles / SVG). */
 export function healthColorVar(score: number) {
   return BAND_VAR[healthBand(score)];

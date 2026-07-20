@@ -38,6 +38,12 @@ const dataFlows: DataFlow[] = [
     icon: Icons.warning,
   },
   {
+    href: "/admin/retention",
+    title: "Retention",
+    description: "The nightly pruner's limits — floor-fenced, dry-run-previewed and audited before any change.",
+    icon: Icons.database,
+  },
+  {
     href: "/admin/stock-prices",
     title: "Stock Prices",
     description: "End-of-day NSE Bhavcopy prices, deduped and inserted nightly.",
@@ -84,6 +90,35 @@ const dataFlows: DataFlow[] = [
     title: "News & Announcements",
     description: "NSE filings and Google News, enriched by the content extractor.",
     icon: Icons.news,
+  },
+  // ── THE NON-EQUITY LANES ─────────────────────────────────────────────────────
+  // All four of these shipped CRON-ONLY. They were registered in the backend's pipeline registry —
+  // each with a comment promising it would never become a "mystery cron" — but they had no card, no
+  // manual trigger and no way to watch a run. A pipeline an operator cannot run is a pipeline they
+  // cannot debug, and a promise in a comment is not a dashboard. These are the dashboard.
+  {
+    href: "/admin/mutual-funds",
+    title: "Mutual Funds & ETFs",
+    description: "AMFI NAV + identity, the exchange close for listed ETFs, and the compute-and-discard analytics fold.",
+    icon: Icons.package,
+  },
+  {
+    href: "/admin/reits",
+    title: "REITs & InvITs",
+    description: "Listed real-estate and infrastructure trusts — identity, close and distribution yield. Held, never scored.",
+    icon: Icons.building,
+  },
+  {
+    href: "/admin/govt-securities",
+    title: "Government Securities",
+    description: "G-secs, T-bills, SDLs and Sovereign Gold Bonds. Coupon and maturity year — never a fabricated date.",
+    icon: Icons.shield,
+  },
+  {
+    href: "/admin/corporate-bonds",
+    title: "Corporate Bonds",
+    description: "NCDs, debentures and municipal green bonds. Fenced on the ISIN, not the series. Rating honestly null.",
+    icon: Icons.scales,
   },
   {
     href: "/admin/peer-group-metrics",

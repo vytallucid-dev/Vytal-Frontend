@@ -17,7 +17,7 @@ import {
 import { Icons } from "@/lib/icons";
 import { healthColorVar } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { BAND_META, PILLAR_META, LABEL_BAND_ORDER } from "@/components/stock-detail/health/shared";
+import { BAND_META, PILLAR_META, LABEL_BAND_ORDER, SectionEyebrow } from "@/components/stock-detail/health/shared";
 import type { LabelBand, PillarKey } from "@/types/health";
 import type { UniverseHealthView, UniverseMemberView } from "@/types/universe-view";
 import {
@@ -537,6 +537,14 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
 
   return (
     <div className="flex flex-col gap-3.5">
+      <SectionEyebrow
+        className="mb-0 mt-0"
+        label="Screen the universe"
+        icon={Icons.screener}
+        accent="var(--p-found)"
+        pill={`${view.members.length} names`}
+      />
+
       {/* condition lens — fixed core buttons + a "Patterns ▾" dropdown for the variable
           P-series patterns. One condition active at a time (buttons + dropdown mutually
           exclusive); each binds to a real per-member condition that fires this snapshot. */}

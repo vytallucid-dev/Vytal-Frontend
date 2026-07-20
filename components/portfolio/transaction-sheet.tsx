@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
+import { useAccounts } from "@/lib/api/hooks/use-accounts";
+import { useInstrumentSearch, INSTRUMENT_SEARCH_MIN_Q } from "@/lib/api/hooks/use-instruments";
 import { useTransactionMutations } from "@/lib/api/hooks/use-transactions";
 import type { Transaction, TransactionInput, TransactionType } from "@/types/portfolio";
+import { isCouponBearing } from "@/lib/asset-class";
+import { AssetClassChip } from "./asset-class-chip";
 import {
   TXN_TYPES,
   TXN_TYPE_META,
@@ -27,24 +41,43 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// ── searchable universe picker (compact combobox) ────────────────────────────────
-function StockPicker({
+/** An instrument the user has settled on. `submitId` is what the POST sends in its `symbol` field —
+ *  an ISIN when chosen through the picker (unambiguous, dodges the 409), or a bare ticker when it
+ *  arrives via `initialSymbol` / an edit target (a stock ticker never collides, so it resolves cleanly).
+ *  `assetClass` drives the class chip and the coupon-bearing (bond/gsec/sgb) disclosure. */
+interface PickedInstrument {
+  submitId: string;
+  symbol: string | null;
+  name: string;
+  assetClass: string | null;
+  isActive: boolean;
+}
+
+// ── universe-wide instrument picker (server search over the WHOLE catalogue, not just equities) ─────
+function InstrumentPicker({
   value,
-  label,
   onSelect,
+  onClear,
   error,
   disabled,
 }: {
-  value: string;
-  label: string;
-  onSelect: (symbol: string, label: string) => void;
+  value: PickedInstrument | null;
+  onSelect: (p: PickedInstrument) => void;
+  onClear: () => void;
   error?: string;
   disabled?: boolean;
 }) {
-  const { data: universe, isLoading } = useUniverseStocks();
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+
+  // Debounce — every distinct term is a network round-trip against a ~19k-row catalogue, so we don't
+  // fire on every keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query), 200);
+    return () => clearTimeout(id);
+  }, [query]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -54,93 +87,140 @@ function StockPicker({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q || !universe) return [];
-    return universe
-      .filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [query, universe]);
+  const trimmed = query.trim();
+  const tooShort = trimmed.length > 0 && trimmed.length < INSTRUMENT_SEARCH_MIN_Q;
+  const { data, isLoading, isFetching } = useInstrumentSearch(debounced);
+  const results = data?.results ?? [];
+  const searching = trimmed.length >= INSTRUMENT_SEARCH_MIN_Q;
 
   if (disabled) {
-    // edit mode — symbol isn't editable server-side
+    // edit mode — the INSTRUMENT is fixed at create (PATCH can't re-parent between FIFO queues).
     return (
       <div>
-        <div className="flex h-9 items-center rounded-md border border-line2 bg-surface-2 px-3 text-[13px] text-ink2">
-          <span className="num font-medium text-ink">{value}</span>
-          {label && label !== value && <span className="ml-2 truncate text-ink3">{label.replace(`${value} — `, "")}</span>}
+        <div className="flex h-9 items-center gap-2 rounded-md border border-line2 bg-surface-2 px-3 text-[13px]">
+          {value?.assetClass && <AssetClassChip assetClass={value.assetClass} />}
+          <span className="min-w-0 truncate font-medium text-ink">{value?.name ?? "—"}</span>
+          {value?.symbol && value.symbol !== value.name && (
+            <span className="num ml-auto shrink-0 text-ink3">{value.symbol}</span>
+          )}
         </div>
-        <p className="mt-1 text-[10.5px] text-ink3">Symbol isn&apos;t editable — delete &amp; re-add to move a trade to another stock.</p>
+        <p className="mt-1 text-[10.5px] text-ink3">
+          The instrument is fixed — delete &amp; re-add to record a trade against a different one.
+        </p>
+      </div>
+    );
+  }
+
+  if (value) {
+    // a settled selection — show what was picked (class + name + ticker/ISIN), with a change affordance
+    return (
+      <div className="flex h-9 items-center gap-2 rounded-md border border-line2 bg-surface-1 px-3 text-[13px]">
+        {value.assetClass && <AssetClassChip assetClass={value.assetClass} />}
+        <span className="min-w-0 flex-1 truncate">
+          <span className="font-medium text-ink">{value.name}</span>
+          {value.symbol && value.symbol !== value.name && (
+            <span className="num ml-2 text-ink3">{value.symbol}</span>
+          )}
+        </span>
+        {!value.isActive && (
+          <span className="shrink-0 text-[9.5px] uppercase tracking-wide" style={{ color: "var(--high)" }}>
+            inactive
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            onClear();
+            setQuery("");
+            setDebounced("");
+            setOpen(true);
+          }}
+          className="shrink-0 text-ink3 transition-colors hover:text-ink"
+          aria-label="Change instrument"
+        >
+          <Icons.close className="size-3.5" />
+        </button>
       </div>
     );
   }
 
   return (
     <div className="relative" ref={boxRef}>
-      {value ? (
-        <div className="flex h-9 items-center justify-between rounded-md border border-line2 bg-surface-1 px-3 text-[13px]">
-          <span className="min-w-0 truncate">
-            <span className="num font-medium text-ink">{value}</span>
-            {label && label !== value && <span className="ml-2 text-ink3">{label.replace(`${value} — `, "")}</span>}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              onSelect("", "");
-              setQuery("");
-              setOpen(true);
-            }}
-            className="ml-2 shrink-0 text-ink3 transition-colors hover:text-ink"
-            aria-label="Change stock"
-          >
-            <Icons.close className="size-3.5" />
-          </button>
-        </div>
-      ) : (
-        <div className="relative">
-          <Icons.search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink3" />
-          <Input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setOpen(true);
-            }}
-            onFocus={() => setOpen(true)}
-            placeholder="Search ticker or company…"
-            aria-invalid={!!error}
-            className="h-9 pl-8 text-[13px]"
-          />
-        </div>
-      )}
+      <div className="relative">
+        <Icons.search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink3" />
+        <Input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search any stock, fund, ETF, bond, REIT…"
+          aria-invalid={!!error}
+          className="h-9 pl-8 text-[13px]"
+        />
+        {isFetching && searching && (
+          <Icons.spinner className="absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-ink3" />
+        )}
+      </div>
 
-      {open && !value && query.trim() && (
+      {open && trimmed && (
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-line2 bg-surface-1 shadow-lg">
-          {isLoading ? (
-            <p className="px-3 py-3 text-[12px] text-ink3">Loading the universe…</p>
-          ) : matches.length === 0 ? (
+          {tooShort ? (
+            // amendment #1 — never fire below the min length; say WHY rather than sit silently empty
             <p className="px-3 py-3 text-[12px] text-ink3">
-              No tracked stock matches “{query.trim()}”. Only names in the universe can be added.
+              Type at least {INSTRUMENT_SEARCH_MIN_Q} characters to search the universe.
+            </p>
+          ) : isLoading ? (
+            <p className="px-3 py-3 text-[12px] text-ink3">Searching the universe…</p>
+          ) : results.length === 0 ? (
+            <p className="px-3 py-3 text-[12px] text-ink3">
+              Nothing in the universe matches “{trimmed}”. Only instruments we track can be added — a broker sync is
+              the only way to admit a new one.
             </p>
           ) : (
-            <ul className="max-h-56 overflow-y-auto py-1">
-              {matches.map((s) => (
-                <li key={s.symbol}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelect(s.symbol, `${s.symbol} — ${s.name}`);
-                      setQuery("");
-                      setOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-2"
-                  >
-                    <span className="num text-[12.5px] font-semibold text-ink">{s.symbol}</span>
-                    <span className="min-w-0 flex-1 truncate text-[11.5px] text-ink3">{s.name}</span>
-                    {!s.scored && <span className="shrink-0 text-[9.5px] uppercase tracking-wide text-ink3">unscored</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="max-h-64 overflow-y-auto py-1">
+                {results.map((r) => (
+                  <li key={r.isin}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelect({
+                          submitId: r.isin, // ISIN — the unambiguous key; never a bare symbol
+                          symbol: r.symbol,
+                          name: r.name,
+                          assetClass: r.assetClass,
+                          isActive: r.isActive,
+                        });
+                        setQuery("");
+                        setDebounced("");
+                        setOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-2"
+                    >
+                      <AssetClassChip assetClass={r.assetClass} />
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{r.name}</span>
+                      {!r.isActive && (
+                        <span
+                          className="shrink-0 text-[9.5px] uppercase tracking-wide"
+                          style={{ color: "var(--high)" }}
+                        >
+                          inactive
+                        </span>
+                      )}
+                      <span className="num shrink-0 text-[11px] text-ink3">{r.symbol ?? r.isin}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {data?.hasMore && (
+                // amendment #2 — a capped list that looks complete is a lie; say it's capped
+                <div className="border-t border-line2 px-3 py-1.5 text-[10.5px] text-ink3">
+                  Showing the first {results.length} of many — keep typing to narrow to the one you hold.
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -171,16 +251,23 @@ export function TransactionSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing?: Transaction | null;
-  /** ADD-mode only: pre-select this symbol (e.g. opened from the watchlist quick-look).
-   *  Ignored in edit mode (the edit target's symbol wins). */
+  /** ADD-mode only: pre-select this instrument by ticker (e.g. opened from the watchlist quick-look).
+   *  Ignored in edit mode (the edit target's instrument wins). A stock ticker resolves unambiguously. */
   initialSymbol?: string;
 }) {
   const isEdit = !!editing;
   const { add, update } = useTransactionMutations();
 
+  // The books this transaction could land in. STATED (manual) accounts only: a Verified book is
+  // broker-attested, and a hand-made row must never enter it. We don't even list a disabled Verified
+  // row (it only invites "why not") — the set of entry targets is exactly what the backend accepts
+  // (manualEntryAllowed === state === "manual"). Reuses the app-wide accounts read; adds no call.
+  const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const statedAccounts = useMemo(() => (accounts ?? []).filter((a) => a.manualEntryAllowed), [accounts]);
+
   const [type, setType] = useState<TransactionType>("buy");
-  const [symbol, setSymbol] = useState("");
-  const [stockLabel, setStockLabel] = useState("");
+  const [instrument, setInstrument] = useState<PickedInstrument | null>(null);
+  const [accountId, setAccountId] = useState(""); // which book (Stated only); always SENT on add
   const [qty, setQty] = useState("");
   const [price, setPrice] = useState("");
   const [fees, setFees] = useState(""); // optional ₹ charge on buy/sell (blank = 0)
@@ -192,6 +279,11 @@ export function TransactionSheet({
   const [errors, setErrors] = useState<Partial<Record<TxnField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  // A 409 ambiguous_symbol carries candidates the backend refused to pick between — rendered as a
+  // picker (never auto-resolved). Because the picker submits an ISIN, this is a defensive backstop.
+  const [disambig, setDisambig] = useState<{ isin: string; name: string; assetClass: string }[] | null>(null);
+  // edit mode asks for a confirmation before it replays the ledger (mirrors delete)
+  const [confirmEdit, setConfirmEdit] = useState(false);
 
   // (re)initialise whenever the sheet opens or the edit target changes
   useEffect(() => {
@@ -199,10 +291,20 @@ export function TransactionSheet({
     setErrors({});
     setFormError(null);
     setFlash(null);
+    setDisambig(null);
+    setConfirmEdit(false);
     if (editing) {
       setType(editing.type);
-      setSymbol(editing.symbol);
-      setStockLabel(editing.symbol);
+      // The instrument is read-only in edit; `editing.symbol` is the ledger's display label (a ticker,
+      // or the ISIN for a ticker-less fund). Carry the class so the chip + bond disclosure still show.
+      setInstrument({
+        submitId: editing.symbol,
+        symbol: editing.symbol,
+        name: editing.symbol,
+        assetClass: editing.assetClass ?? null,
+        isActive: true,
+      });
+      setAccountId(editing.accountId ?? ""); // read-only in edit; kept only to name the account
       setQty(editing.quantity != null ? String(editing.quantity) : "");
       setPrice(editing.type === "dividend" ? "" : editing.price != null ? String(editing.price) : "");
       setFees(editing.fees != null && editing.fees > 0 ? String(editing.fees) : "");
@@ -212,8 +314,14 @@ export function TransactionSheet({
       setNotes(editing.notes ?? "");
     } else {
       setType("buy");
-      setSymbol(initialSymbol ?? "");
-      setStockLabel(initialSymbol ?? "");
+      // ADD from a quick-look pre-selects a ticker (no class known yet — it's an equity source, so no
+      // disclosure applies). Otherwise the picker starts empty.
+      setInstrument(
+        initialSymbol
+          ? { submitId: initialSymbol, symbol: initialSymbol, name: initialSymbol, assetClass: null, isActive: true }
+          : null,
+      );
+      setAccountId(""); // add mode: the preselect effect fills the lone Stated account once accounts load
       setQty("");
       setPrice("");
       setFees("");
@@ -224,13 +332,45 @@ export function TransactionSheet({
     }
   }, [open, editing, initialSymbol]);
 
+  // One Stated account → preselect it, and still SEND accountId (the backend does NOT infer it; that
+  // missing inference is exactly what broke). Runs once the accounts read resolves; ADD mode only,
+  // and never overrides an existing pick — so a 2+-account user is left to choose (no default guess).
+  useEffect(() => {
+    if (!open || isEdit) return;
+    if (!accountId && statedAccounts.length === 1) setAccountId(statedAccounts[0].id);
+  }, [open, isEdit, accountId, statedAccounts]);
+
   const saving = add.isPending || update.isPending;
   const isTrade = type === "buy" || type === "sell";
   const isAction = type === "split" || type === "bonus";
+  const couponBearing = isCouponBearing(instrument?.assetClass);
+
+  // ADD mode with no Stated account (zero accounts, or every account Verified) → the sheet cannot do
+  // its job. We say so and point at creating one, rather than render a form that will 400. Gated on
+  // !accountsLoading so it never flashes before the accounts read resolves.
+  const noWritableAccount = !isEdit && !accountsLoading && statedAccounts.length === 0;
+  // Don't let a save fire before we know there's a writable target (add mode).
+  const blockSave = !isEdit && (accountsLoading || noWritableAccount);
+  // Edit mode shows which book the row lives in, read-only — resolve its display name from the list.
+  const editAccountName =
+    (accounts ?? []).find((a) => a.id === editing?.accountId)?.name ??
+    (accountsLoading ? "Loading…" : editing?.accountId ? "This account" : "—");
+
+  // Price is per SHARE for a stock, per UNIT for a fund/ETF, and DIRTY (accrued-interest-inclusive)
+  // for coupon-bearing debt — the one instruction that makes a bond's cost basis exact without any
+  // accrued-interest math on our side.
+  const priceHint = couponBearing
+    ? "₹ · incl. accrued interest"
+    : instrument?.assetClass && instrument.assetClass !== "stock"
+      ? "₹ / unit"
+      : "₹ / share";
 
   function validate(): Partial<Record<TxnField, string>> {
     const e: Partial<Record<TxnField, string>> = {};
-    if (!symbol) e.symbol = "Pick a stock from the universe.";
+    // The account is fixed in edit mode; on add it's required (preselected when there's exactly one,
+    // so this only ever bites a multi-account user who hasn't chosen yet).
+    if (!isEdit && !accountId) e.account = "Choose the account this transaction belongs to.";
+    if (!instrument) e.symbol = "Pick an instrument from the universe.";
     if (!tradeDate) e.tradeDate = "A trade date is required.";
     if (isTrade) {
       if (!(Number(qty) > 0)) e.quantity = "Enter a quantity greater than 0.";
@@ -246,7 +386,16 @@ export function TransactionSheet({
   }
 
   function buildBody(): TransactionInput {
-    const base = { symbol, type, tradeDate, notes: notes.trim() || undefined };
+    // `symbol` carries the submit identifier (an ISIN from the picker, a ticker via initialSymbol/edit);
+    // the backend resolves it to exactly one instrument — the SPINE — or refuses. accountId is carried
+    // on every build and stripped by the edit path (the account is fixed at create — PATCH refuses it).
+    const base = {
+      symbol: instrument?.submitId ?? "",
+      type,
+      tradeDate,
+      notes: notes.trim() || undefined,
+      accountId: accountId || undefined,
+    };
     if (isTrade) {
       // blank fee = 0 → omit the field (backend defaults it); a real charge is sent through
       const feeNum = fees.trim() === "" ? undefined : Number(fees);
@@ -256,29 +405,30 @@ export function TransactionSheet({
     return { ...base, ratio: ratio.trim() }; // split / bonus
   }
 
-  async function save(addAnother: boolean) {
+  async function save(addAnother: boolean): Promise<boolean> {
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
       setFormError(null);
       setFlash(null);
-      return;
+      return false;
     }
     setErrors({});
     setFormError(null);
+    setDisambig(null);
     const body = buildBody();
     try {
       if (isEdit && editing) {
-        const { symbol: _drop, ...patch } = body; // symbol isn't editable
+        const { symbol: _drop, accountId: _dropAcct, ...patch } = body; // symbol + account aren't editable
         void _drop;
+        void _dropAcct;
         await update.mutateAsync({ id: editing.id, body: patch });
         onOpenChange(false);
       } else if (addAnother) {
         await add.mutateAsync(body);
-        // keep type + date for a fast run of entries; clear the per-trade fields
-        const savedSym = symbol;
-        setSymbol("");
-        setStockLabel("");
+        // keep type + account + date for a fast run of entries; clear the per-trade fields
+        const savedSym = instrument?.symbol ?? instrument?.name ?? "instrument";
+        setInstrument(null);
         setQty("");
         setPrice("");
         setFees("");
@@ -290,15 +440,52 @@ export function TransactionSheet({
         await add.mutateAsync(body);
         onOpenChange(false);
       }
+      return true;
     } catch (err) {
       const p = parseTxnError(err);
       setErrors(p.fields);
       setFormError(p.formError ?? null);
+      setDisambig(p.disambiguation && p.disambiguation.length > 0 ? p.disambiguation : null);
       setFlash(null);
+      return false;
     }
   }
 
+  // The primary save action. An EDIT replays the whole ledger, so it routes through a
+  // confirmation step first (validate up front so the dialog never opens over a bad form);
+  // an ADD saves straight away.
+  function requestSave() {
+    if (isEdit) {
+      const errs = validate();
+      if (Object.keys(errs).length) {
+        setErrors(errs);
+        setFormError(null);
+        setFlash(null);
+        return;
+      }
+      setErrors({});
+      setFormError(null);
+      setConfirmEdit(true);
+    } else {
+      void save(false);
+    }
+  }
+
+  async function confirmSave() {
+    await save(false); // on success the sheet closes; on error the in-sheet error shows
+    setConfirmEdit(false);
+  }
+
+  // a concise read-back of the edit for the confirmation dialog
+  const editSummary = isTrade
+    ? `${qty || "—"} × ₹${price || "—"}`
+    : type === "dividend"
+      ? `₹${amount || "—"}`
+      : ratio || "—";
+  const confirmLabel = instrument?.symbol ?? instrument?.name ?? "—";
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -318,6 +505,30 @@ export function TransactionSheet({
 
         {/* body (scrolls) */}
         <div className="custom-scrollbar flex-1 overflow-y-auto px-5 py-4">
+          {noWritableAccount ? (
+            // No Stated account exists (zero accounts, or every one is Verified) → the sheet can't do
+            // its job. Say so plainly and point at creating an account; never render a form that 400s.
+            <div className="rounded-xl border border-dashed border-line2 px-5 py-10 text-center">
+              <Icons.portfolio weight="duotone" className="mx-auto mb-3 size-7 text-ink3 opacity-70" />
+              <h3 className="font-display text-[15px] font-semibold text-ink2">
+                {accounts && accounts.length > 0 ? "No account can take a manual entry" : "You don’t have an account yet"}
+              </h3>
+              <p className="mx-auto mt-1.5 max-w-xs text-[12px] leading-relaxed text-ink3">
+                {accounts && accounts.length > 0
+                  ? "Every account you have is broker-managed (Verified) — its holdings come from the broker’s feed, so hand-entered transactions can’t go there. Create a Stated account you own to add trades by hand."
+                  : "Transactions live inside an account. Create one — and pick its broker — then add trades to it here."}
+              </p>
+              <Link
+                href="/portfolio?tab=accounts"
+                onClick={() => onOpenChange(false)}
+                className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-[12.5px] font-medium text-primary-foreground transition-[filter] hover:brightness-110"
+              >
+                <Icons.plus className="size-3.5" />
+                {accounts && accounts.length > 0 ? "Create a Stated account" : "Create your first account"}
+              </Link>
+            </div>
+          ) : (
+          <>
           {/* type selector — defaults to buy; other types one tap away */}
           <div className="mb-4">
             <label className="mb-1.5 block text-[11px] font-medium text-ink2">Type</label>
@@ -333,6 +544,7 @@ export function TransactionSheet({
                       setType(t);
                       setErrors({});
                       setFormError(null);
+                      setDisambig(null);
                     }}
                     className={cn(
                       "rounded-md py-1.5 text-[11.5px] font-medium transition-colors",
@@ -348,20 +560,118 @@ export function TransactionSheet({
           </div>
 
           <div className="flex flex-col gap-4">
-            {/* stock */}
-            <Field label="Stock" error={errors.symbol}>
-              <StockPicker
-                value={symbol}
-                label={stockLabel}
-                onSelect={(s, l) => {
-                  setSymbol(s);
-                  setStockLabel(l);
+            {/* account — which book this transaction lands in. STATED accounts only; a lone one is
+                preselected, 2+ makes the user choose, and it's read-only once a row exists. */}
+            <Field
+              label="Account"
+              hint={isEdit ? "fixed" : statedAccounts.length > 1 ? "which book" : undefined}
+              error={errors.account}
+            >
+              {isEdit || (!accountsLoading && statedAccounts.length === 1) ? (
+                <div className="flex h-9 items-center rounded-md border border-line2 bg-surface-2 px-3 text-[13px]">
+                  <Icons.portfolio className="mr-2 size-3.5 shrink-0 text-ink3" />
+                  <span className="truncate font-medium text-ink">
+                    {isEdit ? editAccountName : statedAccounts[0].name}
+                  </span>
+                </div>
+              ) : accountsLoading ? (
+                <div className="flex h-9 items-center gap-2 rounded-md border border-line2 bg-surface-2 px-3 text-[13px] text-ink3">
+                  <Icons.spinner className="size-3.5 animate-spin" />
+                  Loading your accounts…
+                </div>
+              ) : (
+                <Select
+                  value={accountId}
+                  onValueChange={(v) => {
+                    setAccountId(v);
+                    setErrors((e) => ({ ...e, account: undefined }));
+                  }}
+                >
+                  <SelectTrigger
+                    aria-invalid={!!errors.account}
+                    className="h-9 border-line2 bg-surface-1 text-[13px] text-ink data-placeholder:text-ink3"
+                  >
+                    <SelectValue placeholder="Choose an account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statedAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id} className="text-[13px]">
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {isEdit ? (
+                <p className="mt-1 text-[10.5px] text-ink3">
+                  The account is fixed — delete &amp; re-add to move a trade to another book.
+                </p>
+              ) : statedAccounts.length > 1 ? (
+                <p className="mt-1 text-[10px] leading-relaxed text-ink3">
+                  Only your own (Stated) accounts take hand-entered transactions — broker-managed books are filled by their feed.
+                </p>
+              ) : null}
+            </Field>
+
+            {/* instrument — the WHOLE universe, not just the 504 equities. Class shown per result. */}
+            <Field label="Instrument" error={errors.symbol}>
+              <InstrumentPicker
+                value={instrument}
+                onSelect={(p) => {
+                  setInstrument(p);
                   setErrors((e) => ({ ...e, symbol: undefined }));
+                  setDisambig(null);
+                }}
+                onClear={() => {
+                  setInstrument(null);
+                  setDisambig(null);
                 }}
                 error={errors.symbol}
                 disabled={isEdit}
               />
             </Field>
+
+            {/* 409 disambiguation — the backend refused to guess between same-symbol instruments; the
+                user picks the exact one (never auto-resolved). A backstop: the picker submits an ISIN. */}
+            {disambig && disambig.length > 0 && (
+              <div className="rounded-lg border border-line2 bg-surface-1 p-2">
+                <p className="mb-1 px-1 text-[11px] text-ink2">
+                  That identifier names {disambig.length} instruments — choose the one you hold:
+                </p>
+                <ul className="flex flex-col">
+                  {disambig.map((c) => (
+                    <li key={c.isin}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInstrument({ submitId: c.isin, symbol: null, name: c.name, assetClass: c.assetClass || null, isActive: true });
+                          setDisambig(null);
+                          setErrors((e) => ({ ...e, symbol: undefined }));
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-surface-2"
+                      >
+                        {c.assetClass && <AssetClassChip assetClass={c.assetClass} />}
+                        <span className="min-w-0 flex-1 truncate text-[12px] text-ink">{c.name}</span>
+                        <span className="num shrink-0 text-[10.5px] text-ink3">{c.isin}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* coupon-bearing (bond / G-sec / SGB) disclosure — rendered AT ENTRY, where the user forms
+                the expectation, not later in a footnote. The gap is made legible, never papered over. */}
+            {couponBearing && (
+              <div
+                className="rounded-lg border px-3 py-2 text-[11px] leading-relaxed"
+                style={{ color: "var(--high)", borderColor: "var(--high-bd)", background: "var(--high-bg)" }}
+              >
+                <span className="font-semibold">Coupon income isn’t tracked.</span> The return shown will be
+                price-only — the interest this pays out isn’t counted.
+                {isTrade && " Enter the total you paid, accrued interest included, so your cost basis stays exact."}
+              </div>
+            )}
 
             {/* type-aware numeric fields */}
             {isTrade && (
@@ -380,7 +690,7 @@ export function TransactionSheet({
                       placeholder="0"
                     />
                   </Field>
-                  <Field label="Price" hint="₹ / share" error={errors.price}>
+                  <Field label="Price" hint={priceHint} error={errors.price}>
                     <Input
                       type="number"
                       inputMode="decimal"
@@ -465,6 +775,8 @@ export function TransactionSheet({
             </Field>
 
           </div>
+          </>
+          )}
 
           {/* form-level error / re-auth (input is never dropped on a recoverable error) */}
           {formError && (
@@ -487,13 +799,15 @@ export function TransactionSheet({
           )}
         </div>
 
-        {/* footer actions */}
+        {/* footer actions — suppressed entirely when there's no writable account (the body carries
+            the create-an-account CTA instead of a form that would 400). */}
+        {!noWritableAccount && (
         <div className="flex flex-col gap-2 border-t border-line px-5 py-4">
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => save(false)}
-              disabled={saving}
+              onClick={requestSave}
+              disabled={saving || blockSave}
               className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-[13px] font-medium text-primary-foreground transition-[filter] hover:brightness-110 disabled:opacity-60"
             >
               {saving && <Icons.spinner className="size-3.5 animate-spin" />}
@@ -503,7 +817,7 @@ export function TransactionSheet({
               <button
                 type="button"
                 onClick={() => save(true)}
-                disabled={saving}
+                disabled={saving || blockSave}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-1 px-3 text-[12.5px] font-medium text-ink2 transition-colors hover:border-line3 hover:text-ink disabled:opacity-60"
               >
                 <Icons.plus className="size-3.5" />
@@ -515,7 +829,48 @@ export function TransactionSheet({
             {isEdit ? "Saving recomputes holdings, health &amp; value." : "Saving replays your ledger — holdings, health &amp; value update."}
           </p>
         </div>
+        )}
       </SheetContent>
     </Sheet>
+
+    {/* edit confirmation — an edit replays the whole ledger, so confirm before it runs
+        (mirrors the delete confirm in the ledger table) */}
+    <Dialog open={confirmEdit} onOpenChange={(o) => { if (!o) setConfirmEdit(false); }}>
+      <DialogContent className="border-line rounded-lg bg-surface-1 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-ink">Save these changes?</DialogTitle>
+          <DialogDescription className="text-ink3">
+            Editing this transaction replays your whole ledger — holdings, health and value recompute from scratch. This
+            can&apos;t be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-[12px]">
+          <span
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5 font-medium"
+            style={{
+              color: TXN_TYPE_META[type].color,
+              borderColor: `color-mix(in oklch, ${TXN_TYPE_META[type].color} 34%, transparent)`,
+              background: `color-mix(in oklch, ${TXN_TYPE_META[type].color} 12%, transparent)`,
+            }}
+          >
+            <span className="size-1.5 rounded-full" style={{ background: TXN_TYPE_META[type].color }} />
+            {TXN_TYPE_META[type].label}
+          </span>
+          <span className="truncate font-semibold text-ink">{confirmLabel}</span>
+          <span className="num ml-auto shrink-0 text-ink2">{editSummary}</span>
+          <span className="num shrink-0 text-ink3">{tradeDate}</span>
+        </div>
+        <DialogFooter className="mt-6 flex items-center justify-end gap-2 w-full">
+          <Button variant="outline" className="flex-1 w-full" onClick={() => setConfirmEdit(false)} disabled={saving}>
+            Keep editing
+          </Button>
+          <Button className="flex-1 w-full" onClick={confirmSave} disabled={saving}>
+            {saving && <Icons.spinner className="size-3.5 animate-spin" />}
+            Save &amp; replay
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

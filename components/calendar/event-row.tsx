@@ -53,7 +53,7 @@ export function EventRow({ e }: { e: CalEvent }) {
   return (
     <div
       className={cn(
-        "group relative flex items-stretch gap-3 rounded-xl border bg-surface-1 py-3 pr-3 pl-0 transition-colors hover:border-line3 hover:bg-surface-2/50",
+        "group relative flex items-stretch gap-2 rounded-xl border bg-surface-1 py-3 pr-2.5 pl-0 transition-colors hover:border-line3 hover:bg-surface-2/50 sm:gap-3 sm:pr-3",
         e.isHeld ? "border-line2" : "border-line",
       )}
     >
@@ -73,15 +73,15 @@ export function EventRow({ e }: { e: CalEvent }) {
       />
 
       {/* type glyph */}
-      <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center self-start rounded-lg border" style={tint(meta.accent)}>
-        <meta.icon weight="duotone" className="h-4.5 w-4.5" />
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center self-start rounded-lg border sm:h-9 sm:w-9" style={tint(meta.accent)}>
+        <meta.icon weight="duotone" className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
       </span>
 
       {/* body */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-[13.5px] font-semibold text-ink">{e.symbol}</span>
-          <span className="truncate text-[11.5px] text-ink3">{e.companyName}</span>
+          <span className="min-w-0 truncate text-[11.5px] text-ink3">{e.companyName}</span>
           {e.isHeld && (
             <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={tint("var(--primary)", 14, 30)}>
               <Icons.portfolio weight="fill" className="h-2.5 w-2.5" />

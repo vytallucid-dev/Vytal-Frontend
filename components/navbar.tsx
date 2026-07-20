@@ -111,6 +111,12 @@ const routes: Route[] = [
     icon: Icons.settings,
     group: "Settings",
   },
+  {
+    title: "Funds & ETFs",
+    url: "/research/funds",
+    icon: Icons.coins,
+    group: "Research",
+  },
 ];
 
 const MAX_STOCK_RESULTS = 7; // matches while searching

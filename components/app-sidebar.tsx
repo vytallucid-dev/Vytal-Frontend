@@ -52,6 +52,7 @@ const baseGroups: NavGroup[] = [
     label: "Research",
     items: [
       { title: "Stock Screener", url: "/research/stock-screener", icon: Icons.screener },
+      { title: "Funds & ETFs", url: "/research/funds", icon: Icons.coins },
       { title: "Trajectory", url: "/research/trajectory", icon: Icons.chartLine },
       { title: "Divergence", url: "/research/divergence", icon: Icons.scales },
       { title: "Ownership", url: "/research/ownership", icon: Icons.building },

@@ -48,14 +48,31 @@ function highlightsFor(r: ReportedResultItem): string[] {
 
 /* ---------------------------------------------------------------- primitives */
 
-/** Calm KPI tile — label + a single `.num` value, optional directional colour. */
-function Kpi({ label, value, color = "var(--ink)" }: { label: string; value: string; color?: string }) {
+/** Calm KPI tile — label + a single `.num` value, optional directional colour.
+ *  While `loading`, the value is replaced by a shimmer bar so the tile never flashes a
+ *  fabricated "0"/"—" before the feed lands. The label stays put (it's static), so
+ *  nothing reflows when the number arrives. */
+function Kpi({
+  label,
+  value,
+  color = "var(--ink)",
+  loading,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  loading?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-line bg-surface-2 p-3.5">
       <div className="text-[11px] text-ink3">{label}</div>
-      <div className="num mt-1 text-[18px] font-semibold" style={{ color }}>
-        {value}
-      </div>
+      {loading ? (
+        <div className="shimmer mt-1.5 h-4.5 w-14 rounded-md bg-surface-3" aria-hidden />
+      ) : (
+        <div className="num mt-1 text-[18px] font-semibold" style={{ color }}>
+          {value}
+        </div>
+      )}
     </div>
   );
 }
@@ -221,17 +238,19 @@ export default function ResultsPage() {
           </p>
 
           <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            <Kpi label="Reported this week" value={`${stats.reportedThisWeek}`} />
-            <Kpi label="Upcoming" value={`${stats.upcomingCount}`} />
+            <Kpi label="Reported this week" value={`${stats.reportedThisWeek}`} loading={isLoading} />
+            <Kpi label="Upcoming" value={`${stats.upcomingCount}`} loading={isLoading} />
             <Kpi
               label="Avg revenue growth"
               value={fmtSignedPct(stats.avgRev)}
               color={toneColor(stats.avgRev)}
+              loading={isLoading}
             />
             <Kpi
               label="Avg profit growth"
               value={fmtSignedPct(stats.avgProfit)}
               color={toneColor(stats.avgProfit)}
+              loading={isLoading}
             />
           </div>
         </Panel>

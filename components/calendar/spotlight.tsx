@@ -36,7 +36,7 @@ export function Spotlight({ event }: { event: CalEvent }) {
   const healthColor = health?.band ? BAND_META[health.band].color : "var(--ink3)";
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-line2 bg-surface-1 p-4">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-line2 bg-surface-1 p-3.5 sm:p-4">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-20 opacity-[0.06]"
@@ -49,13 +49,13 @@ export function Spotlight({ event }: { event: CalEvent }) {
       </div>
 
       {/* identity */}
-      <div className="mt-2.5 flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border" style={tint(meta.accent)}>
-          <meta.icon weight="duotone" className="h-5 w-5" />
+      <div className="mt-2.5 flex items-start gap-2.5 sm:gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border sm:h-10 sm:w-10" style={tint(meta.accent)}>
+          <meta.icon weight="duotone" className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Link href={stockHref(event.symbol)} className="font-display text-[18px] font-semibold text-ink hover:text-primary">
+            <Link href={stockHref(event.symbol)} className="font-display text-[16px] font-semibold text-ink hover:text-primary sm:text-[18px]">
               {event.symbol}
             </Link>
             {event.isHeld && (
@@ -83,13 +83,13 @@ export function Spotlight({ event }: { event: CalEvent }) {
 
       {/* health · when */}
       <div className="mt-3 flex items-stretch gap-2">
-        <div className="flex flex-1 flex-col justify-center gap-0.5 rounded-lg border px-3 py-2" style={health?.band ? tint(healthColor, 9, 26) : { borderColor: "var(--line)" }}>
+        <div className="flex flex-1 flex-col justify-center gap-0.5 rounded-lg border px-2.5 py-2 sm:px-3" style={health?.band ? tint(healthColor, 9, 26) : { borderColor: "var(--line)" }}>
           <span className="text-[9.5px] uppercase tracking-[0.1em] text-ink3">Health</span>
-          <span className="font-display text-[15px] font-semibold" style={{ color: healthColor }}>
+          <span className="truncate font-display text-[13.5px] font-semibold sm:text-[15px]" style={{ color: healthColor }}>
             {healthValue}
           </span>
         </div>
-        <div className="flex flex-1 flex-col justify-center gap-0.5 rounded-lg border border-line px-3 py-2">
+        <div className="flex flex-1 flex-col justify-center gap-0.5 rounded-lg border border-line px-2.5 py-2 sm:px-3">
           <span className="text-[9.5px] uppercase tracking-[0.1em] text-ink3">When</span>
           <span className="num text-[12.5px] font-semibold text-ink">{fmtDate(event.date)}</span>
           <span className="text-[10.5px] text-ink3">{fmtFull(event.date).split(",")[0]} · {daysAwayLabel(event.daysAway)}</span>

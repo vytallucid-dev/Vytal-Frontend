@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Vytal — Health history: fills + compact</title>
+<style>
+  :root{
+    --bg:#0a0c10; --card:#0f1319; --card2:#141922; --line:#1e242e; --line2:#28303b;
+    --ink:#e9edf2; --ink2:#8d97a4; --ink3:#586170;
+    --health:#5bb89a; --construction:#d9a75a;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+    --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;padding:30px 22px 90px}
+  .wrap{max-width:900px;margin:0 auto}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .cn{color:var(--ink3);font-size:11px;margin:32px 0 12px;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+  .cn:first-of-type{margin-top:4px}
+  .note{color:var(--ink3);font-size:12px;margin-bottom:8px;max-width:82ch}
+  .note b{color:var(--ink2)}
+
+  .eyebrow{display:flex;align-items:center;gap:13px;margin-bottom:14px}
+  .eyebrow .ic{width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--health);font-size:13px}
+  .eyebrow h2{font-size:11.5px;letter-spacing:.13em;color:var(--ink2);font-weight:600;text-transform:uppercase}
+  .eyebrow .rule{height:1px;background:var(--line);flex:1}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:22px 24px}
+  .legend{display:flex;gap:18px;margin-bottom:16px;align-items:center}
+  .legend .li{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2)}
+  .legend .sw{width:14px;height:9px;border-radius:3px}
+  .legend .rng{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+
+  .chartbox{position:relative}
+  .chartbox svg{display:block;width:100%;overflow:visible}
+  .ylab{position:absolute;left:-2px;font-family:var(--mono);font-size:10px;color:var(--ink3)}
+  .xaxis{display:flex;justify-content:space-between;margin-top:9px;padding:0 4px 0 30px;font-family:var(--mono);font-size:10px;color:var(--ink3)}
+  .caption{color:var(--ink3);font-size:11px;margin-top:12px;font-family:var(--mono)}
+
+  /* compact */
+  .compact{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer;transition:border-color .15s}
+  .compact:hover{border-color:var(--line2)}
+  .compact .top{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+  .compact .kv{display:flex;align-items:baseline;gap:6px}
+  .compact .kv .sw{width:10px;height:10px;border-radius:2px}
+  .compact .kv .lab{font-size:11px;color:var(--ink3)}
+  .compact .kv .n{font-family:var(--mono);font-size:17px}
+  .compact .go{margin-left:auto;font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:4px}
+  .compact .story{font-family:var(--serif);font-size:12.5px;color:var(--ink2);line-height:1.5;margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
+  .compact .story .h{color:var(--health);font-family:var(--mono);font-weight:600}
+  .compact .story .c{color:var(--construction);font-family:var(--mono);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="note"><b>Decision 1:</b> both filled vs Health-area + Construction-line. Look at the <b>'23 crossover</b> (middle) — that's where two fills either read clean or muddy.</p>
+
+  <!-- ── BOTH AREAS ── -->
+  <div class="cn">Option 1 — both as areas (what you asked for)</div>
+  <div class="eyebrow"><div class="ic">◹</div><h2>How your scores have moved</h2><div class="rule"></div></div>
+  <div class="card">
+    <div class="legend">
+      <span class="li"><span class="sw" style="background:linear-gradient(180deg,var(--health),transparent)"></span>Health <span class="mono" style="color:var(--health);font-size:13px">71</span></span>
+      <span class="li"><span class="sw" style="background:linear-gradient(180deg,var(--construction),transparent)"></span>Construction <span class="mono" style="color:var(--construction);font-size:13px">83</span></span>
+      <span class="rng">0–100</span>
+    </div>
+    <div class="chartbox">
+      <div class="ylab" style="top:0">100</div><div class="ylab" style="top:50%">50</div><div class="ylab" style="bottom:0">0</div>
+      <svg viewBox="0 0 1000 240" preserveAspectRatio="none" style="height:240px;padding-left:30px">
+        <defs>
+          <linearGradient id="gH1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5bb89a" stop-opacity=".30"/><stop offset="1" stop-color="#5bb89a" stop-opacity="0"/></linearGradient>
+          <linearGradient id="gC1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a75a" stop-opacity=".24"/><stop offset="1" stop-color="#d9a75a" stop-opacity="0"/></linearGradient>
+        </defs>
+        <line x1="0" y1="120" x2="1000" y2="120" stroke="#1a2029" stroke-width="1"/>
+        <!-- Construction area FIRST (it's higher/behind), then Health area ON TOP so the lower one reads -->
+        <path d="M 133,69.1 L 266,64 L 400,132.8 L 533,144 L 666,139.2 L 800,81.6 L 933,84 L 1000,85.8 L 1000,240 L 133,240 Z" fill="url(#gC1)"/>
+        <path d="M 133,69.1 L 266,64 L 400,132.8 L 533,144 L 666,139.2 L 800,81.6 L 933,84 L 1000,85.8" fill="none" stroke="#d9a75a" stroke-width="2"/>
+        <path d="M 0,163.2 L 133,158.4 L 266,153.6 L 400,139.2 L 533,132 L 666,146.4 L 800,163.2 L 1000,170.4 L 1000,240 L 0,240 Z" fill="url(#gH1)"/>
+        <path d="M 0,163.2 L 133,158.4 L 266,153.6 L 400,139.2 L 533,132 L 666,146.4 L 800,163.2 L 1000,170.4" fill="none" stroke="#5bb89a" stroke-width="2.2"/>
+        <circle cx="1000" cy="170.4" r="4" fill="#0a0c10" stroke="#5bb89a" stroke-width="2"/>
+        <circle cx="1000" cy="85.8" r="4" fill="#0a0c10" stroke="#d9a75a" stroke-width="2"/>
+      </svg>
+      <div class="xaxis"><span>Jul '21</span><span>'23</span><span>Jul '26</span></div>
+    </div>
+    <div class="caption">Tracking since 18 Jul 2021 · Construction from Nov 2021</div>
+  </div>
+
+  <!-- ── AREA + LINE ── -->
+  <div class="cn">Option 2 — Health area, Construction line (crossover-clean)</div>
+  <div class="card">
+    <div class="legend">
+      <span class="li"><span class="sw" style="background:linear-gradient(180deg,var(--health),transparent)"></span>Health <span class="mono" style="color:var(--health);font-size:13px">71</span></span>
+      <span class="li"><span class="sw" style="width:14px;height:3px;background:var(--construction)"></span>Construction <span class="mono" style="color:var(--construction);font-size:13px">83</span></span>
+      <span class="rng">0–100</span>
+    </div>
+    <div class="chartbox">
+      <div class="ylab" style="top:0">100</div><div class="ylab" style="top:50%">50</div><div class="ylab" style="bottom:0">0</div>
+      <svg viewBox="0 0 1000 240" preserveAspectRatio="none" style="height:240px;padding-left:30px">
+        <defs><linearGradient id="gH2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5bb89a" stop-opacity=".30"/><stop offset="1" stop-color="#5bb89a" stop-opacity="0"/></linearGradient></defs>
+        <line x1="0" y1="120" x2="1000" y2="120" stroke="#1a2029" stroke-width="1"/>
+        <path d="M 0,163.2 L 133,158.4 L 266,153.6 L 400,139.2 L 533,132 L 666,146.4 L 800,163.2 L 1000,170.4 L 1000,240 L 0,240 Z" fill="url(#gH2)"/>
+        <path d="M 0,163.2 L 133,158.4 L 266,153.6 L 400,139.2 L 533,132 L 666,146.4 L 800,163.2 L 1000,170.4" fill="none" stroke="#5bb89a" stroke-width="2.2"/>
+        <path d="M 133,69.1 L 266,64 L 400,132.8 L 533,144 L 666,139.2 L 800,81.6 L 933,84 L 1000,85.8" fill="none" stroke="#d9a75a" stroke-width="2.2"/>
+        <circle cx="133" cy="69.1" r="3" fill="#d9a75a"/>
+        <circle cx="1000" cy="170.4" r="4" fill="#0a0c10" stroke="#5bb89a" stroke-width="2"/>
+        <circle cx="1000" cy="85.8" r="4" fill="#0a0c10" stroke="#d9a75a" stroke-width="2"/>
+      </svg>
+      <div class="xaxis"><span>Jul '21</span><span>'23</span><span>Jul '26</span></div>
+    </div>
+    <div class="caption">Tracking since 18 Jul 2021 · Construction from Nov 2021</div>
+  </div>
+
+  <!-- ── COMPACT OVERVIEW ── -->
+  <p class="note" style="margin-top:34px"><b>Decision 2:</b> the compact Overview variant — no controls, no how-to, just the shape + current values + the one-line story, tappable through to Health. (Shown with both-areas; will match whichever fill you pick.)</p>
+  <div class="cn">Compact — on the Overview tab</div>
+  <div class="compact">
+    <div class="top">
+      <div class="kv"><span class="sw" style="background:var(--health)"></span><span class="lab">Health</span><span class="n" style="color:var(--health)">71</span></div>
+      <div class="kv"><span class="sw" style="background:var(--construction)"></span><span class="lab">Construction</span><span class="n" style="color:var(--construction)">83</span></div>
+      <span class="go">5y history · open ↗</span>
+    </div>
+    <div class="chartbox">
+      <svg viewBox="0 0 1000 90" preserveAspectRatio="none" style="height:90px">
+        <defs>
+          <linearGradient id="gH3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5bb89a" stop-opacity=".28"/><stop offset="1" stop-color="#5bb89a" stop-opacity="0"/></linearGradient>
+          <linearGradient id="gC3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a75a" stop-opacity=".20"/><stop offset="1" stop-color="#d9a75a" stop-opacity="0"/></linearGradient>
+        </defs>
+        <path d="M 133,25.9 L 266,24 L 400,49.8 L 533,54 L 666,52.2 L 800,30.6 L 933,31.5 L 1000,32.2 L 1000,90 L 133,90 Z" fill="url(#gC3)"/>
+        <path d="M 133,25.9 L 266,24 L 400,49.8 L 533,54 L 666,52.2 L 800,30.6 L 933,31.5 L 1000,32.2" fill="none" stroke="#d9a75a" stroke-width="1.6"/>
+        <path d="M 0,61.2 L 133,59.4 L 266,57.6 L 400,52.2 L 533,49.5 L 666,54.9 L 800,61.2 L 1000,63.9 L 1000,90 L 0,90 Z" fill="url(#gH3)"/>
+        <path d="M 0,61.2 L 133,59.4 L 266,57.6 L 400,52.2 L 533,49.5 L 666,54.9 L 800,61.2 L 1000,63.9" fill="none" stroke="#5bb89a" stroke-width="1.8"/>
+        <circle cx="1000" cy="63.9" r="3.5" fill="#0a0c10" stroke="#5bb89a" stroke-width="1.8"/>
+        <circle cx="1000" cy="32.2" r="3.5" fill="#0a0c10" stroke="#d9a75a" stroke-width="1.8"/>
+      </svg>
+    </div>
+    <div class="story">Over 5 years, <span class="h">Health</span> rose to <span class="h">71</span> while <span class="c">Construction</span> settled at <span class="c">83</span> — sound businesses, soundly assembled.</div>
+  </div>
+
+  <p class="note" style="margin-top:26px"><b>My read on Decision 1:</b> at the crossover, the both-areas version does hold up better than I expected here — the lower Health area drawn on top keeps it readable, and the blended overlap is legible rather than muddy, because the two colours are distinct enough. So I'll withdraw my objection: <b>both areas works</b>, provided draw order is lower-on-top and opacity stays ≤30%. If it ever muddies on a book where the lines hug each other, the fallback is area+line. Your call.</p>
+
+</div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Reveal } from "@/components/ui/reveal";
 import { SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { Icons } from "@/lib/icons";
@@ -23,6 +23,7 @@ import {
   windowReturns,
 } from "./lib";
 import { ReturnsSummary } from "./summary";
+import { ByAccount } from "./by-account";
 import { Attribution } from "./attribution";
 import { ReturnsBreakdown } from "./breakdown";
 
@@ -38,25 +39,26 @@ import { ReturnsBreakdown } from "./breakdown";
 // health hook, type, colour token or component.)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PERIOD_KEYS: PerfPeriodKey[] = [...PERF_PERIODS.map((p) => p.key), "Custom"];
-
 function PeriodSelector({
   period,
   onPeriod,
   custom,
   onCustom,
   bounds,
+  periodKeys,
 }: {
   period: PerfPeriodKey;
   onPeriod: (p: PerfPeriodKey) => void;
   custom: DateRange;
   onCustom: (r: DateRange) => void;
   bounds: { first: string | null; last: string | null };
+  /** The visible presets — "All" is present only when meta.maxRange offers the full history. */
+  periodKeys: PerfPeriodKey[];
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex gap-0.5 rounded-lg border border-line2 bg-surface-2 p-0.5">
-        {PERIOD_KEYS.map((k) => (
+        {periodKeys.map((k) => (
           <button
             key={k}
             type="button"
@@ -96,10 +98,26 @@ function PeriodSelector({
 }
 
 export function PerformanceTab({ holdings, totals }: { holdings: Holding[]; totals: HoldingsTotals }) {
-  const [period, setPeriod] = useState<PerfPeriodKey>("All");
+  // Start conservative (always a valid preset); the honest default lands from meta.maxRange once the
+  // NAV meta arrives (effect below), unless the user has already picked a period.
+  const [period, setPeriod] = useState<PerfPeriodKey>("4Y");
+  const [userPicked, setUserPicked] = useState(false);
   const [custom, setCustom] = useState<DateRange>({ start: null, end: null });
 
   const navQ = usePortfolioNav();
+  const maxRange = navQ.data?.meta.maxRange;
+
+  // "ALL" (stock-only, series reaches full history) → default All and offer the button; "4Y"
+  // (blended, series capped) → default 4Y, no All. Only until the user chooses for themselves.
+  useEffect(() => {
+    if (!userPicked && maxRange) setPeriod(maxRange === "ALL" ? "All" : "4Y");
+  }, [maxRange, userPicked]);
+
+  const periodKeys: PerfPeriodKey[] = [
+    ...PERF_PERIODS.map((p) => p.key),
+    ...(maxRange === "ALL" ? (["All"] as PerfPeriodKey[]) : []),
+    "Custom",
+  ];
   const twrQ = usePortfolioTwr(true); // eager: the period returns / alpha / best-worst need it
   const benchQ = usePortfolioBenchmark(true); // eager: the alpha tile needs the Nifty series
   const xirrQ = usePortfolioXirr();
@@ -113,6 +131,7 @@ export function PerformanceTab({ holdings, totals }: { holdings: Holding[]; tota
 
   // Default a fresh Custom pick to the full range so the inputs aren't empty.
   const onPeriod = (k: PerfPeriodKey) => {
+    setUserPicked(true); // a manual pick pins the period — the maxRange default no longer overrides it
     if (k === "Custom" && custom.start == null && custom.end == null) {
       setCustom({ start: bounds.first, end: bounds.last });
     }
@@ -135,7 +154,7 @@ export function PerformanceTab({ holdings, totals }: { holdings: Holding[]; tota
           <h2 className="font-display text-[18px] font-semibold text-ink">Performance</h2>
           <p className="text-[12px] text-ink2">How your money has done — returns, timing, and what drove them.</p>
         </div>
-        <PeriodSelector period={period} onPeriod={onPeriod} custom={custom} onCustom={setCustom} bounds={bounds} />
+        <PeriodSelector period={period} onPeriod={onPeriod} custom={custom} onCustom={setCustom} bounds={bounds} periodKeys={periodKeys} />
       </div>
 
       {/* §1 · Returns summary */}
@@ -149,6 +168,8 @@ export function PerformanceTab({ holdings, totals }: { holdings: Holding[]; tota
           win={win}
           bestWorst={bw}
           periodLabel={periodLabel}
+          periodLoading={navQ.isLoading || twrQ.isLoading || benchQ.isLoading}
+          brokerGap={navQ.data?.meta.brokerHoldingsExcluded}
         />
       </Reveal>
 
@@ -159,7 +180,7 @@ export function PerformanceTab({ holdings, totals }: { holdings: Holding[]; tota
           {navQ.isLoading ? (
             <div className="h-[240px] w-full animate-pulse rounded-xl bg-surface-2/50" />
           ) : navSeries.length > 0 ? (
-            <NavChart series={navSeries} range={range} />
+            <NavChart series={navSeries} range={range} brokerGap={navQ.data?.meta.brokerHoldingsExcluded} />
           ) : (
             <div className="flex h-[200px] flex-col items-center justify-center rounded-xl border border-dashed border-line2 bg-surface-2/50 px-6 text-center">
               <Icons.chartLine weight="duotone" className="mb-2 size-7 text-ink3 opacity-70" />
@@ -178,10 +199,18 @@ export function PerformanceTab({ holdings, totals }: { holdings: Holding[]; tota
         <Attribution holdings={holdings} />
       </Reveal>
 
-      {/* §4 · Returns breakdown — realized/unrealized + sector + dividends */}
-      <SectionEyebrow label="Returns breakdown" pill="realized · unrealized · by sector" icon={Icons.coins} accent="var(--p-mkt)" />
+      {/* §4 · Returns breakdown — realized/unrealized + sector/class + dividends */}
+      <SectionEyebrow label="Returns breakdown" pill="realized · unrealized · by sector / class" icon={Icons.coins} accent="var(--p-mkt)" />
       <Reveal>
         <ReturnsBreakdown holdings={holdings} totals={totals} dividends={dividends} />
+      </Reveal>
+
+      {/* §5 · By account — the closing section: where the value sits, invested vs current per account
+          (raw holdings, split by accountId; RELIANCE-in-two-accounts draws two bar groups).
+          Value/return only, no health. */}
+      <SectionEyebrow label="By account" pill="invested vs current" icon={Icons.stack} accent="var(--p-found)" />
+      <Reveal>
+        <ByAccount holdings={holdings} />
       </Reveal>
 
       {/* Phase-2 note slot — consistency / drawdown deliberately not here yet */}

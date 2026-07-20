@@ -1,46 +1,64 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PORTFOLIO NAV CHART — the value hero's ₹ value-over-time curve (GET /me/portfolio/nav),
-// with an optional Nifty 50 PERFORMANCE comparison (toggle).
+// PORTFOLIO CHART — one shared component, TWO LENSES, honestly separated:
 //
-// TWO DIFFERENT QUESTIONS, honestly separated:
-//  • toggle OFF → "what's my book worth": the raw ₹ NAV area chart (unchanged).
-//  • toggle ON  → "how did the money perform vs the market": portfolio TIME-WEIGHTED
-//    RETURN (GET /me/portfolio/twr) vs Nifty 50, BOTH indexed to 100 at the window start.
-//    TWR is cash-flow-neutral — deposits/sells don't read as return — so it's a fair
-//    comparison (raw-NAV-rebased conflated inflows with alpha; that was the bug). The index
-//    is carry-forward aligned onto the NAV trading days (no zip-by-date dropping of points).
+//  • VALUE   (₹ NAV over time) — "how big is my book". The raw market-value area chart.
+//    Grows with deposits AND performance, so it can climb green while returns are negative —
+//    it answers "what's it worth", never "how am I doing".
+//  • RETURNS (time-weighted return, GET /me/portfolio/twr, indexed to 100) — "how have my
+//    investments actually done". Cash-flow-neutral: deposits/sells don't read as return, so a
+//    deposit-driven book reads flat and a real gain climbs. This is the honest performance answer.
+//
+// The vs-Nifty benchmark overlay belongs with the RETURNS lens (both lines TWR-indexed to 100,
+// carry-forward aligned onto the visible NAV days). It is left exactly as it was — the toggle
+// simply only appears in the Returns lens.
+//
+// Placements: Overview + Performance render the toggle (default Returns). The Dashboard renders
+// `compact` — a chrome-less glance locked to Returns, so its mini-line agrees with the hero's
+// total-return number instead of contradicting it.
 //
 // Custom responsive SVG (trajectory/price-chart approach): scrubbable, HTML label overlay,
 // adaptive y-domain. Read-only — series are the truth; selectors slice, nothing is recomputed.
-// Descriptive only: it shows over/underperformance, no "you're winning" verdict.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useMemo, useRef, useState } from "react";
 import { formatINR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { usePortfolioBenchmark } from "@/lib/api/hooks/use-portfolio-benchmark";
 import { usePortfolioTwr } from "@/lib/api/hooks/use-portfolio-twr";
-import type { NavPoint } from "@/types/portfolio";
+import type { BrokerExcluded, NavPoint } from "@/types/portfolio";
+import { brokerGapValue } from "../lib";
 import { Kicker } from "./shared";
 
-const PERIODS: { key: string; days: number | null }[] = [
+/** The two lenses over the same chart. */
+export type ChartLens = "value" | "returns";
+
+// The DEEPEST honest range is PER-BOOK, and the backend already knows it (meta.maxRange):
+//   • "ALL"  — a stock-only book, whose equity depth comes from daily_prices (not the 4-year weekly
+//              store) and can reach further back than 4 years → "All" genuinely is all, so it renders.
+//   • "4Y"   — a blended book: add any non-stock and the series caps at 4y (the weekly store is
+//              trimmed to 4y by a DB trigger), so "All" is dropped and 4Y is the ceiling.
+// The picker changing with the book is the honest signal — not a bug, and never a flat guess.
+const ALL_PERIODS: { key: string; days: number | null }[] = [
   { key: "1M", days: 30 },
   { key: "6M", days: 182 },
   { key: "1Y", days: 365 },
   { key: "3Y", days: 1095 },
+  { key: "4Y", days: 1461 },
   { key: "All", days: null },
 ];
+/** Visible presets for a book whose series honestly reaches `maxRange`: "ALL" keeps the "All"
+ *  button, anything else (blended → "4Y") drops it. Undefined (meta not in yet) is conservative. */
+function periodsFor(maxRange: string | undefined): { key: string; days: number | null }[] {
+  return maxRange === "ALL" ? ALL_PERIODS : ALL_PERIODS.slice(0, 5);
+}
+/** Default preset: the whole history ("All") when it's honestly offered, else the 4Y ceiling. */
+function defaultPeriod(maxRange: string | undefined): string {
+  return maxRange === "ALL" ? "All" : "4Y";
+}
 
 const NIFTY_COLOR = "var(--ctx)"; // muted blue-grey reference line
-
-// viewBox geometry (stretched to the container via preserveAspectRatio="none").
-const VBW = 800;
-const VBH = 260;
-const X0 = 58; // left gutter for y-labels
-const X1 = 792;
-const Y0 = 14;
-const Y1 = 214; // plot floor; x-labels sit below in the HTML overlay
+const VBW = 800; // viewBox width (stretched to the container via preserveAspectRatio="none")
 
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dParts = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return { y, m, d }; };
@@ -61,6 +79,10 @@ const pathFrom = (ys: number[], xOf: (i: number) => number, yOf: (v: number) => 
 const signPctStr = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}%`;
 const signColor = (v: number) => (v >= 0 ? "var(--success)" : "var(--danger)");
 
+/** The ₹ broker gap to disclose, or null when there is nothing honest to say (no broker
+ *  holdings, or a broker leg with no priced value). A zero-rupee "gap" is not a gap — `brokerGapValue`
+ *  (shared from ../lib, so the tiles and this caption agree) encodes that rule. */
+
 /** Carry-forward align a sorted series onto `dates`: each date takes the last value ≤ it
  *  (a gap reuses the prior value; null until the first). The one gap rule that was right. */
 function carryForward<T extends { date: string }>(pts: T[], val: (p: T) => number, dates: string[]): (number | null)[] {
@@ -72,21 +94,72 @@ function carryForward<T extends { date: string }>(pts: T[], val: (p: T) => numbe
   });
 }
 
-export function NavChart({ series, range }: { series: NavPoint[]; range?: { start: string | null; end: string | null } }) {
-  // CONTROLLED when a `range` is supplied (the Performance tab owns one period selector
-  // that drives the whole tab): the chart hides its own period buttons and slices to the
-  // parent's window. UNCONTROLLED (Overview) keeps its internal 1M/6M/1Y/3Y/All selector.
+/** Carry-forward a series onto `dates` and re-index to 100 at the window's first point.
+ *  Returns null until the window's base is resolvable (needs ≥2 points + a base value). */
+function indexTo100<T extends { date: string }>(pts: T[] | undefined, val: (p: T) => number, dates: string[]): number[] | null {
+  if (!pts?.length || dates.length < 2) return null;
+  const at = carryForward(pts, val, dates);
+  const base = at[0];
+  if (base == null || base === 0) return null;
+  return at.map((v) => ((v ?? base) / base) * 100);
+}
+
+export function NavChart({
+  series,
+  range,
+  defaultLens = "returns",
+  lockLens = false,
+  compact = false,
+  brokerGap,
+  maxRange,
+}: {
+  series: NavPoint[];
+  range?: { start: string | null; end: string | null };
+  /** Which lens the chart opens on. Overview/Performance default to Returns. */
+  defaultLens?: ChartLens;
+  /** Hide the lens toggle and pin the lens (Dashboard = locked Returns). */
+  lockLens?: boolean;
+  /** Chrome-less glance variant: no header/axes/scrub/caption, short height (Dashboard hero). */
+  compact?: boolean;
+  /** (Ruling C) The broker-linked holdings the ledgered series can't reach, from the NAV meta.
+   *  When non-zero, the chart discloses the gap — the series covers less than the overview, and
+   *  says so. `null`/absent ⇒ no broker holdings ⇒ no disclosure. */
+  brokerGap?: BrokerExcluded | null;
+  /** The book's honest deepest range (NAV meta): "ALL" (stock-only) offers the "All" button; "4Y"
+   *  (blended) drops it. Drives the uncontrolled picker + its default. Absent ⇒ conservative (no All). */
+  maxRange?: string;
+}) {
+  // CONTROLLED when a `range` is supplied (the Performance tab owns one period selector that
+  // drives the whole tab): the chart hides its own period buttons and slices to the parent's
+  // window. UNCONTROLLED (Overview) keeps its internal 1M/6M/1Y/3Y/4Y selector.
   const controlled = range !== undefined;
-  const [period, setPeriod] = useState("All");
+  const [lens, setLens] = useState<ChartLens>(defaultLens);
+  // Uncontrolled (Overview): the picker + its default come from the book's honest maxRange. Available
+  // at mount (this chart only renders once NAV data — and its meta — has arrived).
+  const [period, setPeriod] = useState(() => defaultPeriod(maxRange));
+  const periods = periodsFor(maxRange);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [benchmark, setBenchmark] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const benchQ = usePortfolioBenchmark(benchmark);
-  const twrQ = usePortfolioTwr(benchmark);
+  // (Ruling C) The ledgered series omits broker-linked holdings that the overview includes — when
+  // that gap is real, the chart names it (below) on every surface, compact included. Never a warning.
+  const gapValue = brokerGapValue(brokerGap);
 
-  // Client-side slice for the selectors — honest-short: a window younger than the
-  // history simply returns fewer points (never padded).
+  // compact is always a locked glance; the toggle never renders there.
+  const effectiveLens: ChartLens = lockLens || compact ? defaultLens : lens;
+  const returnsMode = effectiveLens === "returns";
+  // The vs-Nifty comparison belongs with the Returns lens only (it's an index-to-100 overlay,
+  // meaningless against a ₹ value line) and never on the compact glance.
+  const showBenchmarkToggle = returnsMode && !compact;
+  const benchOn = benchmark && showBenchmarkToggle;
+
+  // Returns needs TWR; the comparison additionally needs the Nifty series. Both lazy.
+  const twrQ = usePortfolioTwr(returnsMode);
+  const benchQ = usePortfolioBenchmark(benchOn);
+
+  // Client-side slice for the selectors — honest-short: a window younger than the history
+  // simply returns fewer points (never padded).
   const sliced = useMemo(() => {
     if (series.length === 0) return series;
     if (controlled) {
@@ -97,7 +170,7 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
       if (end) w = w.filter((p) => p.date <= end);
       return w.length >= 2 ? w : series.slice(-2);
     }
-    const days = PERIODS.find((p) => p.key === period)?.days ?? null;
+    const days = ALL_PERIODS.find((p) => p.key === period)?.days ?? null;
     if (days == null) return series;
     const cutoff = isoMinusDays(series[series.length - 1].date, days);
     const w = series.filter((p) => p.date >= cutoff);
@@ -105,38 +178,50 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
   }, [series, period, controlled, range]);
 
   const n = sliced.length;
+  const dates = useMemo(() => sliced.map((p) => p.date), [sliced]);
 
-  // ── comparison overlay: portfolio TWR vs Nifty, BOTH re-indexed to 100 at the window
-  //    start. TWR is already cash-flow-neutral (a deposit doesn't move it) — re-indexing
-  //    to a later start just gives the return FROM that start. Nifty (no cash flows) rebases
-  //    to 100 the same way. Both carry-forward aligned onto the visible NAV dates. ──
-  const overlay = useMemo(() => {
-    const nifty = benchQ.data?.series;
-    const twr = twrQ.data?.series;
-    if (!benchmark || !nifty?.length || !twr?.length || n < 2) return null;
-    const dates = sliced.map((p) => p.date);
-    const twrAt = carryForward(twr, (p) => p.twrIndex, dates);
-    const niftyAt = carryForward(nifty, (p) => p.close, dates);
-    if (twrAt[0] == null || niftyAt[0] == null) return null;
-    const twrBase = twrAt[0];
-    const niftyBase = niftyAt[0];
-    return {
-      portfolio: twrAt.map((v) => ((v ?? twrBase) / twrBase) * 100),
-      nifty: niftyAt.map((c) => ((c ?? niftyBase) / niftyBase) * 100),
-    };
-  }, [benchmark, benchQ.data, twrQ.data, sliced, n]);
+  // ── Returns lens: the portfolio's TWR, carry-forward aligned onto the visible NAV days and
+  //    re-indexed to 100 at the window start. TWR is already cash-flow-neutral (a deposit
+  //    doesn't move it) — re-indexing to a later start just gives the return FROM that start. ──
+  const twrIndexed = useMemo(
+    () => (returnsMode ? indexTo100(twrQ.data?.series, (p) => p.twrIndex, dates) : null),
+    [returnsMode, twrQ.data, dates],
+  );
+  // ── vs-Nifty overlay: same index-to-100 treatment (no cash flows, so a plain rebase). ──
+  const niftyIndexed = useMemo(
+    () => (benchOn ? indexTo100(benchQ.data?.series, (p) => p.close, dates) : null),
+    [benchOn, benchQ.data, dates],
+  );
 
-  const rebased = overlay != null;
+  const indexed = returnsMode && twrIndexed != null; // y-axis is index-based (return), not ₹
+  const showNifty = benchOn && indexed && niftyIndexed != null;
+
+  // Returns lens is asked for but its series hasn't arrived yet → a loading beat, NOT the ₹
+  // line (showing value while "Returns" is selected would be a lie).
+  const returnsPending = returnsMode && n >= 2 && twrIndexed == null;
 
   // y-domain fits the visible spread (both lines in comparison mode) with a little padding.
+  const navY = indexed ? twrIndexed! : sliced.map((p) => p.value);
+  const niftyY = showNifty ? niftyIndexed! : null;
+
   const { lo, hi } = useMemo(() => {
-    const ys = rebased ? [...overlay!.portfolio, ...overlay!.nifty] : sliced.map((p) => p.value);
+    const ys = niftyY ? [...navY, ...niftyY] : navY;
     if (ys.length === 0) return { lo: 0, hi: 1 };
     const min = Math.min(...ys);
     const max = Math.max(...ys);
     const pad = (max - min) * 0.1 || max * 0.05 || 1;
     return { lo: Math.max(0, min - pad), hi: max + pad };
-  }, [sliced, rebased, overlay]);
+  }, [navY, niftyY]);
+
+  // Geometry: the line spans the FULL plot width — the y-labels are OVERLAID on the plot at the
+  // left edge (with a subtle backing), so no gutter is reserved and there is no leading gap. Only
+  // the LEFT inset was reclaimed (X0 58 → 2); the right edge (X1) is unchanged, so the endpoint
+  // sits exactly where it did. The compact glance already used the whole width (no axes).
+  const X0 = compact ? 3 : 2;
+  const X1 = compact ? 797 : 792;
+  const Y0 = compact ? 6 : 14;
+  const Y1 = compact ? 74 : 214;
+  const VBH = compact ? 80 : 260;
 
   const xOf = (i: number) => (n <= 1 ? (X0 + X1) / 2 : X0 + (i * (X1 - X0)) / (n - 1));
   const yOf = (v: number) => Y0 + ((hi - v) / (hi - lo || 1)) * (Y1 - Y0);
@@ -144,18 +229,15 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
   const topPct = (y: number) => (y / VBH) * 100;
 
   const idx = activeIdx != null ? Math.min(activeIdx, n - 1) : n - 1;
-  const scrubbing = activeIdx != null;
-  // ₹ value chart: green/red by the portfolio's own direction (P&L domain).
-  // vs-Nifty comparison: the theme blue — a neutral comparison identity, NOT a good/bad
-  // signal (an always-red line reads as "bad"; the signed % beside it carries up/down).
-  const up = sliced[n - 1].value >= sliced[0].value;
-  const navColor = rebased ? "var(--primary)" : up ? "var(--success)" : "var(--danger)";
+  const scrubbing = activeIdx != null && !compact;
 
-  const navY = rebased ? overlay!.portfolio : sliced.map((p) => p.value);
-  const niftyY = rebased ? overlay!.nifty : null;
+  // Colour: ₹ value AND returns-solo → green/red by the line's own direction (both are a P&L /
+  // gain read, so up=good is honest). vs-Nifty comparison → theme blue, a neutral comparison
+  // identity (an always-red line reads "bad"; the signed % beside it carries up/down).
+  const up = navY[n - 1] >= (indexed ? 100 : navY[0]);
+  const navColor = showNifty ? "var(--primary)" : up ? "var(--success)" : "var(--danger)";
 
   const navPath = pathFrom(navY, xOf, yOf);
-  // area fill under the portfolio line in BOTH modes (value ₹ chart AND the vs-Nifty view).
   const areaPath = n >= 2 ? `${navPath} L${xOf(n - 1).toFixed(1)},${Y1} L${xOf(0).toFixed(1)},${Y1} Z` : "";
   const niftyPath = niftyY ? pathFrom(niftyY, xOf, yOf) : "";
 
@@ -164,15 +246,21 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
 
   const xStep = Math.max(1, Math.ceil(n / 5));
   const xLabelIdx = sliced.map((_, i) => i).filter((i) => i % xStep === 0 || i === n - 1);
-  const yTicks = rebased ? [hi, 100, lo] : [hi, (hi + lo) / 2, lo];
-  const yFmt = (v: number) => (rebased ? Math.round(v).toString() : formatINR(v, { compact: true }));
+  const yTicks = indexed ? [hi, 100, lo] : [hi, (hi + lo) / 2, lo];
+  const yFmt = (v: number) => (indexed ? Math.round(v).toString() : formatINR(v, { compact: true }));
 
-  const benchLoading = benchmark && (benchQ.isLoading || twrQ.isLoading) && !rebased;
-  const benchError = benchmark && (benchQ.isError || twrQ.isError);
+  const benchLoading = benchOn && !showNifty && (benchQ.isLoading || twrQ.isLoading);
+  const benchError = benchOn && (benchQ.isError || twrQ.isError);
+
+  const title = showNifty
+    ? "Performance vs Nifty 50"
+    : returnsMode
+      ? "Portfolio return over time"
+      : "Portfolio value over time";
 
   const handlePointer = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
-    if (!svg || n < 2) return;
+    if (!svg || n < 2 || compact) return;
     const rect = svg.getBoundingClientRect();
     const vbx = ((e.clientX - rect.left) / rect.width) * VBW;
     let best = 0;
@@ -184,32 +272,90 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
     setActiveIdx(best);
   };
 
+  // ── Compact glance (Dashboard): just the returns trajectory, no chrome. ──
+  if (compact) {
+    if (n < 2) return null;
+    if (returnsPending) return <div className="h-14 w-full animate-pulse rounded-lg bg-surface-2/50 sm:h-16" />;
+    return (
+      <div>
+        <div className="relative h-14 w-full select-none sm:h-16" aria-label={title} role="img">
+          <svg viewBox={`0 0 ${VBW} ${VBH}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+            <defs>
+              <linearGradient id="navFillCompact" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={navColor} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={navColor} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <path d={areaPath} fill="url(#navFillCompact)" />
+            <path d={navPath} fill="none" stroke={navColor} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+          <span
+            className="pointer-events-none absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{ left: `${leftPct(n - 1)}%`, top: `${topPct(yOf(navY[n - 1]))}%`, background: navColor }}
+          />
+        </div>
+        {/* Dashboard's honest minimum: the same gap, one compact line — a silent mini-chart is the
+            same lie in a smaller box. */}
+        {gapValue != null && (
+          <p className="mt-1.5 text-[10px] leading-snug text-ink3">
+            Ledgered only · <span className="num">{formatINR(gapValue, { compact: true })}</span> broker-linked not shown
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
-      {/* header — kicker · Nifty comparison toggle (live) · period selector */}
+      {/* header — kicker · lens toggle · vs-Nifty toggle (returns only) · period selector */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <Kicker>{rebased ? "Performance vs Nifty 50" : "Portfolio value over time"}</Kicker>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setBenchmark((b) => !b)}
-            aria-pressed={benchmark}
-            title="Compare performance vs Nifty 50 — time-weighted return, both indexed to 100"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors",
-              benchmark ? "border-line3 bg-surface-3 text-ink" : "border-line2 bg-surface-2 text-ink3 hover:text-ink2",
-            )}
-          >
-            <span
-              className={cn("size-1.5 rounded-full", benchmark && (benchQ.isFetching || twrQ.isFetching) && "animate-pulse")}
-              style={{ background: benchmark ? NIFTY_COLOR : "var(--ink3)" }}
-            />
-            vs Nifty 50
-          </button>
+        <Kicker>{title}</Kicker>
+        <div className="grid min-[350px]:flex items-center gap-2">
+          {/* Value / Returns lens toggle */}
+          {!lockLens && (
+            <div className="flex gap-0.5 rounded-lg border border-line2 bg-surface-2 p-0.5">
+              {(["returns", "value"] as ChartLens[]).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => { setLens(l); setActiveIdx(null); }}
+                  aria-pressed={effectiveLens === l}
+                  title={l === "returns"
+                    ? "Time-weighted return — how your investments performed, deposits stripped out"
+                    : "₹ portfolio value over time — grows with deposits and performance"}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    effectiveLens === l ? "bg-surface-3 text-ink" : "text-ink3 hover:text-ink2",
+                  )}
+                >
+                  {l === "returns" ? "Returns" : "Value"}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* vs-Nifty comparison — only in the Returns lens (untouched behaviour) */}
+          {showBenchmarkToggle && (
+            <button
+              type="button"
+              onClick={() => setBenchmark((b) => !b)}
+              aria-pressed={benchmark}
+              title="Compare performance vs Nifty 50 — time-weighted return, both indexed to 100"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                benchmark ? "border-line3 bg-surface-3 text-ink" : "border-line2 bg-surface-2 text-ink3 hover:text-ink2",
+              )}
+            >
+              <span
+                className={cn("size-1.5 rounded-full", benchmark && (benchQ.isFetching || twrQ.isFetching) && "animate-pulse")}
+                style={{ background: benchmark ? NIFTY_COLOR : "var(--ink3)" }}
+              />
+              vs Nifty 50
+            </button>
+          )}
           {/* internal period selector — hidden when a parent drives the window (controlled) */}
           {!controlled && (
             <div className="flex gap-0.5 rounded-lg border border-line2 bg-surface-2 p-0.5">
-              {PERIODS.map((p) => (
+              {periods.map((p) => (
                 <button
                   key={p.key}
                   type="button"
@@ -231,6 +377,8 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
         <div className="flex h-[180px] items-center justify-center rounded-xl border border-dashed border-line2 bg-surface-2/50 px-6 text-center text-[12px] text-ink3">
           Only {n} point in this window yet — pick a longer period.
         </div>
+      ) : returnsPending ? (
+        <div className="h-[210px] w-full animate-pulse rounded-xl bg-surface-2/50 sm:h-[240px]" />
       ) : (
         <div className="relative h-[210px] w-full select-none sm:h-[240px]">
           <svg
@@ -242,7 +390,7 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
             onPointerDown={handlePointer}
             onPointerLeave={() => setActiveIdx(null)}
             role="img"
-            aria-label={rebased ? "Portfolio return vs Nifty 50, indexed to 100" : "Portfolio value over time"}
+            aria-label={indexed ? "Portfolio return over time, indexed to 100" : "Portfolio value over time"}
           >
             <defs>
               <linearGradient id="navFill" x1="0" y1="0" x2="0" y2="1">
@@ -251,7 +399,7 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
               </linearGradient>
             </defs>
 
-            {/* y gridlines (the 100 base line reads a touch stronger in comparison mode) */}
+            {/* y gridlines (the 100 base line reads a touch stronger in the returns lens) */}
             {yTicks.map((t, k) => (
               <line
                 key={k}
@@ -261,11 +409,11 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
                 y2={yOf(t)}
                 stroke="var(--line)"
                 strokeDasharray="2 5"
-                strokeOpacity={rebased && Math.round(t) === 100 ? 0.9 : 0.5}
+                strokeOpacity={indexed && Math.round(t) === 100 ? 0.9 : 0.5}
               />
             ))}
 
-            {/* area fill under the portfolio line (both modes) */}
+            {/* area fill under the portfolio line (both lenses) */}
             <path d={areaPath} fill="url(#navFill)" />
 
             {/* benchmark line (muted reference) under the portfolio line */}
@@ -274,7 +422,7 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
             )}
 
             {/* portfolio line */}
-            <path d={navPath} fill="none" stroke={navColor} strokeWidth={rebased ? 2.25 : 2} strokeLinejoin="round" strokeLinecap="round" />
+            <path d={navPath} fill="none" stroke={navColor} strokeWidth={showNifty ? 2.25 : 2} strokeLinejoin="round" strokeLinecap="round" />
 
             {/* scrub guide line (the dot markers are HTML — below — so they stay round) */}
             {scrubbing && (
@@ -283,11 +431,13 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
           </svg>
 
           {/* ── HTML overlay: legible axis labels + scrub readout ── */}
+          {/* y-labels OVERLAID on the plot at the left edge (no reserved gutter → the line is
+              full-width). A subtle surface backing keeps them legible over the faint area/line. */}
           {yTicks.map((t, k) => (
             <span
               key={k}
-              className="num pointer-events-none absolute -translate-x-full -translate-y-1/2 whitespace-nowrap pr-2 text-[10.5px] text-ink3"
-              style={{ left: `${(X0 / VBW) * 100}%`, top: `${topPct(yOf(t))}%` }}
+              className="num pointer-events-none absolute left-0 -translate-y-1/2 whitespace-nowrap rounded bg-surface-1/80 px-1 text-[10.5px] text-ink3"
+              style={{ top: `${topPct(yOf(t))}%` }}
             >
               {yFmt(t)}
             </span>
@@ -328,24 +478,29 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
             </>
           )}
 
-          {/* scrub tooltip — value(s) + signed % return at the hovered date */}
+          {/* scrub tooltip — value(s) / return(s) at the hovered date */}
           {scrubbing && (
             <div
               className="pointer-events-none absolute flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-md border border-line2 bg-surface-3 px-2.5 py-1 text-[12px] shadow-lg"
               style={{ left: `${Math.min(Math.max(leftPct(idx), 16), 84)}%`, top: `${topPct(Y0)}%` }}
             >
               <span className="num text-ink3">{fmtTooltipDate(sliced[idx].date)}</span>
-              {rebased ? (
+              {showNifty ? (
                 <>
                   <span className="num font-semibold">
-                    <span style={{ color: navColor }}>You {overlay!.portfolio[idx].toFixed(1)}</span>{" "}
-                    <span style={{ color: signColor(overlay!.portfolio[idx] - 100) }}>({signPctStr(overlay!.portfolio[idx] - 100)})</span>
+                    <span style={{ color: navColor }}>You {navY[idx].toFixed(1)}</span>{" "}
+                    <span style={{ color: signColor(navY[idx] - 100) }}>({signPctStr(navY[idx] - 100)})</span>
                   </span>
                   <span className="num font-semibold">
-                    <span style={{ color: NIFTY_COLOR }}>Nifty {overlay!.nifty[idx].toFixed(1)}</span>{" "}
-                    <span style={{ color: signColor(overlay!.nifty[idx] - 100) }}>({signPctStr(overlay!.nifty[idx] - 100)})</span>
+                    <span style={{ color: NIFTY_COLOR }}>Nifty {niftyY![idx].toFixed(1)}</span>{" "}
+                    <span style={{ color: signColor(niftyY![idx] - 100) }}>({signPctStr(niftyY![idx] - 100)})</span>
                   </span>
                 </>
+              ) : indexed ? (
+                <span className="num font-semibold">
+                  <span style={{ color: navColor }}>{navY[idx].toFixed(1)}</span>{" "}
+                  <span style={{ color: signColor(navY[idx] - 100) }}>({signPctStr(navY[idx] - 100)})</span>
+                </span>
               ) : (
                 <span className="num font-semibold text-ink">{formatINR(sliced[idx].value, { compact: true })}</span>
               )}
@@ -354,19 +509,19 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
         </div>
       )}
 
-      {/* caption — comparison legend (performance, not value), or a loading/unavailable hint */}
-      {rebased ? (
+      {/* caption — comparison legend, returns explainer, or a loading/unavailable hint */}
+      {showNifty ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink3">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-[3px] w-3.5 rounded" style={{ background: navColor }} /> Portfolio
-            <span className="num" style={{ color: signColor(overlay!.portfolio[n - 1] - 100) }}>
-              {signPctStr(overlay!.portfolio[n - 1] - 100)}
+            <span className="num" style={{ color: signColor(navY[n - 1] - 100) }}>
+              {signPctStr(navY[n - 1] - 100)}
             </span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-[3px] w-3.5 rounded" style={{ background: NIFTY_COLOR }} /> Nifty 50
-            <span className="num" style={{ color: signColor(overlay!.nifty[n - 1] - 100) }}>
-              {signPctStr(overlay!.nifty[n - 1] - 100)}
+            <span className="num" style={{ color: signColor(niftyY![n - 1] - 100) }}>
+              {signPctStr(niftyY![n - 1] - 100)}
             </span>
           </span>
           <span>
@@ -375,11 +530,37 @@ export function NavChart({ series, range }: { series: NavPoint[]; range?: { star
             removed) — the ₹ chart shows value, this shows performance.
           </span>
         </div>
-      ) : benchLoading ? (
-        <p className="mt-2.5 text-[11px] text-ink3">Loading the Nifty 50 comparison…</p>
-      ) : benchError ? (
-        <p className="mt-2.5 text-[11px] text-ink3">Comparison unavailable right now — try again shortly.</p>
+      ) : returnsMode && !returnsPending && n >= 2 ? (
+        benchLoading ? (
+          <p className="mt-2.5 text-[11px] text-ink3">Loading the Nifty 50 comparison…</p>
+        ) : benchError ? (
+          <p className="mt-2.5 text-[11px] text-ink3">Comparison unavailable right now — try again shortly.</p>
+        ) : (
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink3">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-[3px] w-3.5 rounded" style={{ background: navColor }} /> Return
+              <span className="num" style={{ color: signColor(navY[n - 1] - 100) }}>{signPctStr(navY[n - 1] - 100)}</span>
+            </span>
+            <span>
+              Time-weighted, indexed to <span className="num text-ink2">100</span> at{" "}
+              <span className="num text-ink2">{fmtTooltipDate(sliced[0].date)}</span> — deposits &amp; sells removed, so
+              it&apos;s how your holdings performed, not money added.
+            </span>
+          </div>
+        )
       ) : null}
+
+      {/* (Ruling C) The series is ledger-only; the overview sums the manual ⊎ broker union. When the
+          book carries broker-linked holdings, name what the line leaves out — factual, not a warning.
+          Broker holdings have no transaction dates, so they can't be drawn; the endpoint stays pinned
+          to the ledgered value on purpose. */}
+      {gapValue != null && (
+        <p className="mt-2.5 text-[11px] leading-relaxed text-ink3">
+          This series covers your <span className="text-ink2">ledgered holdings</span>.{" "}
+          <span className="num text-ink2">{formatINR(gapValue, { compact: true })}</span> in broker-linked holdings
+          isn&apos;t included.
+        </p>
+      )}
     </div>
   );
 }

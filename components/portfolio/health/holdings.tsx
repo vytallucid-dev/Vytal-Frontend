@@ -4,18 +4,23 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
+import { roundScore } from "@/lib/format";
+import { assetClassLabel } from "@/lib/asset-class";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { LensPatternPill, PILLAR_META } from "@/components/stock-detail/health/shared";
 import type { PillarKey } from "@/types/health";
 import type { Holding, PortfolioSnapshot } from "@/types/portfolio";
 import { STOCK_BAND_LABEL, holdingHealthColor, stockHealthHref } from "../lib";
-import { type HoldingRank, flaggedSymbols, rankedHoldings } from "./lib";
+import { HoldingDisclosure } from "../holding-disclosure";
+import { InfoTip, Tip } from "./parts";
+import { type EntityHolding, type EntityRank, aggregateHoldings, flaggedSymbols, rankedEntities } from "./lib";
 
 const CARD = "rounded-xl border border-line bg-surface-1 p-3 sm:p-4";
 const PILLAR_ORDER: PillarKey[] = ["foundation", "momentum", "market", "ownership"];
+const pct1 = (w: number) => `${(w * 100).toFixed(1)}%`;
 
 // ── the one-line "why it's here" state for a row (band + flag, descriptive) ──────────
-function rowState(rank: HoldingRank): string {
+function rowState(rank: EntityRank): string {
   if (rank.unscored) return "Not yet scored — awaiting coverage";
   if (rank.flagged && rank.weak) return "Weak band with an active red flag";
   if (rank.flagged) return "An active red flag is firing";
@@ -79,8 +84,9 @@ function HoldingEvidence({ symbol }: { symbol: string }) {
 
   return (
     <div className="px-1 py-3">
-      {/* the 4 pillar subtotals — the composite's frame, for context under the headline */}
-      <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+      {/* the 4 pillar subtotals — the composite's frame, for context under the headline.
+          Stacks one-per-row on the smallest screens so each bar keeps a readable width. */}
+      <div className="mb-3 grid grid-cols-1 gap-x-4 gap-y-2 min-[400px]:grid-cols-2 sm:grid-cols-4">
         {PILLAR_ORDER.map((k) => {
           const p = pillars.find((x) => x.pillar === k);
           const v = p?.subtotal ?? null;
@@ -132,79 +138,233 @@ function HoldingEvidence({ symbol }: { symbol: string }) {
   );
 }
 
-// ── one holding row — weight · symbol · band + composite · state. Attention names carry
-//    a left accent and open; sound scored names stay calm but still open for evidence. ─
-function HoldingRow({ rank }: { rank: HoldingRank }) {
+// ── the constituent breakdown — shown in the EXPAND of a MULTI-INSTRUMENT entity (an NTPC stock +
+//    bond). One line per instrument: its class, its weight, and its OWN treatment — the equity's score,
+//    the bond's served disclosure. Nothing is blended; the row is the entity, this is its parts. ─────
+function ConstituentBreakdown({ entity }: { entity: EntityHolding }) {
+  return (
+    <div className="px-1 py-3">
+      <p className="mb-2.5 text-[11px] leading-relaxed text-ink3">
+        <span className="num text-ink2">{entity.displayName}</span> across {entity.constituents.length} instruments — one company, {pct1(entity.weight)} of the book:
+      </p>
+      <div className="flex flex-col gap-2">
+        {entity.constituents.map((c) => (
+          <div key={c.isin ?? c.symbol} className="flex items-center gap-2.5 rounded-md border border-line bg-surface-1 px-3 py-2">
+            <span className="num shrink-0 text-[12px] font-semibold text-ink">{c.symbol}</span>
+            {c.assetClass && (
+              <Tip content={`This instrument is a ${assetClassLabel(c.assetClass).toLowerCase()}.`}>
+                <span className="shrink-0 cursor-help rounded border border-line2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-ink3">{assetClassLabel(c.assetClass)}</span>
+              </Tip>
+            )}
+            <Tip content={`${pct1(c.weight)} of your whole book, summed across accounts.`}>
+              <span className="num ml-auto shrink-0 cursor-help text-[11px] text-ink2">{pct1(c.weight)}</span>
+            </Tip>
+            {c.health != null ? (
+              <Tip content={`Health ${roundScore(c.health)} out of 100 — this instrument's own score.`}>
+                <span className="num shrink-0 cursor-help text-[12px] font-medium" style={{ color: holdingHealthColor(c) }}>{roundScore(c.health)}</span>
+              </Tip>
+            ) : c.disclosureNotes && c.disclosureNotes.length > 0 ? (
+              <HoldingDisclosure notes={c.disclosureNotes} variant="inline" />
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── the condition read for an entity — the equity's band + score, a served by-design disclosure, or an
+//    honest "Unscored". Carries its own themed tooltip; the disclosure variant brings its own. Shared by
+//    both the desktop row and the mobile card so the two never drift. ─────────────────────────────────
+function EntityCondition({ e, byDesign }: { e: EntityHolding; byDesign: boolean }) {
+  if (byDesign) return <HoldingDisclosure notes={e.disclosureNotes} variant="inline" />;
+  const color = e.health != null ? holdingHealthColor({ health: e.health }) : "var(--ink3)";
+  const bandLabel = e.band ? STOCK_BAND_LABEL[e.band] : "Unscored";
+  const tip =
+    e.health != null
+      ? `${bandLabel} band · health ${roundScore(e.health)} of 100 — the score of this issuer's equity.`
+      : "We recognise this name but haven't scored it yet — it stays out of the number until we do.";
+  return (
+    <Tip content={tip}>
+      <span className="inline-flex cursor-help items-center gap-2 text-[12px]">
+        <span className="size-2 shrink-0 rounded-full" style={{ background: color }} />
+        <span className="text-ink2">{bandLabel}</span>
+        {e.health != null && (
+          <span className="num font-medium" style={{ color }}>
+            {roundScore(e.health)}
+          </span>
+        )}
+      </span>
+    </Tip>
+  );
+}
+
+// ── one ENTITY — combined across accounts, matching the engine. weight (summed) · issuer · the equity's
+//    band + score · state. RESPONSIVE by construction: a dense table row on sm+, an expandable CARD with
+//    labelled fields on phones (the row layout truncated badly there). Attention names carry a left accent
+//    and open; a multi-instrument entity opens to its equity's evidence AND its constituent breakdown. ──
+function EntityCardView({ rank }: { rank: EntityRank }) {
   const [open, setOpen] = useState(false);
-  const h = rank.holding;
-  const color = holdingHealthColor(h);
+  const e = rank.entity;
   const attention = rank.weak || rank.flagged;
   const accent = rank.flagged ? "var(--crit)" : rank.weak ? "var(--high)" : "transparent";
-  const canExpand = h.health != null; // unscored names have no per-stock evidence to open
+  const attnTip = rank.flagged
+    ? "An active red flag is firing on this holding."
+    : rank.weak
+      ? "This holding sits in a weak band — a drag on the book's quality."
+      : null;
+  // A by-design entity (fund/ETF/gold/pure-bond) is unscored and carries a SERVED note — NOT "awaiting
+  // coverage". It renders QUIETER (muted, the info marker, no condition dot) so the eye skips it.
+  const notes = e.disclosureNotes;
+  const byDesign = e.health == null && notes.length > 0;
+  const dim = byDesign;
+  // Expand when there's a scored equity (its pillars) OR several instruments to break out.
+  const canExpand = e.equity != null || e.multiInstrument;
+  // The expand's per-stock evidence reads the EQUITY's symbol (pillars/three-lens unchanged); a
+  // fund/gold entity has no equity and no expand.
+  const evidenceSymbol = e.equity?.symbol ?? null;
+  const why = byDesign
+    ? notes[0]!.sentence
+    : e.multiInstrument
+      ? `${e.constituents.length} instruments of one company — expand to see each`
+      : rowState(rank);
+
+  const weightTip = `${pct1(e.weight)} of your whole book by value, summed across every account and instrument for this issuer.`;
+  const multiTip = `${e.constituents.length} instruments of one issuer (e.g. its stock and bond), combined into this single line. Expand to see each.`;
+  const linkTip = `Open ${e.displayName}'s stock health page.`;
+  const toggle = () => canExpand && setOpen((o) => !o);
 
   return (
     <div
-      className="overflow-hidden rounded-lg border border-line bg-surface-1"
+      className={cn("overflow-hidden rounded-xl border border-line bg-surface-1", dim && "opacity-75")}
       style={attention ? { borderLeftColor: accent, borderLeftWidth: 3 } : undefined}
     >
-      <div className="flex items-stretch">
+      {/* ── DESKTOP (sm+) — the dense table row ─────────────────────────────────────────────── */}
+      <div className="hidden items-stretch sm:flex">
         <button
           type="button"
-          onClick={() => canExpand && setOpen((o) => !o)}
+          onClick={toggle}
           className={cn(
-            "flex flex-1 items-center gap-3 px-3 py-2.5 text-left sm:px-4",
+            "flex flex-1 items-center gap-3 px-4 py-2.5 text-left",
             canExpand ? "cursor-pointer hover:bg-surface-2" : "cursor-default",
           )}
         >
-          <span className="num w-11 shrink-0 text-right text-[12px] text-ink2">{(h.weight * 100).toFixed(1)}%</span>
-          <span className="font-display w-24 shrink-0 truncate text-[13px] font-semibold text-ink sm:w-28">{h.symbol}</span>
-          <span className="hidden w-32 shrink-0 items-center gap-2 text-[12px] sm:flex">
-            <span className="size-2 shrink-0 rounded-full" style={{ background: color }} />
-            <span className="text-ink2">{h.band ? STOCK_BAND_LABEL[h.band] : "Unscored"}</span>
-            {h.health != null && (
-              <span className="num font-medium" style={{ color }}>
-                {h.health}
-              </span>
+          <Tip content={weightTip}>
+            <span className={cn("num w-11 shrink-0 cursor-help text-right text-[12px]", dim ? "text-ink3" : "text-ink2")}>{pct1(e.weight)}</span>
+          </Tip>
+          <span className="flex w-28 shrink-0 items-center gap-1.5">
+            <span className={cn("font-display truncate text-[13px]", dim ? "font-medium text-ink3" : "font-semibold text-ink")}>{e.displayName}</span>
+            {e.multiInstrument && (
+              <Tip content={multiTip}>
+                <span className="shrink-0 cursor-help rounded border border-line2 px-1 py-px text-[8.5px] uppercase tracking-wide text-ink3">{e.constituents.length}×</span>
+              </Tip>
             )}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[12px] text-ink3">{rowState(rank)}</span>
-          {canExpand && (
-            <Icons.caretDown className={cn("size-4 shrink-0 text-ink3 transition-transform", open && "rotate-180")} />
-          )}
+          <span className="flex w-32 justify-center shrink-0 items-center gap-2">
+            <EntityCondition e={e} byDesign={byDesign} />
+          </span>
+            <span className="w-0 min-w-0 flex-1 truncate text-[12px] text-ink3">{why}</span>
+          {canExpand && <Icons.caretDown className={cn("size-4 shrink-0 text-ink3 transition-transform", open && "rotate-180")} />}
         </button>
-        {/* link-out — the row leads somewhere (Part D): this stock's health page */}
-        <Link
-          href={stockHealthHref(h.symbol)}
-          title={`Open ${h.symbol} health`}
-          className="grid shrink-0 place-items-center border-l border-line px-3 text-ink3 transition-colors hover:bg-surface-2 hover:text-ink"
+        {/* link-out — the row leads somewhere (Part D): the issuer's stock health page */}
+        <Tip content={linkTip}>
+          <Link
+            href={stockHealthHref(e.displayName)}
+            aria-label={`Open ${e.displayName} health`}
+            className="grid shrink-0 place-items-center border-l border-line px-3 text-ink3 transition-colors hover:bg-surface-2 hover:text-ink"
+          >
+            <Icons.arrowUpRight className="size-3.5" />
+          </Link>
+        </Tip>
+      </div>
+
+      {/* ── MOBILE (<sm) — the expandable card: the SAME facts, stacked into labelled fields so nothing
+             truncates and every value has room. ────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:hidden">
+        <button
+          type="button"
+          onClick={toggle}
+          className={cn("flex flex-col gap-2.5 px-3.5 py-3 text-left", canExpand ? "cursor-pointer active:bg-surface-2" : "cursor-default")}
         >
-          <Icons.arrowUpRight className="size-3.5" />
+          {/* header — issuer, badges, weight, caret */}
+          <div className="flex items-center gap-2">
+            <span className={cn("font-display min-w-0 truncate text-[15px]", dim ? "font-medium text-ink3" : "font-semibold text-ink")}>{e.displayName}</span>
+            {e.multiInstrument && (
+              <Tip content={multiTip}>
+                <span className="shrink-0 cursor-help rounded border border-line2 px-1 py-px text-[9px] uppercase tracking-wide text-ink3">{e.constituents.length}×</span>
+              </Tip>
+            )}
+            {attnTip && (
+              <Tip content={attnTip}>
+                <span className="size-2 shrink-0 cursor-help rounded-full" style={{ background: accent }} />
+              </Tip>
+            )}
+            <Tip content={weightTip}>
+              <span className={cn("num ml-auto shrink-0 cursor-help text-[13px] font-medium", dim ? "text-ink3" : "text-ink")}>
+                {pct1(e.weight)} <span className="text-[10px] font-normal text-ink3">of book</span>
+              </span>
+            </Tip>
+            {canExpand && <Icons.caretDown className={cn("size-4 shrink-0 text-ink3 transition-transform", open && "rotate-180")} />}
+          </div>
+          {/* condition field */}
+          <div className="flex items-center gap-2">
+            <span className="w-[74px] shrink-0 text-[10px] uppercase tracking-wide text-ink3">Condition</span>
+            <EntityCondition e={e} byDesign={byDesign} />
+          </div>
+          {/* why-it's-here field — full text, wrapping */}
+          <div className="flex items-start gap-2">
+            <span className="w-[74px] shrink-0 pt-px text-[10px] uppercase tracking-wide text-ink3">Why it&apos;s here</span>
+            <span className="min-w-0 flex-1 text-[12px] leading-relaxed text-ink2">{why}</span>
+          </div>
+        </button>
+        {/* link-out footer — full-width tap target on phones */}
+        <Link
+          href={stockHealthHref(e.displayName)}
+          className="flex items-center justify-center gap-1.5 border-t border-line px-3 py-2 text-[11.5px] text-ink3 transition-colors active:bg-surface-2"
+        >
+          Open {e.displayName} health
+          <Icons.arrowUpRight className="size-3" />
         </Link>
       </div>
+
+      {/* ── shared expand — per-stock evidence and, for a multi-instrument issuer, its constituent breakout ── */}
       {open && canExpand && (
         <div className="border-t border-line px-3 sm:px-4">
-          <HoldingEvidence symbol={h.symbol} />
+          {evidenceSymbol && <HoldingEvidence symbol={evidenceSymbol} />}
+          {e.multiInstrument && <ConstituentBreakdown entity={e} />}
         </div>
       )}
     </div>
   );
 }
 
-/** §4 · Your holdings — depth. Sorted by weight × attention (weak/flagged lead); expand a
- *  name to its per-stock three-lens (LM/LP) evidence. */
+/** §4 · Your Combined Holdings — depth, aggregated across accounts to match the Construction engine
+ *  (one row per issuer entity). Sorted by weight × attention (weak/flagged lead); expand a name to its
+ *  per-stock three-lens (LM/LP) evidence, and — for a multi-instrument issuer — its constituent breakout.
+ *  Renders as a dense table on sm+ and as expandable cards on phones (where the row truncated badly). */
 export function HoldingsSection({ snapshot, holdings }: { snapshot: PortfolioSnapshot; holdings: Holding[] }) {
-  const ranks = rankedHoldings(holdings, flaggedSymbols(snapshot));
+  const ranks = rankedEntities(aggregateHoldings(holdings), flaggedSymbols(snapshot));
   return (
     <div className={CARD}>
-      <div className="mb-2 flex items-center gap-3 px-1 text-[9.5px] uppercase tracking-wide text-ink3">
+      {/* column headers — desktop only; the mobile cards label their own fields */}
+      <div className="mb-2 hidden items-center gap-3 px-4 text-[9.5px] uppercase tracking-wide text-ink3 sm:flex">
         <span className="w-11 shrink-0 text-right">Weight</span>
-        <span className="w-24 shrink-0 sm:w-28">Holding</span>
-        <span className="hidden w-32 shrink-0 sm:block">Condition</span>
-        <span className="flex-1">Why it&apos;s here</span>
+        <span className="flex w-28 shrink-0 items-center gap-1">
+          Holding
+          <InfoTip>One line per issuer, combined across accounts. A &ldquo;2×&rdquo; badge means several instruments of one issuer — e.g. its stock and bond — merged into one line.</InfoTip>
+        </span>
+        <span className="flex w-32 shrink-0 items-center gap-1">
+          Condition
+          <InfoTip>The scored equity&apos;s health band and score, or a served note for holdings we don&apos;t score by design (funds, ETFs, gold).</InfoTip>
+        </span>
+        <span className="flex flex-1 items-center gap-1">
+          Why it&apos;s here
+          <InfoTip>Why the holding is worth noting — an active red flag, a weak band, a multi-instrument issuer, or simply sound and steady.</InfoTip>
+        </span>
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-5 sm:gap-1.5">
         {ranks.map((rank) => (
-          <HoldingRow key={rank.holding.symbol} rank={rank} />
+          <EntityCardView key={rank.entity.key} rank={rank} />
         ))}
       </div>
     </div>

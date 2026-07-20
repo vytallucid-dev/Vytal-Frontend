@@ -12,9 +12,10 @@ const WATCHLIST_KEY = ["me", "watchlist"] as const;
  * fired findings + three-lens verdicts + the immutable pin-time baseline). This hook
  * never recomputes a score, band, finding or verdict — it renders what the server sent.
  */
-export function useWatchlist() {
+export function useWatchlist(opts?: { enabled?: boolean }) {
   return useQuery<WatchlistEntry[]>({
     queryKey: WATCHLIST_KEY,
+    enabled: opts?.enabled ?? true,
     queryFn: async () => {
       const r = await apiFetch<{ success: boolean; data: WatchlistResponse }>(
         "/api/v1/me/watchlist",

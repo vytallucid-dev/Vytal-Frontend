@@ -46,12 +46,13 @@ const fmtMktCap = (v: number | null) =>
   v == null ? "—" : v >= 1e5 ? `₹${(v / 1e5).toFixed(2)}L Cr` : `₹${Math.round(v).toLocaleString("en-IN")} Cr`;
 
 // ── the since-you-added health-delta hero (the soul, preserved) ─────────────────
-function SinceAdded({ entry, compact }: { entry: WatchlistEntry; compact?: boolean }) {
+function SinceAdded({ entry, compact, align = "center" }: { entry: WatchlistEntry; compact?: boolean; align?: "center" | "start" }) {
   const h = healthSinceAdded(entry);
   const p = priceSinceAdded(entry);
+  const alignCls = align === "start" ? "items-start" : "items-center";
   if (!h) {
     return p ? (
-      <div className="flex flex-col gap-0.5 items-center">
+      <div className={cn("flex flex-col gap-0.5", alignCls)}>
         <PriceDelta price={p} strong />
         <span className="text-[11px] text-ink3">price only · not scored yet</span>
       </div>
@@ -62,7 +63,7 @@ function SinceAdded({ entry, compact }: { entry: WatchlistEntry; compact?: boole
   const color = moveColor(h.direction);
   const Arrow = h.direction === "up" ? Icons.trendUp : h.direction === "down" ? Icons.trendDown : Icons.arrowRight;
   return (
-    <div className="flex flex-col items-center gap-0.5">
+    <div className={cn("flex flex-col gap-0.5", alignCls)}>
       <div className="flex items-center gap-1.5">
         <Arrow weight="bold" className="size-3.5 shrink-0" style={{ color }} />
         <span className={cn("font-display leading-tight text-ink", compact ? "text-[13.5px]" : "text-[14px]")}>{h.phrase}</span>
@@ -271,33 +272,37 @@ function Card({
           <Star entry={entry} onToggle={onToggleFav} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-[13.5px] font-semibold text-ink">{entry.symbol}</p>
+              <p className="truncate text-[13.5px] font-semibold text-ink">{entry.symbol}</p>
               <AlertBadge count={alertCount} />
             </div>
             <p className="truncate text-[11.5px] text-ink3">{entry.name}</p>
             {entry.marketCap != null && <p className="num mt-0.5 text-[10.5px] text-ink3">{fmtMktCap(entry.marketCap)}</p>}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <BandChip entry={entry} />
           <Unpin entry={entry} onUnpin={onUnpin} busy={unpinning} />
         </div>
       </div>
-      <div className="flex items-end justify-between gap-3 border-t border-line/70 pt-2.5">
-        <SinceAdded entry={entry} compact />
-        <div className="flex items-center gap-3">
-          {spark && <Sparkline data={spark.closes} width={56} height={24} />}
-          <div className="text-right">
-            <span className="num text-[13px] text-ink">{entry.price != null ? fmtPrice(entry.price) : "—"}</span>
-            <div className="flex items-center justify-end gap-1.5">
-              <span className={cn("num text-[10.5px]", pctCell(entry.dayChangePct))}>{fmtPct(entry.dayChangePct)} 1D</span>
-              {spark?.return7d != null && (
-                <span className={cn("num text-[10.5px]", pctCell(spark.return7d))}>{fmtPct(spark.return7d)} 7D</span>
-              )}
-              {spark?.return1m != null && (
-                <span className={cn("num text-[10.5px]", pctCell(spark.return1m))}>{fmtPct(spark.return1m)} 1M</span>
-              )}
-            </div>
+
+      {/* since-you-added — its own line so the health-delta hero has room */}
+      <div className="border-t border-line/70 pt-2.5">
+        <SinceAdded entry={entry} compact align="start" />
+      </div>
+
+      {/* price · returns · spark — price keeps its returns; wraps instead of clustering */}
+      <div className="flex items-end gap-2">
+        {spark && <Sparkline data={spark.closes} width={56} height={24} className="shrink-0 self-center" />}
+        <div className="ml-auto text-right">
+          <span className="num text-[13px] text-ink">{entry.price != null ? fmtPrice(entry.price) : "—"}</span>
+          <div className="mt-0.5 flex flex-wrap items-center justify-end gap-x-1.5 gap-y-0.5">
+            <span className={cn("num text-[10.5px]", pctCell(entry.dayChangePct))}>{fmtPct(entry.dayChangePct)} 1D</span>
+            {spark?.return7d != null && (
+              <span className={cn("num text-[10.5px]", pctCell(spark.return7d))}>{fmtPct(spark.return7d)} 7D</span>
+            )}
+            {spark?.return1m != null && (
+              <span className={cn("num text-[10.5px]", pctCell(spark.return1m))}>{fmtPct(spark.return1m)} 1M</span>
+            )}
           </div>
         </div>
       </div>
@@ -426,8 +431,8 @@ export function WatchlistHub() {
     <div className="mx-auto w-full min-w-0 max-w-7xl">
       {/* header */}
       <div className="pt-1">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="text-[12.5px] text-ink2">Watchlist</span>
+        <div className="mb-3 flex items-center justify-end gap-3">
+          
           {entries.length > 0 && <AddToWatchlist pinnedIds={pinnedIds} />}
         </div>
         <div className="mb-3.5 flex flex-wrap items-end justify-between gap-4">

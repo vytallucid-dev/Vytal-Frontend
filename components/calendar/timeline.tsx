@@ -5,7 +5,7 @@
 // marks where owned names give way to the rest. Empty horizons are simply omitted; an
 // all-empty result is an honest, filter-aware empty.
 
-import { Reveal, StaggerGroup, StaggerItem } from "@/components/ui/reveal";
+import { motion } from "framer-motion";
 import { Icons } from "@/lib/icons";
 import { EventRow } from "./event-row";
 import {
@@ -26,31 +26,49 @@ function HorizonSection({ horizon, events, heldOnly }: { horizon: Horizon; event
   const heldCount = events.filter((e) => e.isHeld).length;
 
   return (
-    <Reveal>
-      <section className="flex flex-col gap-2.5">
-        <div className="flex items-center justify-between gap-3 px-0.5">
-          <h3 className="font-display text-[15px] font-semibold text-ink">{HORIZON_META[horizon].label}</h3>
-          <span className="num rounded-full border border-line bg-surface-1 px-2 py-0.5 text-[11px] text-ink3">
-            {events.length} event{events.length === 1 ? "" : "s"}
-            {heldCount > 0 && !heldOnly && <span className="text-ink2"> · {heldCount} held</span>}
-          </span>
-        </div>
+    // A mount-time entrance — deliberately NOT a scroll-gated `Reveal`/`whileInView`. The
+    // timeline is a variable-height agenda, so a viewport-`once` reveal left any section below
+    // the fold stuck at opacity 0 until the user happened to scroll to it.
+    <motion.section
+      className="flex flex-col gap-2.5"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="flex items-center justify-between gap-3 px-0.5">
+        <h3 className="font-display text-[15px] font-semibold text-ink">{HORIZON_META[horizon].label}</h3>
+        <span className="num rounded-full border border-line bg-surface-1 px-2 py-0.5 text-[11px] text-ink3">
+          {events.length} event{events.length === 1 ? "" : "s"}
+          {heldCount > 0 && !heldOnly && <span className="text-ink2"> · {heldCount} held</span>}
+        </span>
+      </div>
 
-        <StaggerGroup className="flex flex-col gap-2" inView={false}>
-          {events.map((e, i) => (
-            <StaggerItem key={e.id}>
-              {showMarketDivider && i === firstMarket && (
-                <div className="mb-2 flex items-center gap-2 px-0.5 pt-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink3">Market</span>
-                  <span className="h-px flex-1 bg-line" />
-                </div>
-              )}
-              <EventRow e={e} />
-            </StaggerItem>
-          ))}
-        </StaggerGroup>
-      </section>
-    </Reveal>
+      {/* Each row drives its OWN entrance (initial→animate) instead of inheriting a
+          `show` variant from a StaggerGroup parent. The calendar joins two independent
+          queries (events, then holdings), and when holdings land the rows re-sort
+          held-first. Under parent-orchestrated variants that reorder reset some rows back
+          to the `hidden` (opacity-0) variant without ever re-firing `show`, so they stayed
+          invisible. A self-animating row settles at opacity 1 and, keyed by a stable id,
+          only reorders on re-sort — it never resets, so no row can get stuck transparent. */}
+      <div className="flex flex-col gap-2">
+        {events.map((e, i) => (
+          <motion.div
+            key={e.id}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: Math.min(i, 12) * 0.025 }}
+          >
+            {showMarketDivider && i === firstMarket && (
+              <div className="mb-2 flex items-center gap-2 px-0.5 pt-1">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-ink3">Market</span>
+                <span className="h-px flex-1 bg-line" />
+              </div>
+            )}
+            <EventRow e={e} />
+          </motion.div>
+        ))}
+      </div>
+    </motion.section>
   );
 }
 

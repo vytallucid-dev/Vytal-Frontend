@@ -8,6 +8,7 @@ import {
   LABEL_BAND_ORDER,
   PILLAR_META,
   Panel,
+  SectionEyebrow,
 } from "@/components/stock-detail/health/shared";
 import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
 import type { UniverseHealthView } from "@/types/universe-view";
@@ -479,13 +480,13 @@ function Attention({ view }: { view: UniverseHealthView }) {
   const a = attentionReads(view);
   return (
     <div className="col-span-12 lg:col-span-8">
-      <div className="eyebrow-row mb-3 mt-1 flex flex-wrap items-center gap-2.5">
-        <span className="eyebrow shrink-0">What the quarter changed</span>
-        <span className="h-px min-w-4 flex-1 bg-line" />
-        <span className="shrink-0 rounded-full border border-line2 bg-surface-2 px-2.5 py-0.5 text-[11px] text-ink2">
-          across the scored universe
-        </span>
-      </div>
+      <SectionEyebrow
+        className="mb-3 mt-1"
+        label="What the quarter changed"
+        icon={Icons.pulse}
+        accent="var(--p-mkt)"
+        pill="across the scored universe"
+      />
 
       {a.redFlag.count > 0 && (
         <AttentionCard
@@ -538,10 +539,7 @@ function RightRail({ view }: { view: UniverseHealthView }) {
   const w = weekRead(view);
   return (
     <div className="col-span-12 lg:col-span-4">
-      <div className="eyebrow-row mb-3 mt-1 flex items-center gap-2.5">
-        <span className="eyebrow shrink-0">Spotlight</span>
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      <SectionEyebrow className="mb-3 mt-1" label="Spotlight" icon={Icons.spark} accent="var(--rec)" />
 
       {spot ? (
         <Panel className="mb-3" style={{ borderColor: "var(--rec-bd)" }}>
@@ -643,10 +641,12 @@ function ThresholdWatch({ view }: { view: UniverseHealthView }) {
   const edges = edgeNames(view.members, 4);
   return (
     <div className="col-span-12">
-      <div className="eyebrow-row mb-3 mt-1 flex items-center gap-2.5">
-        <span className="eyebrow shrink-0">At the edge — about to become a story</span>
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      <SectionEyebrow
+        className="mb-3 mt-1"
+        label="At the edge — about to become a story"
+        icon={Icons.target}
+        accent="var(--high)"
+      />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {edges.map((e) => {
           const meta = BAND_META[e.lineBand];

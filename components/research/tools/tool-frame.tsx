@@ -386,7 +386,7 @@ function SingleView({
       {/* header */}
       <div className="mb-3.5 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="hero-name break-words text-[20px] mb-3 sm:mb-0 sm:text-[27px] text-ink">{single.identity.name}</div>
+          <div className="hero-name wrap-break-word text-[20px] mb-3 sm:mb-0 sm:text-[27px] text-ink">{single.identity.name}</div>
           <div className="num mt-1 text-[12.5px] text-ink2">{single.identity.sub}</div>
         </div>
         {/* chips — identity, right-aligned (the timeframe control now lives by the chart) */}

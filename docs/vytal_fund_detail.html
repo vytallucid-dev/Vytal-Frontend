@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vytal — Fund detail (prototype)</title>
+<style>
+  :root{
+    --bg:#0a0a0b; --card:#121214; --card2:#161619; --line:#232327;
+    --ink:#f2f2f3; --ink2:#a1a1aa; --ink3:#6b6b73;
+    --primary:#6fa8dc; --amber:#d0954e; --rose:#cf6a6a; --teal:#6f9bb0;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+    --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;padding:28px 20px 90px}
+  .wrap{max-width:940px;margin:0 auto}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .display{font-family:var(--serif)}
+
+  /* state switcher — prototype only */
+  .switch{display:flex;gap:6px;margin-bottom:26px;padding:5px;background:var(--card);border:1px solid var(--line);border-radius:11px;width:fit-content}
+  .switch button{background:none;border:0;color:var(--ink3);font-size:12.5px;padding:7px 13px;border-radius:7px;cursor:pointer;font-weight:500}
+  .switch button.on{background:var(--card2);color:var(--ink)}
+  .note{color:var(--ink3);font-size:11.5px;margin-bottom:22px}
+
+  /* identity */
+  .ident{margin-bottom:26px}
+  .house{color:var(--ink2);font-size:12.5px;letter-spacing:.03em;margin-bottom:7px}
+  h1{font-family:var(--serif);font-size:29px;font-weight:600;letter-spacing:-.01em;line-height:1.2;margin-bottom:11px}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:15px}
+  .chip{font-size:11.5px;color:var(--ink2);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+  .chip.warn{border-color:#3a2f22;color:var(--amber)}
+  .navline{display:flex;gap:9px;align-items:baseline}
+  .navline .v{font-family:var(--mono);font-size:16px}
+  .navline .d{color:var(--ink3);font-size:11.5px}
+
+  /* plan selector */
+  .plans{display:flex;gap:6px;margin:16px 0 0;flex-wrap:wrap}
+  .plan{font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;color:var(--ink2);cursor:pointer;background:none;font-family:inherit}
+  .plan.on{border-color:#3c556b;color:var(--primary);background:rgba(111,168,220,.07)}
+  .plan small{display:block;font-size:10px;color:var(--ink3);margin-top:1px}
+
+  /* section frame */
+  section{margin-top:34px}
+  .shead{display:flex;align-items:center;gap:13px;margin-bottom:13px}
+  .shead h2{font-size:11px;letter-spacing:.13em;color:var(--ink3);font-weight:600;text-transform:uppercase;white-space:nowrap}
+  .shead .rule{height:1px;background:var(--line);flex:1}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+
+  /* HERO — three equal */
+  .hero{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .hcell{background:var(--card);padding:21px 19px;min-height:158px;display:flex;flex-direction:column}
+  .hlabel{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:13px;font-weight:600}
+  .hval{font-family:var(--mono);font-size:34px;font-weight:500;line-height:1;letter-spacing:-.02em}
+  .hval.pos{color:#7fb069} .hval.neg{color:var(--rose)}
+  .hsub{color:var(--ink2);font-size:12px;margin-top:9px;line-height:1.5}
+  .hfoot{color:var(--ink3);font-size:11px;margin-top:auto;padding-top:11px;font-family:var(--mono)}
+  /* a declined hero cell — same size, reason fills it */
+  .hcell.declined .hval{font-family:inherit;font-size:13.5px;font-weight:400;color:var(--ink2);line-height:1.55;letter-spacing:0}
+  .hcell.declined .hlabel{color:var(--ink3)}
+  .why{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--teal);border:1px solid #24343b;border-radius:5px;padding:2px 7px;margin-bottom:10px;width:fit-content;font-family:var(--mono)}
+
+  .sentence{color:var(--ink2);font-size:13.5px;line-height:1.65;margin-top:15px;max-width:66ch}
+  .sentence b{color:var(--ink);font-weight:600}
+
+  /* chart */
+  .chart{height:230px;border-radius:11px;position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(111,168,220,.07),transparent)}
+  .chart svg{width:100%;height:100%;display:block}
+  .viabar{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;color:var(--ink2);font-size:12px;line-height:1.5}
+  .viabar .tag{font-family:var(--mono);font-size:10.5px;color:var(--primary);border:1px solid #2f4657;border-radius:5px;padding:2px 7px;white-space:nowrap}
+  .ranges{display:flex;gap:5px;justify-content:center;margin-top:14px}
+  .ranges button{font-family:var(--mono);font-size:11px;color:var(--ink3);background:none;border:1px solid transparent;border-radius:7px;padding:4px 11px;cursor:pointer}
+  .ranges button.on{border-color:var(--line);color:var(--ink)}
+
+  /* empty state — chart-sized reason */
+  .bigempty{min-height:230px;display:flex;flex-direction:column;justify-content:center;gap:11px;padding:0 4px}
+  .bigempty .code{font-family:var(--mono);font-size:10.5px;color:var(--teal);border:1px solid #24343b;border-radius:5px;padding:2px 7px;width:fit-content}
+  .bigempty p{color:var(--ink2);font-size:13.5px;line-height:1.7;max-width:60ch}
+  .bigempty .out{margin-top:5px}
+  .bigempty .out a{color:var(--primary);font-size:12.5px;text-decoration:none;border-bottom:1px solid #2f4657;padding-bottom:1px}
+
+  /* metric rows */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 34px}
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .row .k{color:var(--ink2);font-size:12.5px}
+  .row .k em{font-style:normal;color:var(--ink3);font-size:11px;display:block;margin-top:2px}
+  .row .v{font-family:var(--mono);font-size:13.5px}
+  .row .v.pos{color:#7fb069} .row .v.neg{color:var(--rose)}
+  .row .v.off{font-family:inherit;font-size:11.5px;color:var(--ink3);text-align:right;max-width:30ch;line-height:1.45}
+
+  /* rank */
+  .rankmain{display:flex;align-items:baseline;gap:11px}
+  .rankmain .big{font-family:var(--mono);font-size:31px;font-weight:500}
+  .rankmain .of{color:var(--ink2);font-size:14px;font-family:var(--mono)}
+  .rankbar{height:5px;border-radius:3px;background:var(--card2);margin:16px 0 9px;position:relative;overflow:hidden}
+  .rankbar i{position:absolute;inset:0 auto 0 0;background:var(--primary);opacity:.55;border-radius:3px}
+  .rankwithin{color:var(--ink3);font-size:11.5px;line-height:1.55}
+
+  /* calculator */
+  .calcbar{display:flex;gap:6px;padding:4px;background:var(--card2);border-radius:9px;width:fit-content;margin-bottom:18px}
+  .calcbar button{background:none;border:0;color:var(--ink3);font-size:12px;padding:6px 15px;border-radius:6px;cursor:pointer;font-family:inherit}
+  .calcbar button.on{background:var(--card);color:var(--ink)}
+  .amt{text-align:center;margin-bottom:18px}
+  .amt .l{color:var(--ink3);font-size:11.5px;margin-bottom:5px}
+  .amt .v{font-family:var(--mono);font-size:26px}
+  input[type=range]{width:100%;accent-color:var(--primary);margin-top:13px}
+  table{width:100%;border-collapse:collapse;margin-top:6px}
+  th{text-align:right;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:9px 0;border-bottom:1px solid var(--line)}
+  th:first-child{text-align:left}
+  td{padding:13px 0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13px;text-align:right}
+  td:first-child{text-align:left;font-family:inherit;font-size:12.5px;color:var(--ink2)}
+  tr:last-child td{border-bottom:0}
+  .worst{color:var(--rose)}
+  .worst em{font-style:normal;color:var(--ink3);font-size:10.5px;display:block;margin-top:2px;font-family:inherit}
+  .calcfoot{color:var(--ink3);font-size:11.5px;line-height:1.6;margin-top:15px;max-width:64ch}
+
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="switch">
+    <button class="on" data-s="full">Full</button>
+    <button data-s="partial">Partial — the median</button>
+    <button data-s="declined">Declined — 24%</button>
+  </div>
+  <p class="note">Prototype. Three page states. Numbers are illustrative but shaped like the real contract.</p>
+
+  <!-- ══════════ IDENTITY ══════════ -->
+  <div class="ident">
+    <div class="house" id="house">ICICI Prudential Mutual Fund</div>
+    <h1 id="fname">ICICI Prudential Banking &amp; Financial Services Fund</h1>
+    <div class="chips">
+      <span class="chip" id="cat">Equity — Sectoral / Banking</span>
+      <span class="chip hide" id="dormant">Dormant — this fund stopped reporting</span>
+    </div>
+    <div class="navline">
+      <span class="v">₹133.22</span>
+      <span class="d">NAV · 14 Jul 2026</span>
+    </div>
+    <div class="plans">
+      <button class="plan on">Direct<small>Growth</small></button>
+      <button class="plan">Regular<small>Growth</small></button>
+      <button class="plan">Direct<small>IDCW</small></button>
+      <button class="plan">Regular<small>IDCW</small></button>
+    </div>
+  </div>
+
+  <!-- ══════════ HERO ══════════ -->
+  <section style="margin-top:26px">
+    <div class="hero">
+      <div class="hcell">
+        <div class="hlabel">Return</div>
+        <div class="hval pos">+18.4%</div>
+        <div class="hsub">a year, over 3 years</div>
+        <div class="hfoot">annualised · not a total</div>
+      </div>
+
+      <div class="hcell" id="ddCell">
+        <div class="hlabel">Worst fall</div>
+        <div class="hval neg">−34.1%</div>
+        <div class="hsub">from its peak, within those 3 years</div>
+        <div class="hfoot">peak → trough</div>
+      </div>
+
+      <div class="hcell" id="consCell">
+        <div class="hlabel">Consistency</div>
+        <div class="hval">71%</div>
+        <div class="hsub">of rolling 1-year windows ended up</div>
+        <div class="hfoot">n = 1,002 windows</div>
+      </div>
+    </div>
+    <p class="sentence" id="heroSentence">
+      Over three years this fund compounded at <b>18.4% a year</b> — but getting it meant holding through a
+      <b>34% fall</b>. Of the 1,002 one-year stretches we could measure, <b>711 ended higher</b> than they started.
+    </p>
+  </section>
+
+  <!-- ══════════ CHART ══════════ -->
+  <section>
+    <div class="shead"><h2>NAV</h2><div class="rule"></div></div>
+    <div class="card">
+
+      <div class="viabar hide" id="viaBar">
+        <span class="tag">growth twin</span>
+        <span>Showing the <b style="color:var(--ink)">Direct Growth</b> plan's series — this plan pays its gains out,
+        so its own NAV understates what the fund earned. Same fund, same portfolio, same expense tier.</span>
+      </div>
+
+      <div id="chartOk">
+        <div class="chart">
+          <svg viewBox="0 0 900 230" preserveAspectRatio="none">
+            <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#6fa8dc" stop-opacity=".26"/><stop offset="1" stop-color="#6fa8dc" stop-opacity="0"/>
+            </linearGradient></defs>
+            <path d="M0,196 L60,188 L120,171 L180,178 L240,150 L300,163 L360,120 L420,142 L480,196 L540,168 L600,131 L660,104 L720,118 L780,79 L840,61 L900,44 L900,230 L0,230 Z" fill="url(#g)"/>
+            <path d="M0,196 L60,188 L120,171 L180,178 L240,150 L300,163 L360,120 L420,142 L480,196 L540,168 L600,131 L660,104 L720,118 L780,79 L840,61 L900,44"
+                  fill="none" stroke="#6fa8dc" stroke-width="1.6"/>
+          </svg>
+        </div>
+        <div class="ranges">
+          <button>1M</button><button>6M</button><button>1Y</button><button class="on">3Y</button><button>5Y</button><button>Max</button>
+        </div>
+        <p class="calcfoot" style="text-align:center;margin:11px auto 0">Series from AMFI via mfapi · split-adjusted · fetched now, not stored</p>
+      </div>
+
+      <div class="bigempty hide" id="chartDeclined">
+        <span class="code">idcw_nav_not_total_return</span>
+        <p>This plan pays its gains out as it earns them, so its NAV drops every time it pays. A chart drawn from
+           that series would show the fund falling on the days it handed you money — and nobody publishes what it
+           paid. So we won't draw one.</p>
+        <div class="out"><a href="#">See this fund's Growth plan instead →</a></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ RETURNS ══════════ -->
+  <section>
+    <div class="shead"><h2>Returns</h2><div class="rule"></div></div>
+    <div class="card"><div class="grid2">
+      <div>
+        <div class="row"><span class="k">1 month</span><span class="v pos">+2.1%</span></div>
+        <div class="row"><span class="k">3 months</span><span class="v pos">+6.8%</span></div>
+        <div class="row"><span class="k">6 months</span><span class="v neg">−1.4%</span></div>
+      </div>
+      <div>
+        <div class="row"><span class="k">1 year</span><span class="v neg">−1.0%</span></div>
+        <div class="row"><span class="k">3 years <em>annualised</em></span><span class="v pos">+18.4%</span></div>
+        <div class="row" id="r5y"><span class="k">5 years <em>annualised</em></span><span class="v pos">+14.9%</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ══════════ RISK ══════════ -->
+  <section>
+    <div class="shead"><h2>Risk</h2><div class="rule"></div></div>
+    <div class="card"><div class="grid2">
+      <div>
+        <div class="row"><span class="k">Volatility <em>1y · annualised</em></span><span class="v">16.2%</span></div>
+        <div class="row"><span class="k">Volatility <em>3y</em></span><span class="v">18.9%</span></div>
+        <div class="row"><span class="k">Worst fall <em>1y</em></span><span class="v neg">−12.7%</span></div>
+        <div class="row"><span class="k">Worst fall <em>3y</em></span><span class="v neg">−34.1%</span></div>
+      </div>
+      <div>
+        <div class="row"><span class="k">Sharpe <em>return per unit of total risk</em></span><span class="v">1.05</span></div>
+        <div class="row"><span class="k">Sortino <em>return per unit of downside risk</em></span><span class="v">1.66</span></div>
+        <div class="row" id="sharpe5"><span class="k">Sharpe <em>5y</em></span><span class="v off">Not enough history — this fund has 3.2 years of NAV.</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ══════════ RANK ══════════ -->
+  <section>
+    <div class="shead"><h2>Rank in category</h2><div class="rule"></div></div>
+    <div class="card" id="rankCard">
+      <div class="rankmain">
+        <span class="big">12<span style="font-size:17px;color:var(--ink3)">th</span></span>
+        <span class="of">of 41</span>
+      </div>
+      <div class="rankbar"><i style="width:73%"></i></div>
+      <p class="rankwithin">
+        Among <b style="color:var(--ink2)">Direct plans</b> in <b style="color:var(--ink2)">Equity — Sectoral / Banking</b>,
+        over 1 year.<br>
+        41 of the 47 funds in this category had enough history to be measured over this window.
+      </p>
+    </div>
+    <div class="card hide" id="rankOff">
+      <span class="code" style="font-family:var(--mono);font-size:10.5px;color:var(--teal);border:1px solid #24343b;border-radius:5px;padding:2px 7px">not_ranked_bucket_too_small</span>
+      <p style="color:var(--ink2);font-size:13px;line-height:1.7;margin-top:11px;max-width:60ch">
+        Only 3 comparable funds sit in this category and plan. A rank out of three isn't a ranking — it's an accident
+        of how narrow the category is. We'd rather say nothing.</p>
+    </div>
+  </section>
+
+  <!-- ══════════ BENCHMARK ══════════ -->
+  <section>
+    <div class="shead"><h2>Against its benchmark</h2><div class="rule"></div></div>
+    <div class="card" id="bmOk">
+      <p style="color:var(--ink2);font-size:12.5px;margin-bottom:14px">Measured against <b style="color:var(--ink)">Nifty Bank TRI</b></p>
+      <div class="grid2">
+        <div>
+          <div class="row"><span class="k">Alpha <em>1y · excess over benchmark</em></span><span class="v pos">+9.81</span></div>
+          <div class="row"><span class="k">Beta <em>1y · moves with the index</em></span><span class="v">0.92</span></div>
+        </div>
+        <div>
+          <div class="row"><span class="k">Tracking error <em>1y</em></span><span class="v">4.3%</span></div>
+          <div class="row"><span class="k">Alpha <em>3y</em></span><span class="v pos">+3.12</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card hide" id="bmOff">
+      <div class="bigempty" style="min-height:0">
+        <span class="code">credit_benchmark_unavailable</span>
+        <p>There is no index that honestly represents this fund's credit exposure. Comparing it to one anyway would
+           produce an alpha that measures the mismatch rather than the manager. 3,855 funds are in this position —
+           every platform shows a number for them. We don't.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ CALCULATOR ══════════ -->
+  <section id="calcSec">
+    <div class="shead"><h2>What this fund did with money</h2><div class="rule"></div></div>
+    <div class="card">
+      <div class="calcbar">
+        <button class="on">Monthly SIP</button><button>One time</button>
+      </div>
+      <div class="amt">
+        <div class="l">Monthly investment</div>
+        <div class="v">₹5,000</div>
+        <input type="range" min="500" max="100000" step="500" value="5000" />
+      </div>
+      <table>
+        <thead><tr>
+          <th>Over the past</th><th>You'd have put in</th><th>It became</th><th>Lowest it got</th><th>Return</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>6 months</td><td>₹30,000</td><td>₹32,750</td><td class="worst">₹28,900<em>Apr 2026</em></td><td class="v pos" style="color:#7fb069">+9.2%</td></tr>
+          <tr><td>1 year</td><td>₹60,000</td><td>₹65,350</td><td class="worst">₹54,100<em>Sep 2025</em></td><td style="color:#7fb069">+8.9%</td></tr>
+          <tr><td>3 years</td><td>₹1,80,000</td><td>₹2,30,300</td><td class="worst">₹1,44,800<em>Mar 2025</em></td><td style="color:#7fb069">+27.9%</td></tr>
+          <tr><td>5 years</td><td>₹3,00,000</td><td>₹5,25,150</td><td class="worst">₹2,61,000<em>Mar 2025</em></td><td style="color:#7fb069">+75.1%</td></tr>
+        </tbody>
+      </table>
+      <p class="calcfoot">
+        This is what already happened, not what will. Every figure is the fund's own record over the window shown —
+        including the lowest your money got along the way, which is the part you'd have had to sit through.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const show = (el,on) => el.classList.toggle('hide', !on);
+
+  const states = {
+    full(){
+      show($('#viaBar'),false); show($('#chartOk'),true); show($('#chartDeclined'),false);
+      show($('#rankCard'),true); show($('#rankOff'),false);
+      show($('#bmOk'),true); show($('#bmOff'),false);
+      show($('#calcSec'),true); show($('#dormant'),false);
+      $('#r5y').querySelector('.v').outerHTML = '<span class="v pos">+14.9%</span>';
+      $('#sharpe5').querySelector('.v').outerHTML = '<span class="v">0.94</span>';
+      $('#consCell').className='hcell';
+      $('#consCell').innerHTML = '<div class="hlabel">Consistency</div><div class="hval">71%</div><div class="hsub">of rolling 1-year windows ended up</div><div class="hfoot">n = 1,002 windows</div>';
+      $('#heroSentence').innerHTML = 'Over three years this fund compounded at <b>18.4% a year</b> — but getting it meant holding through a <b>34% fall</b>. Of the 1,002 one-year stretches we could measure, <b>711 ended higher</b> than they started.';
+    },
+    partial(){
+      states.full();
+      show($('#bmOk'),false); show($('#bmOff'),true);
+      show($('#rankCard'),false); show($('#rankOff'),true);
+      $('#r5y').querySelector('.v').outerHTML = '<span class="v off">Not enough history — 3.2 years of NAV.</span>';
+      $('#sharpe5').querySelector('.v').outerHTML = '<span class="v off">Not enough history.</span>';
+      $('#consCell').className='hcell declined';
+      $('#consCell').innerHTML = '<div class="hlabel">Consistency</div><span class="why">insufficient_history</span><div class="hval">Only 14 one-year stretches exist so far. A percentage of 14 would read like a fact.</div>';
+      $('#heroSentence').innerHTML = 'Over three years this fund compounded at <b>18.4% a year</b>, and fell <b>34%</b> at its worst. It hasn\'t existed long enough for us to say how often a one-year holding ended up.';
+    },
+    declined(){
+      $('#fname').textContent = 'HDFC Income Fund — Regular IDCW';
+      $('#house').textContent = 'HDFC Mutual Fund';
+      $('#cat').textContent = 'Debt — Medium to Long Duration';
+      show($('#dormant'),false);
+      show($('#viaBar'),false); show($('#chartOk'),false); show($('#chartDeclined'),true);
+      show($('#rankCard'),false); show($('#rankOff'),true);
+      show($('#bmOk'),false); show($('#bmOff'),true);
+      show($('#calcSec'),false);
+      document.querySelectorAll('#r5y .v, #sharpe5 .v').forEach(e=>e.outerHTML='<span class="v off">—</span>');
+      ['Return','Worst fall','Consistency'].forEach((lab,i)=>{
+        const cells = document.querySelectorAll('.hcell');
+        cells[i].className='hcell declined';
+        cells[i].innerHTML = '<div class="hlabel">'+lab+'</div><span class="why">idcw_nav_not_total_return</span>'+
+          '<div class="hval">'+(i===0
+            ? 'This plan pays its gains out, so its NAV falls each time it does. Any return we measured from it would understate the fund by exactly what it handed you.'
+            : i===1 ? 'A payout looks identical to a fall in this series. We can\'t tell them apart, so we won\'t call either one a drawdown.'
+                    : 'Built on the same series. Same problem.')+'</div>';
+      });
+      $('#heroSentence').innerHTML = 'This plan has no Growth twin in its expense tier to borrow a clean series from — and no distribution history is published anywhere in India. <b>708 funds are in this position.</b> We would rather show you nothing than a number we know is wrong.';
+      document.querySelectorAll('.grid2 .row .v:not(.off)').forEach(e=>{e.className='v off';e.textContent='—';});
+    }
+  };
+  document.querySelectorAll('.switch button').forEach(b=>{
+    b.onclick = () => {
+      document.querySelectorAll('.switch button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      if(b.dataset.s!=='declined'){ location.hash=b.dataset.s; location.reload(); }
+      states[b.dataset.s]();
+    };
+  });
+  if(location.hash==='#partial') states.partial();
+</script>
+</body>
+</html>

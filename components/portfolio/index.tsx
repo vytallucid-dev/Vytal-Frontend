@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePortfolioSnapshot } from "@/lib/api/hooks/use-portfolio-snapshot";
 import { useHoldings } from "@/lib/api/hooks/use-holdings";
@@ -12,11 +12,13 @@ import { formatINR } from "@/lib/format";
 import type { Transaction } from "@/types/portfolio";
 import { PORTFOLIO_TABS, type PortfolioTab } from "./tabs";
 import { HEALTH_BAND_META, attentionHoldings, healthColor } from "./lib";
+import { aggregateHoldings } from "./health/lib";
 import { OverviewTab } from "./overview";
 import { HoldingsTab } from "./holdings";
 import { HealthTab } from "./health";
 import { PerformanceTab } from "./performance";
 import { TransactionsTab } from "./transactions";
+import { AccountsTab } from "./accounts";
 import { TransactionSheet } from "./transaction-sheet";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,6 +97,10 @@ export function PortfolioHub() {
   const dataReady = Boolean(holdQ.data && snapQ.data);
 
   const attn = attentionHoldings(holdings);
+  // ONE holding = ONE issuer entity — the SAME collapse Holdings/Health render (RELIANCE-in-two-
+  // accounts + a stock/bond issuer count once). The landing screen must not contradict the tabs it
+  // funnels into, so the header count reads this aggregated number, never raw `totals.positions` (23).
+  const entityCount = useMemo(() => aggregateHoldings(holdings).length, [holdings]);
   const bandLabel = snapshot?.healthRead?.band ? HEALTH_BAND_META[snapshot.healthRead.band].label : null;
 
   const loading = snapQ.isLoading || holdQ.isLoading;
@@ -114,8 +120,8 @@ export function PortfolioHub() {
     <div className="mx-auto w-full min-w-0 max-w-7xl">
       {/* ── header ── */}
       <div className=" pt-1">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="text-[12.5px] text-ink2">Portfolio</span>
+        <div className="mb-3 flex items-center justify-end gap-3">
+          
           {/* the front door — persistent across every tab */}
           <button
             type="button"
@@ -132,7 +138,7 @@ export function PortfolioHub() {
             <p className="mt-1 text-[12.5px] text-ink2">
               {dataReady && totals ? (
                 <>
-                  <span className="num">{totals.positions}</span> holding{totals.positions === 1 ? "" : "s"} ·{" "}
+                  <span className="num">{entityCount}</span> holding{entityCount === 1 ? "" : "s"} ·{" "}
                   <span className="num">{formatINR(totals.investedValue, { compact: true })}</span> invested
                 </>
               ) : (
@@ -183,7 +189,8 @@ export function PortfolioHub() {
       tab !== "holdings" &&
       tab !== "transactions" &&
       tab !== "health" &&
-      tab !== "performance" ? (
+      tab !== "performance" &&
+      tab !== "accounts" ? (
         <ComingSoon tab={tab} onBack={() => setTab("overview")} />
       ) : loading ? (
         <QuerySkeleton rows={6} rowHeight="h-20" className="mt-6" />
@@ -204,6 +211,10 @@ export function PortfolioHub() {
         // The ledger renders off its OWN read (not gated by open-holdings) so a fully
         // exited or brand-new book can still reach its history / the add CTA.
         <TransactionsTab totals={totals} onAdd={openAdd} onEdit={openEdit} />
+      ) : tab === "accounts" ? (
+        // The list of containers — its own read (GET /me/accounts), not gated by open-holdings, so
+        // a book with zero holdings still reaches its accounts + the create flow. No health/totals.
+        <AccountsTab holdings={holdings} />
       ) : !hasHoldings || holdings.length === 0 || !totals ? (
         <EmptyPortfolio onAdd={openAdd} />
       ) : tab === "holdings" ? (
@@ -212,7 +223,7 @@ export function PortfolioHub() {
         // read-only over the pre-computed snapshot (pillars, both ledgers, PF findings) +
         // per-holding health; snapshot may be null (pending) → the tab shows its honest
         // "preparing"/"building" state until the next mutation/nightly refresh lands.
-        <HealthTab snapshot={snapshot} holdings={holdings} totals={totals} onOpenTab={setTab} />
+        <HealthTab snapshot={snapshot} holdings={holdings} totals={totals} disclosure={snapQ.data?.disclosure} referenceFindings={snapQ.data?.referenceFindings} onOpenTab={setTab} />
       ) : tab === "performance" ? (
         // the returns/accountability surface — read-only over NAV / TWR / benchmark / XIRR.
         // STRICTLY health-free by design (the one tab where "healthy → profitable" must
