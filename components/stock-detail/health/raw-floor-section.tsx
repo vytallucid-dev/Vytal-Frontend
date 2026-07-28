@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { trackSectionExpand } from "@/lib/tracking/activity-tracker";
 import { getMetricLabel } from "@/lib/health/metric-labels";
-import { SectionEyebrow, PILLAR_META } from "./shared";
+import { SectionEyebrow, PILLAR_META, fmt } from "./shared";
 import type { PillarView, MetricView, MetricBand, PillarKey, BarDirection } from "@/types/health";
 
 const METRIC_BAND_VAR: Record<MetricBand, string> = {
@@ -51,7 +52,7 @@ function sortVal(r: Row, key: SortKey): number | string {
 }
 
 export function RawFloorSection({ pillars }: { pillars: PillarView[] }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -101,7 +102,14 @@ export function RawFloorSection({ pillars }: { pillars: PillarView[] }) {
       <div className="overflow-hidden rounded-xl border border-line bg-surface-1">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() =>
+            setOpen((o) => {
+              // Behaviour tracking: fire only on OPEN. stockId comes from the tracker's current-stock
+              // (set by the stock page) — no prop threading into this deep component.
+              if (!o) trackSectionExpand("raw_floor");
+              return !o;
+            })
+          }
           className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-surface-2"
         >
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-3 text-ink2">
@@ -361,7 +369,7 @@ function LensDetail({ r }: { r: Row }) {
 
         <LensBlock title="L3 — trend">
           <div className="num text-[12.5px] text-ink2">
-            {m.l3Score == null ? "— not available" : `score ${m.l3Score.toFixed(1)}`}
+            {m.l3Score == null ? "— not available" : `score ${fmt(m.l3Score)}`}
             <span className="ml-2 text-[10.5px] text-ink3">(series deferred)</span>
           </div>
         </LensBlock>
@@ -369,7 +377,9 @@ function LensDetail({ r }: { r: Row }) {
         <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-line pt-2.5 text-[11px] text-ink3">
           <span>state: <span className="text-ink2">{m.scoreState}</span></span>
           <span className="num">weight {(m.effectiveWeight * 100).toFixed(0)}%</span>
-          <span className="num">contribution {m.contribution.toFixed(1)}</span>
+          {/* A contribution is the deduction ledger's arithmetic, not a score on its own —
+              it keeps its place so the parts still visibly add up to the pillar subtotal. */}
+          <span className="num">contribution {fmt(m.contribution, 1)}</span>
           {m.suppressionReason && <span className="text-below">· {m.suppressionReason}</span>}
         </div>
       </div>

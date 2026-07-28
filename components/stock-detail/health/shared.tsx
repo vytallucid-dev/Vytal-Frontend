@@ -70,7 +70,11 @@ export const METRIC_BAND_META: Record<MetricBand, { label: string; text: string;
 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-export function fmt(n: number, d = 1) {
+/** A 0–100 HEALTH SCORE, rendered whole — the decimal on a score a person reads is noise,
+ *  not signal (same rule as lib/format#roundScore). `d` stays overridable for the two things
+ *  on this scale that are NOT scores: a raw metric value, and a deduction ledger's arithmetic,
+ *  which is a proof and keeps its places. */
+export function fmt(n: number, d = 0) {
   return n.toFixed(d);
 }
 

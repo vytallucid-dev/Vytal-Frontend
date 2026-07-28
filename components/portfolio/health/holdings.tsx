@@ -8,30 +8,63 @@ import { roundScore } from "@/lib/format";
 import { assetClassLabel } from "@/lib/asset-class";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { LensPatternPill, PILLAR_META } from "@/components/stock-detail/health/shared";
+import { lensDoesntMean } from "@/lib/findings";
 import type { PillarKey } from "@/types/health";
-import type { Holding, PortfolioSnapshot } from "@/types/portfolio";
-import { STOCK_BAND_LABEL, holdingHealthColor, stockHealthHref } from "../lib";
+import type { Holding, PortfolioSnapshot, SignalsDeduction } from "@/types/portfolio";
+import { DRAG_COLOR, STOCK_BAND_LABEL, holdingHealthColor, stockHealthHref } from "../lib";
 import { HoldingDisclosure } from "../holding-disclosure";
 import { InfoTip, Tip } from "./parts";
-import { type EntityHolding, type EntityRank, aggregateHoldings, flaggedSymbols, rankedEntities } from "./lib";
+import { SIGNAL_SOURCE_META, type EntityHolding, type EntityRank, aggregateHoldings, flaggedEntries, rankedEntities } from "./lib";
 
 const CARD = "rounded-xl border border-line bg-surface-1 p-3 sm:p-4";
 const PILLAR_ORDER: PillarKey[] = ["foundation", "momentum", "market", "ownership"];
 const pct1 = (w: number) => `${(w * 100).toFixed(1)}%`;
 
-// ── the one-line "why it's here" state for a row (band + flag, descriptive) ──────────
-function rowState(rank: EntityRank): string {
+// ── the one-line "why it's here" state for a row (band + flag, descriptive). When a flag fired and
+//    its identity is on the wire, NAME the finding ("Distribution Pattern — an active red flag") rather
+//    than the generic non-answer; falls back to the generic line on a pre-thread snapshot. ──────────
+function rowState(rank: EntityRank, flag: SignalsDeduction | null): string {
   if (rank.unscored) return "Not yet scored — awaiting coverage";
-  if (rank.flagged && rank.weak) return "Weak band with an active red flag";
-  if (rank.flagged) return "An active red flag is firing";
+  const name = flag?.title ?? null;
+  if (rank.flagged && rank.weak)
+    return name ? `${name} — a red flag in a weak band` : "Weak band with an active red flag";
+  if (rank.flagged) return name ? `${name} — an active red flag` : "An active red flag is firing";
   if (rank.weak) return "Weak band — a drag on the book's Quality";
   return "Sound and steady — no attention needed";
+}
+
+// ── the flag callout for a flagged holding's EXPAND — names the finding + its written read, so the
+//    "why" is answerable right here without leaving for the stock page. Read-only; nothing invented. ──
+function FlagNote({ flag }: { flag: SignalsDeduction }) {
+  const meta = SIGNAL_SOURCE_META[flag.source];
+  return (
+    <div
+      className="mt-3 rounded-md border px-3 py-2.5"
+      style={{
+        borderColor: `color-mix(in oklch, ${DRAG_COLOR.signal} 26%, transparent)`,
+        background: `color-mix(in oklch, ${DRAG_COLOR.signal} 7%, transparent)`,
+      }}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink">
+          <Icons.warning weight="duotone" className="size-3.5 shrink-0" style={{ color: DRAG_COLOR.signal }} />
+          {flag.title ?? meta.label}
+        </span>
+        {flag.title && (
+          <span className="text-[10.5px] font-medium" style={{ color: DRAG_COLOR.signal }}>{meta.label}</span>
+        )}
+      </div>
+      {flag.read && <p className="mt-1 text-[11.5px] leading-relaxed text-ink2">{flag.read}</p>}
+    </div>
+  );
 }
 
 // a common shape across LP (pillar) and LM (metric) lens patterns
 interface LensEvidence {
   pillarLabel: string;
   id: string;
+  /** The bare uppercase lens id (LM3 / LP2 / …) — resolves the catalog's "doesn't-mean" copy. */
+  lensId: string;
   label: string;
   tone: string;
   fieldVerdict: "PG_WEAK" | "PG_STRONG" | null;
@@ -70,12 +103,12 @@ function HoldingEvidence({ symbol }: { symbol: string }) {
   for (const p of pillars) {
     const label = PILLAR_META[p.pillar]?.label ?? p.pillar;
     for (const lp of p.lensPillarPatterns ?? []) {
-      evidence.push({ pillarLabel: label, id: lp.id, label: lp.label, tone: lp.tone, fieldVerdict: lp.fieldVerdict, role: lp.role, verdict: lp.verdict });
+      evidence.push({ pillarLabel: label, id: lp.id, lensId: lp.id, label: lp.label, tone: lp.tone, fieldVerdict: lp.fieldVerdict, role: lp.role, verdict: lp.verdict });
     }
     for (const m of p.metrics ?? []) {
       if (m.lensPattern) {
         const lm = m.lensPattern;
-        evidence.push({ pillarLabel: label, id: `${m.metricKey}-${lm.id}`, label: lm.label, tone: lm.tone, fieldVerdict: lm.fieldVerdict, role: lm.role, verdict: lm.verdict });
+        evidence.push({ pillarLabel: label, id: `${m.metricKey}-${lm.id}`, lensId: lm.id, label: lm.label, tone: lm.tone, fieldVerdict: lm.fieldVerdict, role: lm.role, verdict: lm.verdict });
       }
     }
   }
@@ -120,6 +153,9 @@ function HoldingEvidence({ symbol }: { symbol: string }) {
                     <LensPatternPill label={e.label} tone={e.tone} fieldVerdict={e.fieldVerdict} role={e.role} />
                   </div>
                   {e.verdict && <p className="pl-[76px] text-[11.5px] leading-relaxed text-ink2">{e.verdict}</p>}
+                  {/* The interpretive boundary — now that the lens "doesn't-mean" copy exists
+                      frontend-side, every lead lens read carries its boundary. */}
+                  <p className="pl-[76px] text-[11px] italic leading-relaxed text-ink3">{lensDoesntMean(e.lensId)}</p>
                 </div>
               ))}
             </div>
@@ -203,13 +239,15 @@ function EntityCondition({ e, byDesign }: { e: EntityHolding; byDesign: boolean 
 //    band + score · state. RESPONSIVE by construction: a dense table row on sm+, an expandable CARD with
 //    labelled fields on phones (the row layout truncated badly there). Attention names carry a left accent
 //    and open; a multi-instrument entity opens to its equity's evidence AND its constituent breakdown. ──
-function EntityCardView({ rank }: { rank: EntityRank }) {
+function EntityCardView({ rank, flag }: { rank: EntityRank; flag: SignalsDeduction | null }) {
   const [open, setOpen] = useState(false);
   const e = rank.entity;
   const attention = rank.weak || rank.flagged;
   const accent = rank.flagged ? "var(--crit)" : rank.weak ? "var(--high)" : "transparent";
   const attnTip = rank.flagged
-    ? "An active red flag is firing on this holding."
+    ? flag?.title
+      ? `${flag.title} — an active red flag${flag.read ? `. ${flag.read}` : ""}`
+      : "An active red flag is firing on this holding."
     : rank.weak
       ? "This holding sits in a weak band — a drag on the book's quality."
       : null;
@@ -227,7 +265,7 @@ function EntityCardView({ rank }: { rank: EntityRank }) {
     ? notes[0]!.sentence
     : e.multiInstrument
       ? `${e.constituents.length} instruments of one company — expand to see each`
-      : rowState(rank);
+      : rowState(rank, flag);
 
   const weightTip = `${pct1(e.weight)} of your whole book by value, summed across every account and instrument for this issuer.`;
   const multiTip = `${e.constituents.length} instruments of one issuer (e.g. its stock and bond), combined into this single line. Expand to see each.`;
@@ -330,6 +368,8 @@ function EntityCardView({ rank }: { rank: EntityRank }) {
       {/* ── shared expand — per-stock evidence and, for a multi-instrument issuer, its constituent breakout ── */}
       {open && canExpand && (
         <div className="border-t border-line px-3 sm:px-4">
+          {/* the flag's identity + written read — the "why", answerable here without leaving the tab */}
+          {flag && (flag.title || flag.read) && <FlagNote flag={flag} />}
           {evidenceSymbol && <HoldingEvidence symbol={evidenceSymbol} />}
           {e.multiInstrument && <ConstituentBreakdown entity={e} />}
         </div>
@@ -343,7 +383,8 @@ function EntityCardView({ rank }: { rank: EntityRank }) {
  *  per-stock three-lens (LM/LP) evidence, and — for a multi-instrument issuer — its constituent breakout.
  *  Renders as a dense table on sm+ and as expandable cards on phones (where the row truncated badly). */
 export function HoldingsSection({ snapshot, holdings }: { snapshot: PortfolioSnapshot; holdings: Holding[] }) {
-  const ranks = rankedEntities(aggregateHoldings(holdings), flaggedSymbols(snapshot));
+  const flags = flaggedEntries(snapshot); // symbol → ledger entry (its title/read), for naming the finding
+  const ranks = rankedEntities(aggregateHoldings(holdings), new Set(flags.keys()));
   return (
     <div className={CARD}>
       {/* column headers — desktop only; the mobile cards label their own fields */}
@@ -363,9 +404,13 @@ export function HoldingsSection({ snapshot, holdings }: { snapshot: PortfolioSna
         </span>
       </div>
       <div className="flex flex-col gap-5 sm:gap-1.5">
-        {ranks.map((rank) => (
-          <EntityCardView key={rank.entity.key} rank={rank} />
-        ))}
+        {ranks.map((rank) => {
+          // the winning ledger entry for a flagged entity — matched on any constituent symbol
+          const flag = rank.flagged
+            ? (rank.entity.constituents.map((c) => flags.get(c.symbol)).find(Boolean) ?? null)
+            : null;
+          return <EntityCardView key={rank.entity.key} rank={rank} flag={flag} />;
+        })}
       </div>
     </div>
   );

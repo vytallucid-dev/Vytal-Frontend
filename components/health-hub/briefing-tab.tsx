@@ -16,6 +16,7 @@ import {
   attentionReads,
   computeKpis,
   edgeNames,
+  flagLabel,
   pillarMix,
   recoveryMovers,
   sectorExposure,
@@ -478,6 +479,13 @@ function AttentionCard({
 
 function Attention({ view }: { view: UniverseHealthView }) {
   const a = attentionReads(view);
+  // Name each red-flagged stock's ACTUAL finding from the catalog (flagLabel) instead of the
+  // old hardcoded "promoter pledge rising" — which was wrong for every non-pledge red flag.
+  const flagNameBySymbol = new Map(
+    view.members
+      .filter((m) => m.firedFlags.length > 0)
+      .map((m) => [m.symbol, m.firedFlags[0] ? flagLabel(m.firedFlags[0].flagKey) : undefined] as const),
+  );
   return (
     <div className="col-span-12 lg:col-span-8">
       <SectionEyebrow
@@ -495,7 +503,7 @@ function Attention({ view }: { view: UniverseHealthView }) {
           count={a.redFlag.count}
           title={a.redFlag.count === 1 ? "name tripped a red flag" : "names tripped red flags"}
           tag="Watch with care"
-          names={a.redFlag.names.map((s) => ({ label: s, note: "promoter pledge rising" }))}
+          names={a.redFlag.names.map((s) => ({ label: s, note: flagNameBySymbol.get(s) }))}
         />
       )}
       {a.slippingFromHigh.count > 0 && (

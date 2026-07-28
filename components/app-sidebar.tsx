@@ -27,7 +27,7 @@ import { useMe } from "@/lib/api/hooks/use-me";
 import { HEALTH_BAND_META, healthColor } from "@/components/portfolio/lib";
 import { cn } from "@/lib/utils";
 
-type NavItem = { title: string; url: string; icon: Icon; adminOnly?: boolean };
+type NavItem = { title: string; url: string; icon: Icon; adminOnly?: boolean; ai?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
 
 // Product surfaces above the Settings group. The Settings group is assembled in
@@ -37,6 +37,7 @@ const baseGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: Icons.dashboard },
+      { title: "Ask Vytal", url: "/chat", icon: Icons.chat },
       { title: "Health Hub", url: "/health-score", icon: Icons.health },
     ],
   },
@@ -233,7 +234,9 @@ export function AppSidebar() {
                                 "size-[1.15rem] shrink-0 transition-colors",
                                 active
                                   ? "text-primary"
-                                  : "text-ink3 group-hover/nav:text-ink"
+                                  : item.ai
+                                    ? "text-ai-from group-hover/nav:text-ai-from"
+                                    : "text-ink3 group-hover/nav:text-ink"
                               )}
                             />
                             <span className="font-medium">{item.title}</span>

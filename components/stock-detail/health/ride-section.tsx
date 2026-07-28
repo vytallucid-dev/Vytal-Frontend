@@ -48,7 +48,7 @@ export function RideSection({
             </span>
           </div>
           <div className="num mt-4 text-[10.5px] text-ink">
-            Foundation scores <AnimatedNumber value={floor} decimals={1} className="text-ink" /> / 100
+            Foundation scores <AnimatedNumber value={floor} decimals={0} className="text-ink" /> / 100
           </div>
         </div>
 

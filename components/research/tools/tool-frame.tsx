@@ -443,16 +443,6 @@ function SingleView({
         </>
       )}
 
-      {/* funnel-back */}
-      <div className="mt-4 flex justify-end">
-        <a
-          href={single.funnelBackHref}
-          className="inline-flex items-center gap-1.5 text-[12px] text-ink3 transition-colors hover:text-ink"
-        >
-          <Icons.arrowUpRight className="size-3.5" />
-          Full stock detail · {single.identity.ticker}
-        </a>
-      </div>
     </div>
   );
 }

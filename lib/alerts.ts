@@ -10,7 +10,7 @@
 
 import type { LabelBand } from "@/types/health";
 import type { Alert, AlertOperator, AlertRepeatMode, AlertType, AlertEvent } from "@/types/alerts";
-import { FINDING_NAMES } from "@/lib/finding-names";
+import { FINDING_NAMES } from "@/lib/findings/descriptions";
 
 // ── band identity (fragile < below_par < steady < healthy < pristine) ───────────────
 export const BAND_ORDER: LabelBand[] = ["fragile", "below_par", "steady", "healthy", "pristine"];

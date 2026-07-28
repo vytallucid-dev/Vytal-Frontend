@@ -221,8 +221,10 @@ export function CoverageBar({ cs, height = "h-7" }: { cs: CoverageState; height?
 // ── link-out affordance — a diagnostic must lead somewhere (Part D). A quiet "open" link,
 //    never an action CTA. To a per-stock health page, or (via onClick) an in-hub tab. ────
 export function OpenLink({ href, onClick, children, className }: { href?: string; onClick?: () => void; children: React.ReactNode; className?: string }) {
+  // A legible affordance — a small bordered chip, not faint text (the old text-ink3 read as
+  // decoration and was missed). Tone-neutral so it reads as "click" on any card background.
   const cls = cn(
-    "inline-flex items-center gap-1 text-[11.5px] text-ink3 transition-colors hover:text-ink2",
+    "inline-flex items-center gap-1 rounded-md border border-line2 bg-surface-2 px-2 py-1 text-[11.5px] font-medium text-ink2 transition-colors hover:border-line3 hover:bg-surface-3 hover:text-ink",
     className,
   );
   const body = (

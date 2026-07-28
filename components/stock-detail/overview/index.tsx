@@ -13,6 +13,7 @@
  *     green→red buy-grading, no valuation lens.
  */
 
+import { RelationalSection } from "./section-relational";
 import { IdentitySection } from "./section-identity";
 import { PriceSection } from "./section-price";
 import { HealthGlanceSection } from "./section-health-glance";
@@ -27,6 +28,9 @@ export default function Overview({ symbol }: { symbol: string }) {
   return (
     <div className="space-y-2">
       <IdentitySection symbol={symbol} />
+      {/* Relational L4 ("Vytal Read") — the reader's personal note, second after Company. Self-fetches and
+          renders null on failure, so it never disturbs the honest-empty independence of the rest. */}
+      <RelationalSection symbol={symbol} />
       <PriceSection symbol={symbol} />
       <HealthGlanceSection symbol={symbol} />
       <StandingSection symbol={symbol} />

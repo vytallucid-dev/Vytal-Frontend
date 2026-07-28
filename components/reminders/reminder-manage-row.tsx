@@ -54,7 +54,7 @@ export function ReminderManageRow({
             {reminder.active ? "On" : "Paused"}
           </span>
         </div>
-        <p className="truncate text-[11px] text-ink3">{reminderSummary(reminder)}</p>
+        <p className="text-[11px] text-ink3">{reminderSummary(reminder)}</p>
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">

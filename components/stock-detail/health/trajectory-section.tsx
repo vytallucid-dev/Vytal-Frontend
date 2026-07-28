@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
+import { roundScore } from "@/lib/format";
 import type { TrajectorySection as TTrajectory } from "@/types/health";
 import { SectionEyebrow, Panel, PILLAR_META, shortPeriod } from "./shared";
 
@@ -364,6 +365,9 @@ export function TrajectorySection({
                   fontSize: 12,
                 }}
                 labelStyle={{ color: "var(--ink2)", fontSize: 11 }}
+                // The plotted datum keeps its 0.1 quantum so the line stays smooth on a
+                // 12-point-tall axis; only the READ-OUT rounds to a whole score.
+                formatter={(v: number, name: string) => [roundScore(v), name]}
               />
               {/* quarterly: band crossings. daily: result-day markers explaining the F/M step. */}
               {chartCadence !== "daily" &&

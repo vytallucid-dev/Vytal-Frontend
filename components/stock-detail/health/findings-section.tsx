@@ -9,12 +9,14 @@ import type { FindingsSection as TFindings } from "@/types/health";
 import {
   prepareStockFindings,
   accentVars,
+  resolveEvidenceShape,
   type PreparedFinding,
   type Family,
   type Accent,
   DENSITY_EMPTY_COPY,
   DENSITY_QUIET_HEADER,
 } from "@/lib/findings";
+import { Sparkline } from "@/components/ui/sparkline";
 import { SectionEyebrow, Panel, humanizeKey } from "./shared";
 
 // Family → icon (one glyph per File-1 §5 family; the accent carries severity).
@@ -28,6 +30,7 @@ const FAMILY_ICON: Record<Family, Icon> = {
   G: Icons.target,
   H: Icons.building,
   I: Icons.arrowUpRight,
+  N: Icons.circleDot, // Notable (constructive mirror) — a neutral marker, never an approval/rating/award/direction glyph (amendment §8.1)
 };
 
 const ACCENT_TAG: Record<Accent, string> = { crit: "Concern", high: "High", rec: "Constructive", ctx: "Context" };
@@ -55,6 +58,47 @@ const PIP_SKIP = new Set([
   "leg", "isPillar", "floorLed", "leaderChanged", "type",
 ]);
 
+// ── evidence VISUAL (the SERIES / MOVEMENT receipt under the verdict sentence) ─────────
+// Deterministic server numbers rendered shape-native: a 3+ point path → sparkline, a 2-point
+// change → an "a → b" arrow chip. The mark is coloured by the finding's SEVERITY accent, never
+// by auto up=green/down=red — a rising debt-to-equity must not read as "good". Endpoint values
+// always render, so the meaning survives even when the sparkline shrinks on a narrow screen.
+const fmtVal = (n: number, d: number, unit: string): string => `${n.toFixed(d)}${unit}`;
+
+function Endpoints({ from, to, unit, decimals }: { from: number; to: number; unit: string; decimals: number }) {
+  return (
+    <span className="num text-[11px] text-ink2">
+      <span className="text-ink">{fmtVal(from, decimals, unit)}</span>
+      <span className="mx-1 text-ink3">→</span>
+      <span className="text-ink">{fmtVal(to, decimals, unit)}</span>
+    </span>
+  );
+}
+
+function EvidenceVisual({ evidence, color }: { evidence: unknown; color: string }) {
+  const shape = resolveEvidenceShape(evidence);
+  if (shape.kind === "none") return null;
+
+  if (shape.kind === "series") {
+    return (
+      <div className="mt-2.5 flex items-center gap-2.5">
+        <Sparkline data={shape.points} width={72} height={22} color={color} className="shrink-0" />
+        <Endpoints from={shape.from} to={shape.to} unit={shape.unit} decimals={shape.decimals} />
+      </div>
+    );
+  }
+
+  // Directional arrow — factual, not semantic; flat when the value held (e.g. F2's composite
+  // holds while the mix shifts underneath). Colour is the finding's accent, never up=green.
+  const dir = shape.to > shape.from ? "▲" : shape.to < shape.from ? "▼" : "→";
+  return (
+    <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-md border border-line2 bg-surface-2 px-2 py-1">
+      <span className="shrink-0 text-[11px] leading-none" style={{ color }}>{dir}</span>
+      <Endpoints from={shape.from} to={shape.to} unit={shape.unit} decimals={shape.decimals} />
+    </div>
+  );
+}
+
 function EvidencePips({ value }: { value: unknown }) {
   if (value == null || typeof value !== "object") return null;
   const entries = Object.entries(value as Record<string, unknown>)
@@ -79,9 +123,12 @@ function FindingCard({ f, symbol }: { f: PreparedFinding; symbol?: string }) {
   const href = funnelHref(f, symbol);
   const pending = f.displayState === "pending_data_integration";
   const dampened = f.displayState === "dampened";
-  const halved = dampened && f.magnitude != null ? ` (impact now ${f.magnitude > 0 ? "+" : ""}${f.magnitude})` : "";
+  // Realized-effect display rule (Master Spec MSR): render the sector-wide note with NO number.
+  // The persisted magnitude is not the realized score effect (zero-effect patterns move nothing;
+  // flow patterns pass through a shared clamp that makes a single card's contribution unattributable),
+  // so no number is shown here — consistent with active cards, which already render no magnitude.
   const sectorWideNote = dampened
-    ? (typeof f.evidence?.sectorWide === "string" ? (f.evidence.sectorWide as string) : "sector-wide condition — magnitude halved") + halved
+    ? (typeof f.evidence?.sectorWide === "string" ? (f.evidence.sectorWide as string) : "sector-wide condition — magnitude halved")
     : null;
 
   return (
@@ -111,6 +158,13 @@ function FindingCard({ f, symbol }: { f: PreparedFinding; symbol?: string }) {
       {/* Verdict sentence leads — File-1 copy bound to the real evidence numbers */}
       <p className="mt-3 text-[13px] leading-relaxed text-ink2">{f.verdict}</p>
 
+      {/* Evidence receipt — the SERIES/MOVEMENT numbers behind the sentence, subordinate to it.
+          Only the finding's OWN evidence here (consolidated sub-types render their own below);
+          lens cards carry a self-contained sentence, and non-series/movement findings show nothing. */}
+      {!f.subTypes?.length && !f.key.startsWith("lens_") && (
+        <EvidenceVisual evidence={f.evidence} color={a.color} />
+      )}
+
       {/* Dampened: the sector-wide condition note (halved magnitude) */}
       {sectorWideNote && (
         <p className="num mt-2 rounded-md border px-2 py-1 text-[11px]" style={{ color: a.color, background: a.bg, borderColor: a.bd }}>
@@ -128,6 +182,7 @@ function FindingCard({ f, symbol }: { f: PreparedFinding; symbol?: string }) {
         f.subTypes.map((st) => (
           <div key={st.key} className="mt-2 border-l border-line2 pl-2.5">
             <span className="text-[11px] font-medium text-ink2">{st.name}</span>
+            <EvidenceVisual evidence={st.evidence} color={a.color} />
             <EvidencePips value={st.evidence} />
           </div>
         ))
@@ -148,7 +203,9 @@ function FindingCard({ f, symbol }: { f: PreparedFinding; symbol?: string }) {
         <p key={c} className="mt-1.5 text-[11px] italic text-ink3">{c}</p>
       ))}
 
-      {/* The interpretive boundary — what this does NOT mean */}
+      {/* The interpretive boundary — what this does NOT mean. Boundary-line-by-construction
+          (amendment §2): every family carries one, so f.doesntMean is never empty — render it
+          unconditionally. No guard: a missing line is now a compile error, not a rendering gap. */}
       <p className="mt-3 border-l-2 border-line2 pl-3 text-[11.5px] italic text-ink3">{f.doesntMean}</p>
 
       {href ? (

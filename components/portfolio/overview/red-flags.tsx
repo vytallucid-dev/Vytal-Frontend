@@ -128,14 +128,14 @@ export function RedFlagStrip({
       <button
         type="button"
         onClick={onOpenHealth}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] min-[450px]:text-[12px] font-medium transition-[filter] hover:brightness-125"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] min-[450px]:text-[12px] font-semibold transition-[filter] hover:brightness-125"
         style={{
           color,
-          borderColor: `color-mix(in oklch, ${color} 32%, transparent)`,
-          background: `color-mix(in oklch, ${color} 10%, transparent)`,
+          borderColor: `color-mix(in oklch, ${color} 45%, transparent)`,
+          background: `color-mix(in oklch, ${color} 18%, transparent)`,
         }}
       >
-        See full analysis
+        See the flags
         <Icons.arrowRight className="size-3.5" />
       </button>
     </div>

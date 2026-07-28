@@ -169,7 +169,7 @@ function buildConditionFilters(view: UniverseHealthView): {
     {
       id: "red_flags",
       label: "Red flags",
-      note: "Any auto-tier red flag firing (overrides the composite until it clears)",
+      note: "Any auto-tier red flag firing",
       match: (m) => m.firedFlags.length > 0,
     },
     {

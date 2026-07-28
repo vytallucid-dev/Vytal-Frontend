@@ -9,10 +9,11 @@ import type {
   PillarProfile,
   PortfolioSnapshot,
 } from "@/types/portfolio";
-import type { PortfolioTab } from "../tabs";
+import { FLAGS_SECTION_ID, type PortfolioTab } from "../tabs";
 import {
   DRAG_COLOR,
   POSITIVE_COLOR,
+  W_SIGNAL,
   healthColor,
   healthPatternFindings,
 } from "../lib";
@@ -469,7 +470,9 @@ function SignalsLedger({
   const active = activeSignals(snapshot);
   const calm = active.length === 0;
   return (
-    <div className="rounded-xl border border-line bg-surface-2 p-4 sm:p-5">
+    // id + scroll-margin: the deep-link target for "See full analysis" / "See the flags" so a
+    // pointer lands ON the flags rather than at the top of the tab (see HealthTab's scroll effect).
+    <div id={FLAGS_SECTION_ID} className="scroll-mt-24 rounded-xl border border-line bg-surface-2 p-4 sm:p-5">
       <div className="mb-1 flex items-center gap-2">
         <span
           className="grid size-6 place-items-center rounded-md"
@@ -524,40 +527,69 @@ function SignalsLedger({
         <div className="flex flex-col gap-2">
           {active.map((e) => {
             const meta = SIGNAL_SOURCE_META[e.source];
+            // The finding NAME (what fired). Absent on a pre-thread snapshot → fall back to the
+            // severity label alone (today's behaviour), never a fabricated name.
+            const title = e.title ?? null;
+            // "of book" = the WHOLE-book share (matches Holdings table / PS1). Pre-thread snapshot
+            // carries no bookWeight → fall back to the scored-slice `weight` (today's behaviour).
+            const bookW = e.bookWeight ?? e.weight;
+            // The row deduction is shown in HEALTH-SCORE points, not Signals-pillar points, so the
+            // rows ladder to the header total (Σ rows ≈ −flagsDrag). W_SIGNAL (0.2) is the Health-law
+            // factor: pillar-drop × 0.2 = the drag on the Health Score.
+            const hp = e.points * W_SIGNAL;
+            const points = hp < 1 ? hp.toFixed(1) : r0(hp);
             return (
-              <Tip
+              <div
                 key={e.symbol}
-                content={
-                  <>
-                    <span className="font-semibold text-ink">
-                      {e.symbol} · {meta.label}
-                    </span>
-                    <span className="mt-1 block text-ink2">
-                      At {pct1(e.weight)} of your book, this flag takes{" "}
-                      {e.points < 1 ? e.points.toFixed(1) : r0(e.points)} off
-                      the Health score.
-                    </span>
-                  </>
-                }
+                className="rounded-md border border-line bg-surface-1 px-3 py-2.5"
               >
-                <div className="flex cursor-help items-center gap-3 rounded-md border border-line bg-surface-1 px-3 py-2">
-                  <span className="num shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[11px] font-semibold text-ink">
+                <div className="flex items-start gap-3">
+                  <span className="num mt-0.5 shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[11px] font-semibold text-ink">
                     {e.symbol}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <span className="text-[12px] text-ink2">{meta.label}</span>
-                    <span className="num ml-2 text-[10.5px] text-ink3">
-                      {pct1(e.weight)} of book
-                    </span>
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      {/* WHAT fired — the finding name (or the severity label when identity isn't served yet) */}
+                      <span className="text-[13px] font-semibold text-ink">
+                        {title ?? meta.label}
+                      </span>
+                      {/* HOW LOUD — the severity, kept beside the name as the tone */}
+                      {title && (
+                        <span
+                          className="text-[11px] font-medium"
+                          style={{ color: DRAG_COLOR.signal }}
+                        >
+                          {meta.label}
+                        </span>
+                      )}
+                      <span className="num text-[10.5px] text-ink3">
+                        · {pct1(bookW)} of book
+                      </span>
+                    </div>
+                    {/* WHY — the finding's short read, verbatim from the wire; nothing invented when absent */}
+                    {e.read && (
+                      <p className="mt-1 text-[11.5px] leading-relaxed text-ink2">
+                        {e.read}
+                      </p>
+                    )}
                   </div>
-                  <span
-                    className="num shrink-0 text-[14px] font-semibold"
-                    style={{ color: DRAG_COLOR.signal }}
+                  <Tip
+                    content={
+                      <span className="block text-ink2">
+                        At {pct1(bookW)} of your book, this flag takes {points} off
+                        the Health score.
+                      </span>
+                    }
                   >
-                    −{e.points < 1 ? e.points.toFixed(1) : r0(e.points)}
-                  </span>
+                    <span
+                      className="num shrink-0 cursor-help text-[14px] font-semibold"
+                      style={{ color: DRAG_COLOR.signal }}
+                    >
+                      −{points}
+                    </span>
+                  </Tip>
                 </div>
-              </Tip>
+              </div>
             );
           })}
         </div>

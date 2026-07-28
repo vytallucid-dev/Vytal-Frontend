@@ -2,7 +2,7 @@
 
 import { Icons } from "@/lib/icons";
 import type { PfFinding } from "@/types/portfolio";
-import type { PortfolioTab } from "../tabs";
+import { FLAGS_SECTION_ID, type OpenTab } from "../tabs";
 import { FAMILY_META, TONE_META, stockHealthHref } from "../lib";
 import { bindChips, findingRead, isCrossPillar, type FindingTriage } from "./lib";
 import { OpenLink, Tip } from "./parts";
@@ -32,12 +32,20 @@ function Chips({ f }: { f: PfFinding }) {
   );
 }
 
-// ── link-out (Part D) — a finding must lead somewhere. Names a symbol → that stock's
-//    health page; PC/PB (concentration/sector/breadth) → the Holdings & Allocation tab. ─
-function FindingLink({ f, onOpenTab }: { f: PfFinding; onOpenTab?: (t: PortfolioTab) => void }) {
+// ── link-out (Part D) — a finding must lead somewhere THAT CARRIES THE ANSWER, never a surface
+//    that doesn't. Names a symbol → that stock's health page (shows its flag/evidence). A Signals
+//    (PS) finding over several names → the Signals-ledger section, which now itemises each flag by
+//    name. Concentration/breadth (PC/PB) → the Holdings & Allocation tab, which shows composition.
+//    Anything with no answer-carrying destination renders NO link (a missing link beats a wrong one). ─
+function FindingLink({ f, onOpenTab }: { f: PfFinding; onOpenTab?: OpenTab }) {
   const sym = typeof f.bind?.symbol === "string" ? (f.bind.symbol as string) : null;
   if (sym) return <OpenLink href={stockHealthHref(sym)}>Open {sym}</OpenLink>;
   const multi = Array.isArray(f.bind?.symbols) && (f.bind!.symbols as unknown[]).length > 0;
+  // Signals findings (flags): the answer is the Signals ledger — land on it (it names each flag).
+  // NOT the Holdings tab, which shows nothing about the flag.
+  if (f.family === "PS" && multi && onOpenTab)
+    return <OpenLink onClick={() => onOpenTab("health", FLAGS_SECTION_ID)}>See the flags</OpenLink>;
+  // Concentration/breadth (PC/PB): the Holdings & Allocation tab carries the composition answer.
   if ((f.family === "PC" || f.family === "PB" || multi) && onOpenTab)
     return <OpenLink onClick={() => onOpenTab("holdings")}>See in holdings</OpenLink>;
   return null;
@@ -45,7 +53,7 @@ function FindingLink({ f, onOpenTab }: { f: PfFinding; onOpenTab?: (t: Portfolio
 
 // ── a loud headline finding card — family-badged, the read + the receipts + a link out.
 //    Cross-pillar (PX) findings carry a "tension" pill — they name what the number hid. ─
-export function FindingCard({ f, onOpenTab }: { f: PfFinding; onOpenTab?: (t: PortfolioTab) => void }) {
+export function FindingCard({ f, onOpenTab }: { f: PfFinding; onOpenTab?: OpenTab }) {
   const tm = TONE_META[f.tone];
   const fam = FAMILY_META[f.family] ?? { label: f.family, color: tm.color };
   const read = findingRead(f);
@@ -88,7 +96,7 @@ export function FindingCard({ f, onOpenTab }: { f: PfFinding; onOpenTab?: (t: Po
 }
 
 // ── a quiet finding — secondary texture, and the shared row for coverage-family findings. ─
-export function FindingRow({ f, onOpenTab }: { f: PfFinding; onOpenTab?: (t: PortfolioTab) => void }) {
+export function FindingRow({ f, onOpenTab }: { f: PfFinding; onOpenTab?: OpenTab }) {
   const tm = TONE_META[f.tone];
   const fam = FAMILY_META[f.family] ?? { label: f.family, color: tm.color };
   const read = findingRead(f);
@@ -127,7 +135,7 @@ export function FindingsBlock({
   triage: FindingTriage;
   loudKicker: string;
   emptyNote: string;
-  onOpenTab?: (t: PortfolioTab) => void;
+  onOpenTab?: OpenTab;
 }) {
   const { loud, quiet } = triage;
   if (loud.length === 0 && quiet.length === 0) {

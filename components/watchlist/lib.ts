@@ -18,7 +18,7 @@ import type { LabelBand } from "@/types/health";
 import type { WatchlistEntry, WatchlistLensVerdict } from "@/types/watchlist";
 import type { OhlcvBar } from "@/lib/api/hooks/use-stock-ohlcv";
 import { accentOf, accentVars, compareFindings, type Accent } from "@/lib/findings/classify";
-import { findingName } from "@/lib/finding-names";
+import { findingName } from "@/lib/findings/descriptions";
 
 // ── band identity (composite condition scale) — label + colour, keyed by band ───
 export const BAND_META: Record<LabelBand, { label: string; cssVar: string; text: string }> = {

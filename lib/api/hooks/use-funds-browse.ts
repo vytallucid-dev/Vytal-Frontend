@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
 import type { FundsQuery, FundsResponse } from "@/types/funds-browse";
 
@@ -30,5 +30,36 @@ export function useFundsBrowse(query: FundsQuery) {
     staleTime: 60 * 1000,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor ?? undefined : undefined),
     queryFn: ({ pageParam }) => apiFetch<FundsResponse>(`/api/v1/funds${buildQs(query, pageParam as string | undefined)}`),
+  });
+}
+
+/** Minimum `q` before the fund typeahead fires. The endpoint filters an in-memory array (3.8k
+ *  families) so a short term is cheap server-side, but one character matches most of the
+ *  catalogue and tells the user nothing — two is the first selective length. */
+export const FUND_SEARCH_MIN_Q = 2;
+
+/** How many families the typeahead pulls per term. The server slices name-ordered AFTER filtering,
+ *  so this is the pool a caller gets to rank locally — wide enough that a prefix match isn't
+ *  alphabetically stranded, narrow enough to stay a small payload per keystroke. */
+export const FUND_SEARCH_LIMIT = 40;
+
+/** Single-page typeahead over the SAME catalogue the browse grid reads — one flat request, no
+ *  cursor, dormant families excluded (the browse default). Rows carry `representativeSchemeCode`,
+ *  so a hit routes straight to /research/funds/:schemeCode with no second lookup.
+ *
+ *  `q` MUST already be debounced by the caller — every distinct term is a network round-trip.
+ *  Disabled below the min length; `keepPreviousData` holds the last hits on screen while the next
+ *  term resolves, so the list never blanks between keystrokes. */
+export function useFundSearch(q: string, limit: number = FUND_SEARCH_LIMIT) {
+  const term = q.trim();
+  const enabled = term.length >= FUND_SEARCH_MIN_Q;
+  return useQuery<FundsResponse>({
+    // Key on the normalized term — the backend lowercases before matching, so "HDFC"/"hdfc" share
+    // one cache entry.
+    queryKey: ["funds", "search", term.toLowerCase(), limit],
+    enabled,
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
+    queryFn: () => apiFetch<FundsResponse>(`/api/v1/funds${buildQs({ q: term, limit })}`),
   });
 }

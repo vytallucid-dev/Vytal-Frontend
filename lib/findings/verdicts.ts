@@ -7,11 +7,18 @@
 // assembled `verbatim`/`verdict` string (also File-1 copy, also real numbers) for any key
 // without an explicit renderer, then to a generic last resort.
 //
+// THE TWO LAYERS — kept apart on purpose. This file is the INSTANCE layer (dynamic,
+// per-stock: "what happened at THIS company", needs the evidence numbers). All STATIC,
+// rule-level copy — titles, per-finding descriptions, the "doesn't-mean" boundaries, the
+// three-lens faces — lives in ONE place, lib/findings/descriptions.ts. VERDICTS stays here;
+// a verdict never substitutes for a description and vice versa. Do not add static copy here.
+//
 // RETIRED / UNBUILT: P2 (→ R6), P3 (→ R1) are consolidated and NOT registered by the engine;
 // P9 (capex) is unbuilt. They have NO display slot here — deliberately no entries.
 
-import { familyOf, type Family, PILLAR_LABEL } from "./classify";
-import { findingName } from "@/lib/finding-names";
+import { familyOf, PILLAR_LABEL } from "./classify";
+import { findingDescription, findingName } from "./descriptions";
+import { N_FAMILY_COPY } from "@/lib/n-family-copy";
 
 type Ev = Record<string, unknown>;
 
@@ -35,8 +42,39 @@ const pl = (k: unknown): string => PILLAR_LABEL[str(k)] ?? str(k);
 const opmArrow = (v: unknown): string =>
   Array.isArray(v) ? (v as { opm?: unknown }[]).map((p) => f(p.opm, 1)).join(" → ") : "";
 
+// ── Family N (Notable) — instance verdicts, DERIVED from the supplied spec copy templates
+// (lib/n-family-copy.ts), never re-authored here. Each is guarded: the verdict interpolates a run
+// length / delta from the fired instance, so if a required evidence key is missing at runtime we
+// render the STATIC DESCRIPTION instead of a broken "undefined" sentence (amendment §8.3). The
+// required keys per rule are exactly the §3 evidence keys the engine build writes. ──────────────
+const N_REQUIRED_KEYS: Record<string, string[]> = {
+  foundation_N1_cash_backed_earnings: ["years"],
+  foundation_N2_working_capital: ["years"],
+  foundation_N3_deleveraging: ["years", "deFrom", "deTo"],
+  foundation_N4_coverage_strengthening: ["quarters", "troughCoverage"],
+  ownership_N5_dual_institutional_build: ["fiiDeltaPp", "diiDeltaPp"],
+  ownership_N6_promoter_accumulation: ["quarters", "cumulativePp"],
+  ownership_N7_pledge_release: ["pledgeFromPct", "pledgeToPct"],
+};
+
+const N_VERDICTS: Record<string, (ev: Ev) => string> = Object.fromEntries(
+  Object.entries(N_FAMILY_COPY).map(([key, copy]) => [
+    key,
+    (ev: Ev): string => {
+      const required = N_REQUIRED_KEYS[key] ?? [];
+      // Guard: never interpolate a missing/undefined/null evidence value into user-facing text.
+      const haveAll = required.every((k) => ev[k] != null);
+      return haveAll ? copy.verdict(ev) : (findingDescription(key) ?? "");
+    },
+  ]),
+);
+
 // ── the catalog (one File-1 sentence per fired key, bound to evidence) ─────────
 export const VERDICTS: Record<string, (ev: Ev) => string> = {
+  // Family N (Notable) — guarded instance verdicts (fall back to the static description if the
+  // engine's evidence key is absent). Spread first; keys are disjoint from the A–I set below.
+  ...N_VERDICTS,
+
   // ── A · Critical red flags (§5A — names the flag + the single breaching stat) ──
   ownership_R1_pledge: (ev) => {
     const pct = num(ev.pledgeRatioQ);
@@ -204,30 +242,6 @@ export function renderVerdict(key: string, evidence: unknown): string {
   return str(ev.verbatim) || str(ev.verdict) || genericVerdict(key);
 }
 
-// ── per-family "doesn't mean" interpretive boundary (File 1 §5, verbatim) ──────
-const DOESNT_MEAN: Record<Family, string> = {
-  A: "a hard risk/quality warning to investigate — not a prediction the stock will fall.",
-  B: "review your thesis, not sell — an early risk read, not a price call.",
-  C: "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
-  D: "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
-  E: "a condition to look at — not a trade signal.",
-  F: "a place to investigate, not a re-rate signal.",
-  G: "the move isn't over, and which way it resolved depends on which pillar moved — not buy/sell.",
-  H: "risk/flow context, not a verdict.",
-  I: "a band change to note — not a buy/sell call.",
-};
-
-// Three-Lens escalations (lens_lm3/lm7/lp2/lp5) carry their own no-prediction boundary —
-// field-verdicts are CONTEXT (about the field), never a stock call.
-const LENS_DOESNT_MEAN: Record<string, string> = {
-  lm3: "where the weakness lives — in the field, not uniquely this name; not a forecast the field recovers.",
-  lm7: "a hard quality read on this metric to investigate — not a prediction the stock falls.",
-  lp2: "the pillar leads a weak pond — its relative strength is a field artifact, not a forecast.",
-  lp5: "broad self-deterioration to investigate — an early breadth read, not a price call.",
-};
-
-export function doesntMean(key: string): string {
-  const lens = /^lens_(lm3|lm7|lp2|lp5)_/.exec(key);
-  if (lens) return LENS_DOESNT_MEAN[lens[1]] ?? DOESNT_MEAN.E;
-  return DOESNT_MEAN[familyOf(key)];
-}
+// The per-family / per-lens "doesn't-mean" boundary (DOESNT_MEAN, LENS_DOESNT_MEAN and the
+// doesntMean() resolver) is STATIC copy and now lives in ./descriptions — re-exported from
+// the findings index, so existing `import { doesntMean } from "@/lib/findings"` keeps working.

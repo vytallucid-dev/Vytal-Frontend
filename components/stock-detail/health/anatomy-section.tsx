@@ -280,7 +280,7 @@ function ScoredMetricRow({ m, pillarLabel }: { m: MetricView; pillarLabel: strin
     <MetricModal m={m} pillarLabel={pillarLabel}>
       <button
         type="button"
-        className="group block w-full cursor-pointer border-t border-line py-3 text-left transition-colors first:border-t-0 hover:bg-surface-2/60"
+        className="group px-2 sm:px-4 block w-full cursor-pointer border-t border-line py-3 text-left transition-colors first:border-t-0 hover:bg-surface-2/60"
       >
         <div className="flex items-start justify-between gap-3">
           <span className="flex min-w-0 flex-col">
@@ -316,7 +316,7 @@ function ScoredMetricRow({ m, pillarLabel }: { m: MetricView; pillarLabel: strin
 function HonestEmptyMetricRow({ m }: { m: MetricView }) {
   const meta = getMetricLabel(m.metricKey);
   return (
-    <div className="border-t border-line py-3 opacity-60 first:border-t-0">
+    <div className="border-t border-line py-3 opacity-60 first:border-t-0 px-2 sm:px-4">
       <div className="flex items-start justify-between gap-3">
         <span className="flex flex-col">
           <span className="text-[12.5px] font-medium text-ink2">{meta.label}</span>
@@ -391,7 +391,7 @@ function FlowLane({ f }: { f: FlowCategoryView }) {
         <span className="flex items-center gap-2">
           {f.trendState && <span className="num text-ink2">{TREND_GLYPH[f.trendState] ?? "→"}</span>}
           {f.bandLanded && <span className="text-ink2">{f.bandLanded}</span>}
-          <span className="num text-ink">{fmt(f.cappedSubScore, 1)}</span>
+          <span className="num text-ink">{fmt(f.cappedSubScore)}</span>
         </span>
       )}
     </div>

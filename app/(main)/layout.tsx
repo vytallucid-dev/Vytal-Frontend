@@ -1,7 +1,9 @@
 import { AppSidebar } from "@/components/app-sidebar";
-import Navbar from "@/components/navbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { RequireAuth } from "@/components/auth/route-guard";
+import { MainShell } from "@/components/main-shell";
+import { SidekickProvider } from "@/components/sidekick/sidekick-provider";
+import { SidekickPanel } from "@/components/sidekick/sidekick-panel";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,15 +17,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="absolute inset-0 bg-background" />
         <div className="absolute inset-0 bg-grid opacity-30 mask-[radial-gradient(ellipse_at_center,black,transparent_78%)]" />
       </div>
-      <AppSidebar />
-      <SidebarInset className="min-w-0 bg-transparent">
-        <div className="flex h-svh min-w-0 flex-col">
-          <Navbar />
-          <main className="custom-scrollbar min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-10 pt-4 sm:px-5 lg:px-6">
-            {children}
-          </main>
-        </div>
-      </SidebarInset>
+      {/* ★ SIDEKICK LIVES AT THE SHELL, NOT IN A CARD. The panel is a RAIL — the app sidebar's mirror —
+          so its spacer has to be a sibling of the inset for the content to sit between the two and
+          resize as it opens. Mounting the provider here (inside SidebarProvider, so it can reach the
+          sidebar it has to collapse) is also what lets the conversation survive navigation: the reader
+          keeps browsing while it talks, which is the entire reason it stopped being a sheet. */}
+      <SidekickProvider>
+        <AppSidebar />
+        <SidebarInset className="min-w-0 bg-transparent">
+          {/* Per-route frame: Navbar + padded scroll for most pages; full-bleed for /chat. */}
+          <MainShell>{children}</MainShell>
+        </SidebarInset>
+        <SidekickPanel />
+      </SidekickProvider>
       </SidebarProvider>
     </RequireAuth>
   );

@@ -10,7 +10,7 @@ import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { formatINR } from "@/lib/format";
 import type { Transaction } from "@/types/portfolio";
-import { PORTFOLIO_TABS, type PortfolioTab } from "./tabs";
+import { PORTFOLIO_TABS, type PortfolioTab, type OpenTab } from "./tabs";
 import { HEALTH_BAND_META, attentionHoldings, healthColor } from "./lib";
 import { aggregateHoldings } from "./health/lib";
 import { OverviewTab } from "./overview";
@@ -81,6 +81,13 @@ export function PortfolioHub() {
     ? (tabParam as PortfolioTab)
     : "overview";
   const [tab, setTab] = useState<PortfolioTab>(initialTab);
+  // A section to scroll to once the target tab renders (set by pointers like "See full analysis" /
+  // "See the flags"). Cleared once the target tab consumes it. Plain tab clicks use setTab and scroll nowhere.
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null);
+  const openTab: OpenTab = (t, section) => {
+    setTab(t);
+    setScrollTarget(section ?? null);
+  };
   // the global add/edit side-sheet — one instance, opened from the header (any tab),
   // the empty-state CTA, and per-row edit. editing=null → add mode; a txn → edit mode.
   const [sheet, setSheet] = useState<{ open: boolean; editing: Transaction | null }>({ open: false, editing: null });
@@ -223,7 +230,7 @@ export function PortfolioHub() {
         // read-only over the pre-computed snapshot (pillars, both ledgers, PF findings) +
         // per-holding health; snapshot may be null (pending) → the tab shows its honest
         // "preparing"/"building" state until the next mutation/nightly refresh lands.
-        <HealthTab snapshot={snapshot} holdings={holdings} totals={totals} disclosure={snapQ.data?.disclosure} referenceFindings={snapQ.data?.referenceFindings} onOpenTab={setTab} />
+        <HealthTab snapshot={snapshot} holdings={holdings} totals={totals} disclosure={snapQ.data?.disclosure} referenceFindings={snapQ.data?.referenceFindings} onOpenTab={openTab} scrollTo={scrollTarget} onScrolled={() => setScrollTarget(null)} />
       ) : tab === "performance" ? (
         // the returns/accountability surface — read-only over NAV / TWR / benchmark / XIRR.
         // STRICTLY health-free by design (the one tab where "healthy → profitable" must
@@ -232,7 +239,7 @@ export function PortfolioHub() {
       ) : (
         // snapshot may be null (pending) — the tracker still renders; the health band
         // shows its honest "preparing" state until the next mutation/nightly refresh.
-        <OverviewTab snapshot={snapshot} holdings={holdings} totals={totals} onOpenTab={setTab} />
+        <OverviewTab snapshot={snapshot} holdings={holdings} totals={totals} onOpenTab={openTab} />
       )}
 
       {/* the one writing surface — global, non-modal-feel side sheet */}

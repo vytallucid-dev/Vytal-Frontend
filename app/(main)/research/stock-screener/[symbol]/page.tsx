@@ -14,9 +14,11 @@ import { CreateAlertModal } from "@/components/alerts/create-alert-modal";
 import { TransactionSheet } from "@/components/portfolio/transaction-sheet";
 import { Icons, type Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { roundScore } from "@/lib/format";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
 import { useWatchlist, useWatchlistMutations } from "@/lib/api/hooks/use-watchlist";
+import { useStockAttentionTracking } from "@/lib/tracking/use-stock-attention";
 import { isApiError } from "@/lib/api/client";
 import type { Stock } from "@/lib/indian-stocks-data";
 import type { LabelBand } from "@/types/health";
@@ -123,6 +125,11 @@ const StockDetailPage = () => {
     else pin.mutate(stockId);
   };
 
+  // Behaviour tracking (Phase 2): view on stock-resolve, tab-dwell on switch, and publish the current
+  // stock for section-expand emitters. All effect-only — nothing runs on render. Called before the
+  // early returns below so the hook order is stable.
+  useStockAttentionTracking(stockId, activeTab);
+
   // Handle URL query parameters for tab and section navigation
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -215,7 +222,7 @@ const StockDetailPage = () => {
   return (
     <div className="min-h-screen pb-12">
       {/* HEADER */}
-      <div className="border-b border-line bg-background/95 backdrop-blur-sm">
+      <div className=" border-line bg-background/95 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-0 sm:px-6 py-4">
           <div className="flex flex-col gap-4 px-4 sm:px-0 lg:flex-row lg:items-start lg:justify-between">
             {/* Left: Company Info */}
@@ -234,7 +241,7 @@ const StockDetailPage = () => {
                 )}
                 {scored && verdict ? (
                   <Badge className={BAND_BADGE[verdict.label.band]}>
-                    <span className="num">{verdict.composite.toFixed(1)}</span>
+                    <span className="num">{roundScore(verdict.composite)}</span>
                     <span className="ml-1">· {verdict.label.label}</span>
                   </Badge>
                 ) : (
@@ -285,7 +292,7 @@ const StockDetailPage = () => {
 
         {/* TAB NAVIGATION */}
         <div className="mx-auto max-w-7xl px-6">
-          <div className="hidden-scrollbar flex overflow-x-auto border-b border-line">
+          <div className="hidden-scrollbar flex overflow-x-auto border-line">
             {[
               { id: "overview", label: "Overview" },
               { id: "health", label: "Health Score" },

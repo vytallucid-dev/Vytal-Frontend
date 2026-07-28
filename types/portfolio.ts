@@ -89,9 +89,19 @@ export type SignalSource = "distress" | "critical" | "high" | "medium" | "lp5" |
 /** One per-holding Signals deduction. `points` = base magnitude × book weight, clamped. */
 export interface SignalsDeduction {
   symbol: string;
-  weight: number; // book weight of the flagged holding (0..1)
+  weight: number; // SCORED-slice share of the flagged holding (w_i / sumWScored, 0..1) — the denominator the deduction was computed over, NOT the whole-book share
   source: SignalSource;
   points: number;
+  // whole-book share of the flagged holding (0..1) — the true "of book" number, matching the
+  // Holdings table and PS1. OPTIONAL: a pre-thread snapshot carries no bookWeight; render null-safe
+  // (fall back to `weight`) until the book's next rescore threads it.
+  bookWeight?: number | null;
+  // ── the WINNING finding's identity (backend thread). OPTIONAL/nullable: a snapshot served from
+  //    before the identity thread (its fingerprint didn't change) carries the old ledger, so these are
+  //    absent until the book's next rescore. Render null-safe — fall back to the `source` label alone. ──
+  flagKey?: string | null; // e.g. "ownership_R6_distribution"; null for a band-derived distress headline
+  title?: string | null; // e.g. "Distribution Pattern" — what fired, beside the severity
+  read?: string | null; // the finding's short read / verdict; null when the source carries none
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

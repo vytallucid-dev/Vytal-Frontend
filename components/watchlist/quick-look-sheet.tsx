@@ -313,6 +313,8 @@ function FindingsList({ entry }: { entry: WatchlistEntry }) {
                   )}
                 </div>
                 {f.verdict && <p className="mt-1 text-[11.5px] leading-relaxed text-ink2">{f.verdict}</p>}
+                {/* The interpretive boundary — what this does NOT mean (Rules Spec card anatomy). */}
+                <p className="mt-1 border-l-2 border-line2 pl-2 text-[11px] italic text-ink3">{f.doesntMean}</p>
               </li>
             );
           })}

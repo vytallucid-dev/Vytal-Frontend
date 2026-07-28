@@ -103,6 +103,11 @@
   --color-p-mkt: var(--p-mkt);
   --color-p-own: var(--p-own);
 
+  /* AI-SURFACE accent — the "intelligent layer" (text-ai-from / bg-ai-via/10 / …) */
+  --color-ai-from: var(--ai-from);
+  --color-ai-via: var(--ai-via);
+  --color-ai-to: var(--ai-to);
+
   /* SEMANTIC severity fills (each also has a -bg / -bd in :root for soft bg + border) */
   --color-crit: var(--crit);
   --color-high: var(--high);
@@ -241,6 +246,15 @@
   --grad-via: var(--p-found);
   --grad-to: var(--p-mom);
   --glow: rgba(78, 161, 230, 0.4);
+
+  /* AI SURFACE — the "intelligent layer" signature. A blue→violet brand accent, held
+     DISTINCT from the health-band condition colours so every AI surface (this stock read,
+     the dashboard insight, comparison, the chat sheet) reads as ONE system regardless of
+     the stock's band. Reference these — not the band tokens — on any AI-authored surface. */
+  --ai-from: var(--c-pristine); /* cool blue */
+  --ai-via: var(--p-found);     /* blue */
+  --ai-to: var(--p-mom);        /* violet */
+  --ai-glow: rgba(116, 130, 216, 0.2); /* soft blue-violet ambient, for depth */
 }
 
 /* Force dark surface even if a stray ".dark" class is applied (no light mode). */
@@ -437,6 +451,257 @@
     pointer-events: none;
   }
 
+  /* ── AI SURFACE — the reusable "intelligent layer" signature ──────────────────────
+     A faint blue→violet wash, a masked gradient hairline border, a top light-catch edge,
+     and a soft ambient glow. ONE class = the whole signature; add it to any AI surface
+     (this stock read today, the dashboard insight / comparison / chat sheet next). Pair
+     with an inline band-colour glow div for per-stock context. Distinct from `.card-hero`
+     (a single band/primary wash) so the intelligent layer never gets mistaken for a panel. */
+  .ai-surface {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(118% 88% at 0% 0%, color-mix(in oklab, var(--ai-via) 9%, transparent), transparent 55%),
+      radial-gradient(92% 80% at 100% 3%, color-mix(in oklab, var(--ai-to) 7%, transparent), transparent 60%),
+      var(--surface-1);
+    box-shadow: 0 16px 48px -24px var(--ai-glow);
+  }
+  /* masked gradient hairline border (blue → transparent → violet) */
+  .ai-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--ai-from) 55%, transparent),
+      color-mix(in oklch, var(--ai-via) 18%, transparent) 26%,
+      transparent 52%,
+      color-mix(in oklch, var(--ai-to) 42%, transparent)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* top light-catch edge — the recognizable 1px sheen */
+  .ai-surface::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--ai-from) 50%, transparent) 30%,
+      color-mix(in oklch, var(--ai-to) 45%, transparent) 70%,
+      transparent
+    );
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* the portable AI signature badge — a small maker's mark for the intelligent layer */
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 19px;
+    padding: 0 7px;
+    border-radius: 999px;
+    line-height: 1;
+    color: color-mix(in oklch, var(--ai-from) 60%, var(--ink));
+    background: color-mix(in oklch, var(--ai-via) 9%, transparent);
+    border: 1px solid color-mix(in oklch, var(--ai-via) 26%, transparent);
+    box-shadow: 0 0 14px -6px var(--ai-glow);
+  }
+  .ai-badge svg {
+    color: var(--ai-from);
+  }
+
+  /* the interactive sibling of .ai-badge — the "discuss this" affordance. It reads as the intelligent
+     layer (same tokens) but is dressed for a button: a true gradient hairline border (blue→violet), a
+     faint gradient fill, a top light-catch, and a soft glow that lifts on hover. Quiet at rest, alive on
+     interaction — modern, not shouty. Owns its own border (no Tailwind `border` on the element). */
+  .ai-chip {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid transparent;
+    color: color-mix(in oklch, var(--ai-from) 55%, var(--ink));
+    /* two-layer bg: gradient FILL clipped to padding-box + gradient BORDER on border-box */
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--ai-via) 11%, var(--surface-1)),
+        color-mix(in oklch, var(--ai-to) 6%, var(--surface-1))
+      )
+      padding-box,
+      linear-gradient(
+        135deg,
+        color-mix(in oklch, var(--ai-from) 60%, transparent),
+        color-mix(in oklch, var(--ai-via) 24%, transparent) 45%,
+        color-mix(in oklch, var(--ai-to) 55%, transparent)
+      )
+      border-box;
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, white 10%, transparent),
+      0 1px 2px -1px color-mix(in oklch, var(--ai-glow) 45%, transparent);
+    transition:
+      transform 160ms cubic-bezier(0.2, 0, 0.2, 1),
+      box-shadow 160ms ease,
+      background 160ms ease,
+      color 160ms ease;
+  }
+  .ai-chip:hover {
+    transform: translateY(-1px);
+    color: color-mix(in oklch, var(--ai-from) 72%, var(--ink));
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--ai-via) 18%, var(--surface-1)),
+        color-mix(in oklch, var(--ai-to) 10%, var(--surface-1))
+      )
+      padding-box,
+      linear-gradient(
+        135deg,
+        color-mix(in oklch, var(--ai-from) 85%, transparent),
+        color-mix(in oklch, var(--ai-via) 40%, transparent) 45%,
+        color-mix(in oklch, var(--ai-to) 80%, transparent)
+      )
+      border-box;
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, white 14%, transparent),
+      0 8px 20px -10px var(--ai-glow),
+      0 2px 6px -3px color-mix(in oklch, var(--ai-glow) 60%, transparent);
+  }
+  .ai-chip:active {
+    transform: translateY(0);
+    box-shadow:
+      inset 0 1px 2px 0 color-mix(in oklch, var(--ai-glow) 28%, transparent),
+      0 1px 2px -1px color-mix(in oklch, var(--ai-glow) 45%, transparent);
+  }
+  .ai-chip:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface-1),
+      0 0 0 4px color-mix(in oklch, var(--ai-from) 45%, transparent),
+      0 8px 20px -10px var(--ai-glow);
+  }
+  .ai-chip svg {
+    color: var(--ai-from);
+    transition: transform 160ms cubic-bezier(0.2, 0, 0.2, 1);
+  }
+  .ai-chip:hover svg {
+    transform: scale(1.08);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ai-chip,
+    .ai-chip svg {
+      transition: none;
+    }
+    .ai-chip:hover {
+      transform: none;
+    }
+    .ai-chip:hover svg {
+      transform: none;
+    }
+  }
+
+  /* ── THE VYTAL LOADER — "the intelligent layer, thinking" ─────────────────────────────────
+     Same token family as .ai-surface / .ai-badge (blue→violet), so the wait reads as Vytal
+     composing rather than a generic spinner. Two motions compose it: a gradient ARC orbiting a
+     breathing spark (thinking), beside a rotating STATUS LINE whose text the same gradient
+     sweeps through (.ai-text-shimmer, below). All motion is halted by the global
+     prefers-reduced-motion rule; the component ALSO drops the sweep and the crossfade there,
+     keeping the text itself (see vytal-loader.tsx). */
+  .ai-orbit {
+    position: relative;
+    border-radius: 999px;
+    box-shadow: 0 0 16px -4px var(--ai-glow); /* soft ambient bloom around the spark */
+  }
+  /* the sweeping gradient arc — a masked conic ring with a transparent gap, rotating */
+  .ai-orbit::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      color-mix(in oklch, var(--ai-from) 85%, transparent) 95deg,
+      color-mix(in oklch, var(--ai-via) 70%, transparent) 180deg,
+      color-mix(in oklch, var(--ai-to) 92%, transparent) 275deg,
+      transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: aiOrbit 1.4s linear infinite;
+  }
+  .ai-orbit__spark {
+    color: var(--ai-from);
+    animation: aiBreathe 1.9s ease-in-out infinite;
+  }
+  /* the chat composer field — a considered AI focus state (blue→violet identity), shared by the discuss
+     sheet AND the chat page/hero so the "message Vytal" input reads the same everywhere. Quiet at rest;
+     on focus a cool-blue border + a soft focus ring + a faint ambient lift. Motion is stilled by the
+     global prefers-reduced-motion rule. */
+  .chat-composer-field {
+    border: 1px solid var(--line2);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+  }
+  .chat-composer-field:focus-within {
+    border-color: color-mix(in oklch, var(--ai-from) 50%, var(--line3));
+    box-shadow:
+      0 0 0 3px color-mix(in oklch, var(--ai-from) 12%, transparent),
+      0 10px 30px -18px var(--ai-glow);
+  }
+
+  /* the generation status line — the same blue→violet sweep the loader's placeholder bars used to carry,
+     now travelling THROUGH the words instead of behind them (background-clip: text), because the loader
+     shows real text now. Reuses @keyframes shimmer, so the orbit and the sweep stay one motion family.
+     ⚠ Slower than the old bars (2.6s vs 1.8s): a sweep over READABLE text has to stay under the reading,
+     not compete with it. Never applied under reduced motion — the component drops the class rather than
+     leaving transparent text lit by a frozen gradient (see vytal-loader.tsx). */
+  .ai-text-shimmer {
+    /* inline-block so the background box is the TEXT's own box and background-size:200% means 200% of
+       the words — on a bare inline span the box can collapse or split across line boxes and the sweep
+       either stalls or renders in the wrong place. */
+    display: inline-block;
+    /* The dim base has to read as "not settled yet" against the bright travelling band — that contrast
+       IS the loading signal. Base sits at --ink3 (dimmer than the --ink2 that settled copy uses); the
+       band peaks at the AI hues lifted toward --ink, so it is clearly brighter in dark mode and clearly
+       more saturated in light mode. The flat runs at each end make the 200% tile seamless when it
+       repeats, so the sweep is continuous rather than jumping every cycle. */
+    background-image: linear-gradient(
+      100deg,
+      var(--ink3) 0%,
+      var(--ink3) 34%,
+      color-mix(in oklch, var(--ai-from) 55%, var(--ink)) 46%,
+      color-mix(in oklch, var(--ai-to) 45%, var(--ink)) 54%,
+      var(--ink3) 66%,
+      var(--ink3) 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* @keyframes shimmer runs background-position 0 → -200%, which moves the image RIGHT — i.e. the band
+       travels left-to-right, with the reading. 2.2s so a full pass completes inside a median 2–4s turn:
+       any slower and a short turn shows a band that never visibly arrives. */
+    animation: shimmer 2.2s linear infinite;
+  }
+
   /* dotted / grid backdrops */
   .bg-grid {
     background-image: linear-gradient(
@@ -509,6 +774,23 @@
 @keyframes shimmer {
   to {
     background-position: -200% 0;
+  }
+}
+/* Vytal loader — the orbiting arc + the breathing spark (see .ai-orbit) */
+@keyframes aiOrbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes aiBreathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
   }
 }
 @keyframes marquee {

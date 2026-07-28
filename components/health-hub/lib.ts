@@ -4,7 +4,7 @@
 // reused from the stock-health shared.tsx — these are the Hub-specific reads.
 
 import { healthLabel } from "@/lib/format";
-import { findingName } from "@/lib/finding-names";
+import { findingName } from "@/lib/findings/descriptions";
 import type { LabelBand, PillarKey } from "@/types/health";
 import type {
   UniverseHealthView,

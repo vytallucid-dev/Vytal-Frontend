@@ -159,6 +159,12 @@ function PathologyCard({ p }: { p: PreparedCensus }) {
         <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: a.color }} />
       </div>
       <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
+      {/* Static, rule-level description — what this pathology MEANS about the company
+          (title-only when the catalog has no entry, never a filler sentence). */}
+      {p.description && <p className="mt-2 text-[11.5px] leading-relaxed text-ink2">{p.description}</p>}
+      {/* The interpretive boundary — every card carries one. */}
+      <p className="mt-1.5 border-l-2 border-line2 pl-2 text-[10.5px] italic text-ink3">{p.doesntMean}</p>
+      {/* The existing reach note (kept). */}
       <div className="mt-1.5 text-[11px] italic text-ink3">
         {pathologyRead(p.reach, p.memberCount, p.outOf)}
       </div>

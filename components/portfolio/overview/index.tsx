@@ -4,7 +4,7 @@ import { Reveal } from "@/components/ui/reveal";
 import { SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { Icons } from "@/lib/icons";
 import type { Holding, HoldingsTotals, PortfolioSnapshot } from "@/types/portfolio";
-import type { PortfolioTab } from "../tabs";
+import { FLAGS_SECTION_ID, type OpenTab } from "../tabs";
 import { activeSignals } from "../health/lib";
 import { ValueHero } from "./value-hero";
 import { HealthBand } from "./health-band";
@@ -31,7 +31,7 @@ export function OverviewTab({
   snapshot: PortfolioSnapshot | null;
   holdings: Holding[];
   totals: HoldingsTotals;
-  onOpenTab: (tab: PortfolioTab) => void;
+  onOpenTab: OpenTab;
 }) {
   // The health area is THREE distinct questions, so it reads as three labeled sections (current
   // state → attention → history) — the same "separate the reads" principle as the Health tab.
@@ -70,7 +70,8 @@ export function OverviewTab({
             accent={attentionAccent}
           />
           <Reveal>
-            <RedFlagStrip snapshot={snapshot} onOpenHealth={() => onOpenTab("health")} />
+            {/* land ON the flags section, not the tab top — the ledger there now names each flag */}
+            <RedFlagStrip snapshot={snapshot} onOpenHealth={() => onOpenTab("health", FLAGS_SECTION_ID)} />
           </Reveal>
         </>
       )}

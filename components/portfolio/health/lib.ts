@@ -82,6 +82,12 @@ export function flaggedSymbols(s: PortfolioSnapshot): Set<string> {
   return new Set(signalsLedger(s).map((e) => e.symbol));
 }
 
+/** symbol → its Signals ledger entry — so a flagged holding can NAME the finding that fired
+ *  (title + read) without re-fetching or recomputing. The superset of `flaggedSymbols` (its keys). */
+export function flaggedEntries(s: PortfolioSnapshot): Map<string, SignalsDeduction> {
+  return new Map(signalsLedger(s).map((e) => [e.symbol, e]));
+}
+
 // ── the Health waterfall (v1.2 — the two-step spine) — Quality anchor, ONE deduction for
 //    active red flags, landing at Health. Reconciled from the stored Signals pillar, NOT
 //    recomputed. Nothing about construction or coverage enters here — that is the whole

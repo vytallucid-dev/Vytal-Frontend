@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Reveal } from "@/components/ui/reveal";
 import { SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { Icons } from "@/lib/icons";
@@ -61,6 +62,8 @@ export function HealthTab({
   disclosure,
   referenceFindings,
   onOpenTab,
+  scrollTo,
+  onScrolled,
 }: {
   snapshot: PortfolioSnapshot | null;
   holdings: Holding[];
@@ -70,7 +73,25 @@ export function HealthTab({
    *  Reference-only, always-on; rendered in its own "what we can't tell you" section. */
   referenceFindings?: PfFinding[];
   onOpenTab?: (t: PortfolioTab) => void;
+  /** A section anchor id (e.g. FLAGS_SECTION_ID) to scroll into view once this tab renders — set when a
+   *  pointer opened the tab targeting a section. `onScrolled` clears it so it fires once. */
+  scrollTo?: string | null;
+  onScrolled?: () => void;
 }) {
+  // Deep-link scroll: when the tab opens with a target section, bring that section into view after the
+  // DOM commits (rAF), then clear the target (fire-once). Runs unconditionally to respect hook ordering;
+  // a missing anchor (no scored book) simply clears. onScrolled via ref so an inline handler doesn't churn deps.
+  const onScrolledRef = useRef(onScrolled);
+  onScrolledRef.current = onScrolled;
+  useEffect(() => {
+    if (!scrollTo) return;
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(scrollTo)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      onScrolledRef.current?.();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [scrollTo]);
+
   // pending: no snapshot persisted yet (fresh book, before its first mutation / rescore)
   if (!snapshot) return <PreparingState />;
 

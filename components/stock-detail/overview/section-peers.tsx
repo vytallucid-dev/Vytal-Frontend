@@ -22,6 +22,7 @@ import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { usePeerGroupHealth } from "@/lib/api/hooks/use-peer-group-health";
 import type { PeerGroupHealthView } from "@/types/peer-group";
 import { getMetricLabel } from "@/lib/health/metric-labels";
+import { roundScore } from "@/lib/format";
 import { Panel, BAND_META } from "../health/shared";
 import { Section, HonestEmpty, LoadingBlock, fmtByUnit } from "./shared";
 
@@ -203,7 +204,7 @@ export function PeersSection({ symbol }: { symbol: string }) {
                     ))}
                     <td className="px-4 py-3 text-right">
                       <span className={cn("num inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px]", band.bg, band.border, band.text)}>
-                        {m.composite.toFixed(1)}
+                        {roundScore(m.composite)}
                         <span className="text-[10px]">{band.label}</span>
                       </span>
                     </td>

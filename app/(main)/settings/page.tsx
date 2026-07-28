@@ -14,6 +14,8 @@ import { motion } from "framer-motion";
 import { Reveal } from "@/components/ui/reveal";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
+import { AiExplanationStyle } from "@/components/settings/ai-explanation-style";
+import { ClearActivityData } from "@/components/settings/clear-activity";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Icons, type Icon } from "@/lib/icons";
 import { formatINR } from "@/lib/format";
@@ -161,6 +163,18 @@ export default function SettingsPage() {
           </p>
         </div>
       </motion.section>
+
+      {/* ── AI explanation style — a REAL, persisting preference (closes the onboarding promise). Its
+             own card, above the notification toggles, so it never reads as one of the fake ones. ── */}
+      <Reveal>
+        <AiExplanationStyle />
+      </Reveal>
+
+      {/* ── Clear activity data — a real, destructive privacy control (clears behaviour tracking only;
+             never holdings/watchlist/alerts/transactions). Its own card, beside the AI style control. ── */}
+      <Reveal>
+        <ClearActivityData />
+      </Reveal>
 
       {/* ── Preferences + Account ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

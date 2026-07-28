@@ -13,8 +13,9 @@
 
 // ── families (File 1 §5 A→I) ──────────────────────────────────────────────────
 // A red flags · B deterioration · C divergence · D recovery · E patterns ·
-// F composition · G convergence · H ownership events · I band transition.
-export type Family = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
+// F composition · G convergence · H ownership events · I band transition ·
+// N notable (constructive mirrors — DISPLAY-ONLY; never touches scoring/persistence).
+export type Family = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "N";
 
 // The four design-token accents (globals.css --crit / --high / --rec / --ctx).
 export type Accent = "crit" | "high" | "rec" | "ctx";
@@ -22,9 +23,12 @@ export type Accent = "crit" | "high" | "rec" | "ctx";
 // File 1 §5E — the three mandatory pattern display states.
 export type DisplayState = "active" | "pending_data_integration" | "dampened";
 
-// Hub-Flags concern tiers (File 2 §5). Structural cards (divergence/trajectory/
-// composition) are not part of File 2's pattern-by-concern taxonomy → "other".
-export type Concern = "ownership" | "fundamentals" | "momentum" | "other";
+// Hub-Flags concern tiers (File 2 §5) + the "trajectory" bucket the catalog assigns to the
+// structural cards (divergence / trajectory / composition) so they reach the Hub board
+// instead of being orphaned. concernOf() below is the LEGACY key-shape fallback and never
+// returns "trajectory"; the authoritative concern is the catalog's (findingConcern), applied
+// in index.ts's census mapping — see `concernFor()`. "other" remains for truly-unknown keys.
+export type Concern = "ownership" | "fundamentals" | "momentum" | "trajectory" | "other";
 
 /**
  * Map a canonical finding key to its File-1 §5 family. The engine writes every
@@ -40,6 +44,10 @@ export function familyOf(key: string): Family {
   if (key.startsWith("trajectory_I_")) return "I";
   if (key.startsWith("trajectory_F2_") || key.startsWith("composition_F1_")) return "F";
   if (key.startsWith("ownership_H_")) return "H";
+  // Notable (N) constructive mirrors — e.g. foundation_N1_cash_backed. `_N\d+_` needs a digit
+  // after N, so it cannot match `_NG…` any more than `_P\d+_` matches `_PG3_`; placed before the
+  // `_P\d+_` / fallthrough tests so an N key can never be shadowed into E.
+  if (/_N\d+_/.test(key)) return "N";
   if (/_P\d+_/.test(key)) return "E"; // ownership/foundation/momentum P-patterns
   return "E"; // unknown pattern → safest bucket (still rendered, never dropped)
 }
@@ -63,7 +71,11 @@ const ACCENT_BY_SEVERITY: Record<string, Accent> = {
   positive: "rec",
 };
 
-export function accentOf(severity: string | null | undefined): Accent {
+// Family N (Notable) always takes the constructive accent (the same one `rec` yields), REGARDLESS
+// of persisted severity — a READ-LAYER mapping only. N never persists an engine severity token
+// (it's display-only), so its tone is decided here at read time, not in the scored/persisted path.
+export function accentOf(severity: string | null | undefined, family?: Family): Accent {
+  if (family === "N") return "rec";
   return ACCENT_BY_SEVERITY[(severity ?? "").toLowerCase()] ?? "ctx";
 }
 
@@ -83,7 +95,9 @@ function isWideTier(severity: string | null | undefined): boolean {
 // 1 red flags · 2 deterioration · 3 divergence-WIDE · 4 recovery · 5 divergence-
 // NOTABLE · 6 patterns · 7 composition · 8 convergence · 9 ownership events ·
 // 10 band transition.  "risk before opportunity, signal before context."
-const BASE_RANK: Record<Family, number> = { A: 1, B: 2, C: 3, D: 4, E: 6, F: 7, G: 8, H: 9, I: 10 };
+// N sits LAST — a constructive, display-only mirror is the least urgent, quietest context, so it
+// orders after the informational band-transition (I), well clear of the loud risk-first region.
+const BASE_RANK: Record<Family, number> = { A: 1, B: 2, C: 3, D: 4, E: 6, F: 7, G: 8, H: 9, I: 10, N: 11 };
 export function orderRankOf(key: string, severity: string | null | undefined): number {
   const fam = familyOf(key);
   if (fam === "C") return isWideTier(severity) ? 3 : 5; // wide → slot 3, notable → slot 5
@@ -112,6 +126,9 @@ export function compareFindings(
 
 // ── density (File 1 §5 — this IS the triage signal; build exactly) ─────────────
 export type Density = "loud" | "quiet" | "empty";
+// N (Notable) is deliberately ABSENT — a constructive mirror is QUIET context and must never push the
+// page into the loud "look hard" density state. (Before N was its own family it fell through to E and
+// would have read as loud; that is exactly the inversion this wiring exists to prevent.)
 const LOUD_FAMILIES: Family[] = ["A", "B", "C", "D", "E"];
 
 /** Loud when ANY of families A–E fire; quiet when only F–I fire; empty when none. */
@@ -145,7 +162,10 @@ export function isPriceLinked(key: string): boolean {
 // ── concern tier (File 2 §5 Hub Flags — Ownership / Fundamentals / Momentum) ───
 export function concernOf(key: string): Concern {
   const fam = familyOf(key);
-  if (fam !== "A" && fam !== "E") return "other"; // structural cards aren't a File-2 pattern concern
+  // A / E, and now N (constructive mirrors), resolve to a real concern via the key prefix; structural
+  // cards aren't a File-2 pattern concern. N MUST be admitted here — before it became a real family it
+  // resolved only by accident (landing in E); creating the family would otherwise orphan it to "other".
+  if (fam !== "A" && fam !== "E" && fam !== "N") return "other";
   const k = key.toLowerCase();
   if (k.startsWith("ownership")) return "ownership";
   if (k.startsWith("momentum")) return "momentum";

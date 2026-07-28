@@ -6,8 +6,9 @@ import { Reveal } from "@/components/ui/reveal";
 import { QuerySkeleton } from "@/components/ui/query-skeleton";
 import { QueryError } from "@/components/ui/query-error";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
-import { Panel } from "./shared";
+import { Panel, BAND_META } from "./shared";
 import { VerdictHero } from "./verdict-section";
+import { DiscussTrigger } from "@/components/discuss/discuss-trigger";
 import { RideSection } from "./ride-section";
 import { PeerSection } from "./peer-section";
 import { AnatomySection } from "./anatomy-section";
@@ -56,6 +57,21 @@ export default function HealthScore() {
       <Reveal>
         <VerdictHero identity={identity} verdict={verdict} pillars={pillars} />
       </Reveal>
+
+      {/* THE READ moved to a deterministic pattern library (built separately) — AI card generation was
+          removed. What remains here is the entry point to the AI chat we're about to build: a subtle
+          "Discuss this read" affordance under the verdict. It needs only the symbol + band (no fetch);
+          the sheet stays a stub until the chat is wired. */}
+      <div className="flex justify-end">
+        <DiscussTrigger
+          context={{
+            surface: "stock_health",
+            subject: { kind: "stock", symbol: identity.symbol },
+            label: "Discuss this read",
+            detail: { band: BAND_META[verdict.label.band].label },
+          }}
+        />
+      </div>
 
       {foundation && (
         <Reveal>

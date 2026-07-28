@@ -14,10 +14,18 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Icons, type Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { AlertsBell } from "@/components/alerts/alerts-bell";
+import { useSidekick, useSidekickActions } from "@/components/sidekick/sidekick-provider";
 import { useMe } from "@/lib/api/hooks/use-me";
 import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
+import {
+  useFundSearch,
+  FUND_SEARCH_MIN_Q,
+} from "@/lib/api/hooks/use-funds-browse";
 import { BAND_META } from "@/components/stock-detail/health/shared";
+import { DASH, toneColor } from "@/components/stock-detail/overview/shared";
+import { toNum, fmtFractionPct } from "@/lib/fund-format";
 import type { UniverseStockLite } from "@/types/research-tools";
+import type { FamilyRow } from "@/types/funds-browse";
 
 type Route = {
   title: string;
@@ -35,6 +43,12 @@ const routes: Route[] = [
     title: "Dashboard",
     url: "/dashboard",
     icon: Icons.dashboard,
+    group: "Overview",
+  },
+  {
+    title: "Ask Vytal",
+    url: "/chat",
+    icon: Icons.chat,
     group: "Overview",
   },
   {
@@ -119,8 +133,10 @@ const routes: Route[] = [
   },
 ];
 
-const MAX_STOCK_RESULTS = 7; // matches while searching
+const MAX_STOCK_RESULTS = 10; // matches while searching
 const MAX_STOCK_SUGGESTIONS = 6; // top-rated shown before any query
+const MAX_FUND_RESULTS = 10; // funds/ETFs shown while searching
+const FUND_DEBOUNCE_MS = 180; // funds are a network round-trip; stocks are a cached array
 
 // Rank a stock against the query: symbol exact/prefix beat name prefix beat
 // substring matches; -1 means no match. Lower rank sorts first.
@@ -133,6 +149,22 @@ function stockRank(s: UniverseStockLite, q: string): number {
   if (sym.includes(q)) return 3;
   if (name.includes(q)) return 4;
   return -1;
+}
+
+// Rank a fund family within the page the server already matched (it filters on
+// name-OR-house contains, then orders by name). A name hit beats a fund-house hit,
+// so typing a fund's own name doesn't sit behind every other scheme from the house
+// that happens to sort earlier. No -1 arm: every row here matched server-side, so an
+// unrecognised shape falls to the back rather than being dropped. Equal ranks keep the
+// server's alphabetical order — this is a catalogue, not a return leaderboard.
+function fundRank(r: FamilyRow, q: string): number {
+  const name = r.canonicalName.toLowerCase();
+  const house = r.fundHouse.toLowerCase();
+  if (name === q) return 0;
+  if (name.startsWith(q)) return 1;
+  if (name.includes(q)) return 2;
+  if (house.startsWith(q)) return 3;
+  return 4;
 }
 
 function usePageMeta() {
@@ -211,17 +243,84 @@ function StockRow({
   );
 }
 
+/** A fund/ETF family row — family grain, so it lands on the server-resolved representative
+ *  plan, exactly like the discovery grid's card. Funds carry no health score, so the trailing
+ *  figure is the factual 1-year return (coloured by sign only); a null shows a dash carrying
+ *  the omission code in its title, never a fabricated 0. */
+function FundRow({ row, onSelect }: { row: FamilyRow; onSelect: () => void }) {
+  const isEtf = row.assetClass === "etf";
+  const RowIcon = isEtf ? Icons.chartLine : Icons.coins;
+  const ret = toNum(row.returns.ret1y);
+  return (
+    <CommandItem
+      value={`fund ${row.familyId} ${row.canonicalName}`}
+      onSelect={onSelect}
+      className={ITEM_CLS}
+    >
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-3 text-ink3">
+        <RowIcon weight="duotone" className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] font-medium text-ink">
+            {row.canonicalName}
+          </span>
+          {isEtf && (
+            <span className="shrink-0 rounded border border-line2 px-1 py-px text-[8.5px] font-medium text-ink3">
+              ETF
+            </span>
+          )}
+        </span>
+        <span className="block truncate text-[11px] text-ink3">
+          {row.fundHouse}
+          {row.categoryLeaf ? ` · ${row.categoryLeaf}` : ""}
+        </span>
+      </span>
+      <span className="shrink-0 text-right">
+        {ret !== null ? (
+          <span
+            className="num block text-[12px] font-semibold"
+            style={{ color: toneColor(ret) }}
+          >
+            {fmtFractionPct(ret)}
+          </span>
+        ) : (
+          <span
+            className="num block text-[12px] text-ink3"
+            title={row.returnOmissions.ret1y ?? "no value"}
+          >
+            {DASH}
+          </span>
+        )}
+        <span className="block text-[9px] text-ink3">1-year</span>
+      </span>
+    </CommandItem>
+  );
+}
+
 const Navbar = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const page = usePageMeta();
   const PageIcon = page.icon;
   const { isAdmin } = useMe();
+  // The sidekick toggle. `open` comes from the state context (it drives the pressed look), `toggle` from
+  // the stable actions one. Hidden on /chat — that page IS the conversation at full width, so a button
+  // offering to open a narrower copy of it beside itself has nothing to mean.
+  const { open: sidekickOpen } = useSidekick();
+  const { toggle: toggleSidekick } = useSidekickActions();
+  const onChatPage = pathname === "/chat" || pathname.startsWith("/chat/");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   // Full tracked universe (scored + not-yet-scored) — the same source the screener
   // typeahead uses, cached app-wide, so opening the palette is instant.
   const { data: universe, isLoading: stocksLoading } = useUniverseStocks();
+
+  // Funds/ETFs are a per-term server round-trip (the catalogue is far too large to ship to the
+  // client the way the stock universe is), so the term is debounced before it leaves the box.
+  const [fundQuery, setFundQuery] = useState("");
+  const { data: fundData, isFetching: fundsFetching } = useFundSearch(fundQuery);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -235,6 +334,11 @@ const Navbar = () => {
   }, []);
 
   const q = query.trim().toLowerCase();
+
+  useEffect(() => {
+    const t = setTimeout(() => setFundQuery(q), FUND_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [q]);
 
   const go = (url: string) => {
     router.push(url);
@@ -276,7 +380,28 @@ const Navbar = () => {
       .map((x) => x.s);
   }, [universe, q]);
 
-  const hasResults = stockResults.length > 0 || pageGroups.length > 0;
+  // Funds/ETFs — the server already filtered (name OR fund house contains the term) and ordered by
+  // name; we only re-rank that page so a name hit leads a fund-house hit, then keep the top few.
+  // Guarded on the debounced term's own length because `keepPreviousData` would otherwise hold the
+  // last resolved term's hits on screen after the user deletes back below the minimum.
+  const fundResults = useMemo(() => {
+    if (fundQuery.length < FUND_SEARCH_MIN_Q) return [];
+    return (fundData?.results ?? [])
+      .map((r, i) => ({ r, rank: fundRank(r, fundQuery), i }))
+      .sort((a, b) => a.rank - b.rank || a.i - b.i)
+      .slice(0, MAX_FUND_RESULTS)
+      .map((x) => x.r);
+  }, [fundData, fundQuery]);
+
+  const hasResults =
+    stockResults.length > 0 || fundResults.length > 0 || pageGroups.length > 0;
+
+  // True while a leg of the search is still outstanding for the CURRENT term — the debounce not yet
+  // settled counts, so we never claim "nothing matches" for a term the funds endpoint hasn't been
+  // asked about yet.
+  const searching =
+    (stocksLoading && !universe) ||
+    (q.length >= FUND_SEARCH_MIN_Q && (fundQuery !== q || fundsFetching));
 
   const stocksBlock =
     stockResults.length > 0 ? (
@@ -290,6 +415,25 @@ const Navbar = () => {
             s={s}
             onSelect={() =>
               go(`/research/stock-screener/${encodeURIComponent(s.symbol)}`)
+            }
+          />
+        ))}
+      </CommandGroup>
+    ) : null;
+
+  // Family grain — the row routes to the SERVER-resolved representative plan, the same target the
+  // discovery card uses, so the palette and the detail page can't disagree about which plan opened.
+  const fundsBlock =
+    fundResults.length > 0 ? (
+      <CommandGroup heading="Funds & ETFs" className={GROUP_CLS}>
+        {fundResults.map((row) => (
+          <FundRow
+            key={row.familyId}
+            row={row}
+            onSelect={() =>
+              go(
+                `/research/funds/${encodeURIComponent(row.representativeSchemeCode)}`,
+              )
             }
           />
         ))}
@@ -337,7 +481,7 @@ const Navbar = () => {
       >
         <Icons.search className="size-4" />
         <span className="hidden flex-1 text-left sm:inline">
-          Search stocks, pages…
+          Search stocks, funds, pages…
         </span>
         <kbd className="hidden items-center gap-0.5 rounded border border-border/70 bg-surface-2/70 px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground sm:flex">
           ⌘K
@@ -346,9 +490,25 @@ const Navbar = () => {
 
       <AlertsBell />
 
-      <span className="hidden size-9 shrink-0 place-items-center rounded-full bg-linear-to-br from-primary/40 to-accent/30 text-xs font-bold text-primary-foreground sm:grid">
-        AI
-      </span>
+      {/* ASK VYTAL — the only way into the panel that isn't a card, so it is present at every breakpoint.
+          It replaces the decorative "AI" disc that used to sit here: same slot, same promise, now real.
+          `.ai-chip` is the interactive member of the intelligent-layer family (the badge's sibling), so
+          this reads as the same system as every "Discuss this read" chip on the pages below. */}
+      {!onChatPage && (
+        <button
+          type="button"
+          onClick={toggleSidekick}
+          aria-expanded={sidekickOpen}
+          aria-label={sidekickOpen ? "Close Vytal" : "Ask Vytal"}
+          title={sidekickOpen ? "Close Vytal" : "Ask Vytal"}
+          className={cn(
+            "ai-chip grid size-9 shrink-0 place-items-center rounded-xl",
+            sidekickOpen && "ring-2 ring-ai-from/35",
+          )}
+        >
+          <Icons.spark weight="fill" className="size-[1.05rem]" />
+        </button>
+      )}
 
       <CommandDialog
         open={open}
@@ -363,26 +523,29 @@ const Navbar = () => {
         <CommandInput
           value={query}
           onValueChange={setQuery}
-          placeholder="Search a stock or jump to a page…"
+          placeholder="Search a stock, fund or ETF — or jump to a page…"
         />
         <CommandList className="max-h-[55vh] custom-scrollbar">
           {/* Deterministic empty state — driven by our own results (we rank/filter
               manually with shouldFilter={false}, so cmdk's built-in count is unused). */}
           {!hasResults && (
             <div className="px-3 py-8 text-center text-[13px] text-ink3">
-              {q && stocksLoading && !universe
-                ? "Loading stocks…"
-                : q
-                  ? `No pages or stocks match “${query.trim()}”.`
-                  : "Start typing to search."}
+              {!q
+                ? "Start typing to search."
+                : searching
+                  ? "Searching…"
+                  : `Nothing matches “${query.trim()}”.`}
             </div>
           )}
 
-          {/* Stocks lead when searching (so ⏎ opens the top match); pages lead the
-              resting state as the primary navigation surface. */}
+          {/* Instruments lead when searching (so ⏎ opens the top match), stocks ahead of
+              funds because a ticker match is the sharper signal; pages lead the resting
+              state as the primary navigation surface. Funds never appear at rest — they'd
+              cost a fetch on every page load for a list nobody asked for. */}
           {q ? (
             <>
               {stocksBlock}
+              {fundsBlock}
               {pagesBlock}
             </>
           ) : (

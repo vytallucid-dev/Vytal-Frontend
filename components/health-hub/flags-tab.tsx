@@ -16,20 +16,21 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { getMetricLabel } from "@/lib/health/metric-labels";
-import { prepareCensus, accentVars, type PreparedCensus, type Concern } from "@/lib/findings";
+import {
+  prepareCensus,
+  accentVars,
+  lensCatalogFace,
+  lensDoesntMean,
+  type PreparedCensus,
+  type Concern,
+} from "@/lib/findings";
 import type { UniverseHealthView } from "@/types/universe-view";
 
-// ── lens-pattern label resolver ──────────────────────────────────────────────
+// ── lens-pattern face resolver ────────────────────────────────────────────────
 // The lens census carries dynamic `lens_<id>_<suffix>` keys (id = lm3/lm7/lp2/lp5;
-// suffix = metricKey for LM, pillar for LP). The census has no evidence, so derive the
-// verbatim catalog label + scope + context from the key. Labels mirror the backend
-// LM/LP_CATALOG (Vytal_Three_Lens_Pattern_Library_v1) — descriptive, never predictive.
-const LENS_FACES: Record<string, { label: string; scope: "metric" | "pillar" }> = {
-  lm3: { label: "Below bar — leads a weak field", scope: "metric" },
-  lm7: { label: "Weak on every lens", scope: "metric" },
-  lp2: { label: "Field-lifted", scope: "pillar" },
-  lp5: { label: "Eroding breadth", scope: "pillar" },
-};
+// suffix = metricKey for LM, pillar for LP). The census has no evidence, so we resolve the
+// verbatim face — label · read · doesn't-mean — from the ONE catalog (lens-patterns copy,
+// moved frontend-side). The lens_<id>_<suffix> → uppercase-id transform lives only here.
 const PILLAR_TITLE: Record<string, string> = {
   foundation: "Foundation",
   momentum: "Momentum",
@@ -39,23 +40,27 @@ interface LensMeta {
   lensId: string; // "LM3" | "LM7" | "LP2" | "LP5"
   scope: "metric" | "pillar";
   label: string; // catalog label (card title)
+  read: string; // catalog "Read" — the descriptive body
+  doesntMean: string; // catalog "Doesn't mean" (face, or the family-lens fallback)
   context: string; // the metric label (LM) or pillar name (LP)
 }
 
-/** Parse a `lens_<id>_<suffix>` census key into its display face. Falls back gracefully
- *  for any unknown lens id (future keys still render, never crash). */
+/** Parse a `lens_<id>_<suffix>` census key into its display face, sourced from the catalog.
+ *  Falls back gracefully for any unknown lens id (future keys still render, never crash). */
 function lensMetaOf(key: string): LensMeta {
   const m = /^lens_([a-z]+\d+)_(.+)$/.exec(key);
-  const id = m?.[1] ?? "";
+  const idUpper = (m?.[1] ?? "").toUpperCase();
   const suffix = m?.[2] ?? key;
-  const face = LENS_FACES[id];
-  const scope = face?.scope ?? (id.startsWith("lp") ? "pillar" : "metric");
+  const face = lensCatalogFace(idUpper);
+  const scope: "metric" | "pillar" = idUpper.startsWith("LP") ? "pillar" : "metric";
   const context =
     scope === "pillar" ? (PILLAR_TITLE[suffix] ?? suffix) : getMetricLabel(suffix).label;
   return {
-    lensId: id.toUpperCase(),
+    lensId: idUpper,
     scope,
-    label: face?.label ?? id.toUpperCase(),
+    label: face?.label ?? idUpper,
+    read: face?.read ?? "",
+    doesntMean: lensDoesntMean(idUpper),
     context,
   };
 }
@@ -69,12 +74,6 @@ const FILTERS: { id: FilterId; label: string }[] = [
   { id: "momentum", label: "Momentum" },
   { id: "recovery", label: "Constructive" },
 ];
-
-function flagDescription(key: string): string {
-  if (key === "ownership_R1_pledge")
-    return "Promoter pledged holding has crossed 50% of their stake, or risen sharply in one quarter — a financing-stress signal that overrides the composite. A hard ownership-quality check.";
-  return "An auto-tier red flag that overrides the composite until it clears.";
-}
 
 const SCREENER_HREF = (symbol: string) => `/research/stock-screener/${symbol}`;
 
@@ -194,7 +193,11 @@ function RedFlagCard({ p }: { p: PreparedCensus }) {
       >
         Watch with care
       </span>
-      <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink2">{flagDescription(p.key)}</p>
+      {/* Static, rule-level description — what the flag means ABOUT THE COMPANY. Title-only
+          when the catalog has no entry (never a generic filler sentence). */}
+      {p.description && <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink2">{p.description}</p>}
+      {/* The interpretive boundary — what this does NOT mean. */}
+      <p className="mt-2 border-l-2 border-line2 pl-2.5 text-[11.5px] italic text-ink3">{p.doesntMean}</p>
       <div className="mt-2 flex items-center justify-between gap-3">
         <p className="text-[11.5px] italic text-ink3">
           Reach: {p.reach} ({p.memberCount} of {p.outOf} scored) — {p.reach === "isolated" ? "a single-name concern, not a universe signal." : p.reach === "widespread" ? "a group-wide read, not company-specific." : "a shared cluster worth watching."}
@@ -220,6 +223,11 @@ function PatternCard({ p }: { p: PreparedCensus }) {
           {p.memberCount}/{p.outOf}
         </span>
       </div>
+      {/* Static description — what this pattern MEANS. This is where Insider Conviction /
+          Accruals Divergence / Capital Tied in Receivables / Quarterly Margin Compression
+          finally read as findings about the company. Title-only when absent. */}
+      {p.description && <p className="mt-2 text-[12px] leading-relaxed text-ink2">{p.description}</p>}
+      <p className="mt-2 border-l-2 border-line2 pl-2.5 text-[11px] italic text-ink3">{p.doesntMean}</p>
       <div className="mt-2 flex items-center justify-between gap-3">
         <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
         <InvestigateButton members={p.members} title={p.name} />
@@ -253,6 +261,12 @@ function LensPatternCard({ p }: { p: PreparedCensus }) {
           {p.memberCount}/{p.outOf}
         </span>
       </div>
+      {/* Catalog "Read" — the descriptive body (was dropped by the wire; now sourced here). */}
+      {meta.read && <p className="mt-2 text-[12px] leading-relaxed text-ink2">{meta.read}</p>}
+      {/* The interpretive boundary — field-verdicts are context, never a stock call. */}
+      {meta.doesntMean && (
+        <p className="mt-2 border-l-2 border-line2 pl-2.5 text-[11px] italic text-ink3">{meta.doesntMean}</p>
+      )}
       <div className="mt-2 flex items-center justify-between gap-3">
         <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
         <InvestigateButton members={p.members} title={`${meta.lensId} · ${meta.label}`} />
@@ -303,7 +317,20 @@ const CONCERN_ACCENT: Record<Concern, string> = {
   ownership: "var(--p-own)",
   fundamentals: "var(--p-found)",
   momentum: "var(--p-mom)",
+  trajectory: "var(--p-mkt)",
   other: "var(--ink3)",
+};
+
+// The three concern tiers displayed under Patterns, plus the new "trajectory" bucket that
+// finally surfaces the structural B/C/D/F/G/I cards (deterioration, divergence, recovery,
+// composition, convergence, band transition) the board used to hide under concern "other".
+const PATTERN_CONCERNS: Concern[] = ["ownership", "fundamentals", "momentum", "trajectory"];
+const CONCERN_GROUP_LABEL: Record<Concern, string> = {
+  ownership: "Ownership patterns",
+  fundamentals: "Fundamentals patterns",
+  momentum: "Momentum patterns",
+  trajectory: "Trajectory & divergence",
+  other: "Other",
 };
 
 function FeedStatusCard({
@@ -553,13 +580,13 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
     ownership: [],
     fundamentals: [],
     momentum: [],
+    trajectory: [],
     other: [],
   };
   for (const p of patterns.filter(matches)) patternsByConcern[p.concern].push(p);
-  // Count only the three displayed concern tiers (File 2 §5 — the structural divergence/
-  // trajectory/composition cards are a stock-§5 / Briefing concern, not the warnings console).
-  const matchedPatternCount =
-    patternsByConcern.ownership.length + patternsByConcern.fundamentals.length + patternsByConcern.momentum.length;
+  // Count every displayed concern tier — now INCLUDING trajectory (the structural
+  // deterioration / divergence / recovery / composition cards the board used to hide).
+  const matchedPatternCount = PATTERN_CONCERNS.reduce((n, c) => n + patternsByConcern[c].length, 0);
 
   // by-severity counts (over the shared accent map — crit / high / everything-else)
   const sevCounts = { critical: 0, high: 0, other: 0 };
@@ -570,7 +597,7 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
   }
   const sevMax = Math.max(sevCounts.critical, sevCounts.high, sevCounts.other, 1);
 
-  const concernCounts: Record<Concern, number> = { ownership: 0, fundamentals: 0, momentum: 0, other: 0 };
+  const concernCounts: Record<Concern, number> = { ownership: 0, fundamentals: 0, momentum: 0, trajectory: 0, other: 0 };
   for (const p of prepared) concernCounts[p.concern] += p.memberCount;
   const concernMax = Math.max(...Object.values(concernCounts), 1);
 
@@ -622,21 +649,23 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
           </Tier>
 
           <Tier title="Patterns" count={`${matchedPatternCount} firing`} icon={Icons.stack} accent="var(--p-mkt)">
-            {(["ownership", "fundamentals", "momentum"] as Concern[]).map((c) => (
+            {PATTERN_CONCERNS.map((c) => (
               <div key={c} className="mb-4">
-                <SubEyebrow label={`${c} patterns`} count={`${patternsByConcern[c].length} firing`} accent={CONCERN_ACCENT[c]} />
+                <SubEyebrow label={CONCERN_GROUP_LABEL[c]} count={`${patternsByConcern[c].length} firing`} accent={CONCERN_ACCENT[c]} />
                 {patternsByConcern[c].length > 0 ? (
                   patternsByConcern[c].map((p) => <PatternCard key={p.key} p={p} />)
                 ) : (
                   <div className="rounded-lg border border-line bg-surface-1 px-3 py-2.5 text-[11.5px] text-ink3">
-                    No {c} patterns this snapshot.
+                    {c === "trajectory"
+                      ? "No trajectory or divergence cards this snapshot."
+                      : `No ${c} patterns this snapshot.`}
                   </div>
                 )}
               </div>
             ))}
             {matchedPatternCount === 0 && (
               <p className="mt-0.5 text-[11px] italic text-ink3">
-                Pattern engine is live — all three categories quiet this snapshot.
+                Pattern engine is live — every category quiet this snapshot.
               </p>
             )}
           </Tier>

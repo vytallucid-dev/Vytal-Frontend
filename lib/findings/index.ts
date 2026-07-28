@@ -9,7 +9,6 @@
 
 import type { RedFlagView, PatternView } from "@/types/health";
 import type { PathologyCensusItem, PathologyReach } from "@/types/peer-group";
-import { findingName } from "@/lib/finding-names";
 import {
   accentOf,
   concernOf,
@@ -28,10 +27,21 @@ import {
   type DisplayState,
   type Family,
 } from "./classify";
-import { doesntMean, renderVerdict } from "./verdicts";
+import { doesntMean, findingConcern, findingDescription, findingName } from "./descriptions";
+import { renderVerdict } from "./verdicts";
 
 export * from "./classify";
+export * from "./descriptions";
 export * from "./verdicts";
+export * from "./evidence-shape";
+
+/** The concern bucket for a census row. The CATALOG's assignment wins (it knows the structural
+ *  B/C/D/F/G/I cards belong to "trajectory" and rehomes ownership_H to "ownership"); classify's
+ *  key-shape concernOf is only the fallback for keys the catalog doesn't carry (→ "other"), so a
+ *  known finding is never orphaned. */
+function concernFor(key: string): Concern {
+  return findingConcern(key) ?? concernOf(key);
+}
 
 // ── §5 stock surface ───────────────────────────────────────────────────────────
 export interface PreparedFinding {
@@ -85,15 +95,16 @@ function toFinding(
 ): PreparedFinding {
   const ev = asObj(evidence);
   const priceLinked = isPriceLinked(key);
+  const family = familyOf(key);
   // Lens findings (lens_lm3/lm7/lp2/lp5) carry the verbatim catalog label in evidence;
   // use it as the card name (findingName would mangle the dynamic lens_* key).
   const name = key.startsWith("lens_") && typeof ev?.label === "string" ? (ev.label as string) : findingName(key);
   return {
     key,
-    family: familyOf(key),
+    family,
     kind,
     name,
-    accent: accentOf(severity),
+    accent: accentOf(severity, family),
     severity,
     displayState,
     magnitude,
@@ -182,6 +193,10 @@ export interface PreparedCensus {
   kind: "red_flag" | "pattern";
   concern: Concern;
   name: string;
+  /** Static, rule-level description (catalog). null → the surface renders TITLE ONLY, never filler. */
+  description: string | null;
+  /** The interpretive boundary — every census card must carry one (Rules Spec card anatomy). */
+  doesntMean: string;
   accent: Accent;
   severity: string | null;
   displayState: DisplayState;
@@ -202,13 +217,16 @@ function reachOf(n: number, m: number): PathologyReach {
 }
 
 function toCensus(item: PathologyCensusItem): PreparedCensus {
+  const family = familyOf(item.key);
   return {
     key: item.key,
-    family: familyOf(item.key),
+    family,
     kind: item.kind,
-    concern: concernOf(item.key),
+    concern: concernFor(item.key),
     name: findingName(item.key),
-    accent: accentOf(item.severity),
+    description: findingDescription(item.key),
+    doesntMean: doesntMean(item.key),
+    accent: accentOf(item.severity, family),
     severity: item.severity,
     displayState: (item.displayState as DisplayState) ?? "active",
     memberCount: item.memberCount,
@@ -230,8 +248,10 @@ function consolidateCensusDivergence(rows: PreparedCensus[]): PreparedCensus | n
     key: "divergence_consolidated",
     family: "C",
     kind: "pattern",
-    concern: "other",
+    concern: concernFor("divergence_consolidated"),
     name: "Divergence",
+    description: findingDescription("divergence_consolidated"),
+    doesntMean: doesntMean("divergence_consolidated"),
     accent: lead.accent,
     severity: lead.severity,
     displayState: sorted.find((r) => r.displayState !== "active")?.displayState ?? "active",
