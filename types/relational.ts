@@ -13,7 +13,10 @@
 export type RelationalMode =
   | "M1" | "M2" | "M3" | "M4" | "M5" | "M6" | "M7" | "M8" | "M9" | "M10" | "M11" | "M12";
 
-export type RelationalFamily = "UO" | "UH" | "UN" | "UD" | "UE" | "UG" | "ELEVATED";
+/** `UW` (Watchlist) is a seventh namespace: the reader's watchlist membership fact, which backs the
+ *  WATCHED modes (M5–M8). It is a READER-side family like UH, but deliberately separate — UH's boundary
+ *  language is exposure-based and watchlisting is not exposure. */
+export type RelationalFamily = "UO" | "UH" | "UW" | "UN" | "UD" | "UE" | "UG" | "ELEVATED";
 export type RelationalTemporalClass = "CONDITION" | "TRANSITION" | "CLOCK_EVENT";
 
 /** One resolved slot. Ordering is the backend's arbitration ladder and MUST NOT be re-sorted client-side
@@ -50,6 +53,10 @@ export interface RelationalState {
   slots: ResolvedEntry[]; // ordered, capped by mode — render in order, never re-sort
   overflow: ResolvedEntry[]; // the rest of the standing set, revealed on expand
   negatives: RelationalNegative[]; // AI-layer payload — never rendered
+  /** The ONE slot entry whose `doesntMean` renders as the card's boundary line. THE BACKEND PICKS this
+   *  (UO6 → UO2 → UO3 → first slot) — never re-derive the priority client-side. Always a `slots[]`
+   *  entryId (never `overflow`) when `slots` is non-empty. */
+  boundaryEntryId: string | null;
   meta: {
     resolvedAt: string;
     snapshotGeneration: string | null;

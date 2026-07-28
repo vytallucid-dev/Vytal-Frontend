@@ -6,11 +6,17 @@
  * Every other Overview section describes THE STOCK. This one describes THE READER AND THE STOCK — their
  * position, what connects, what has stood for how long. It reads as a DIFFERENT KIND of object, but it
  * stays firmly IN the theme: it wears the EXACT same cool `.card-hero` surface as the card above it
- * (IdentitySection / Company) — a `--surface` base with the standard cool `--primary` corner glow — the same `Chip`
- * badges, and the same band treatment as the page header. Its only notes of its own are quiet and
- * IN-PALETTE: a serif mode-header (font-display), and the reader-fact markers rendered in the theme's own
- * calm slate context colour (`--ctx`) against neutral object-fact markers. No foreign accent hue, no
- * colour wash, no SectionEyebrow (its mode header IS its label).
+ * (IdentitySection / Company) — a `--surface` base with the standard cool `--primary` corner glow. Its
+ * only notes of its own are quiet and IN-PALETTE: a serif mode-header (font-display), and the reader-fact
+ * markers rendered in the theme's own calm slate context colour (`--ctx`) against neutral object-fact
+ * markers. No foreign accent hue, no colour wash, no SectionEyebrow (its mode header IS its label).
+ *
+ * ── LEAD-AND-SUPPORT, NOT A LIST (§Phase-rebuild) ──────────────────────────────────────────────────────
+ * The card reads as someone telling you something, not a summary of bullet points: no <ul>/<li>, no
+ * bullet dots, no leading markers. The mode header frames it; slot 1 is the LEAD, visually heaviest of
+ * the body, directly under the header; the remaining slots are SUPPORTING — subordinate weight, tighter
+ * spacing, one group beneath the lead rather than peers of it. Gloss stays a quiet line under its claim.
+ * One boundary line at the end, the quietest thing on the card.
  *
  * ── WHAT THIS COMPONENT MAY NOT DO (Overview Pattern Library) ────────────────────────────────────────
  *  · Never author, reword, or re-template a `claim`, `gloss`, or `doesntMean` — they arrive RENDERED
@@ -19,17 +25,17 @@
  *  · Never render `sourceRef`, `entryId`, `family`, or `weight` — opaque routing/telemetry fields.
  *  · Never render `negatives` or `meta.degradations` — the AI-layer payload / coverage record.
  *  · Never put a return / gain / loss / cost-basis figure on the card, from any source (§0.8).
- *  · Badges come from `arithmetic` (structured), never from re-parsing the rendered sentence.
+ *  · Never re-derive the boundary priority — `boundaryEntryId` is the backend's pick (§4).
+ *  · Never re-present a number the claim sentence already carries — the sentence is the whole fact; no
+ *    badge row duplicates it.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
 import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
 import { useRelationalState } from "@/lib/api/hooks/use-relational";
-import { BAND_META } from "../health/shared";
-import { Section, Chip, LoadingBlock } from "./shared";
-import type { LabelBand } from "@/types/health";
+import { Section, LoadingBlock } from "./shared";
 import type { ResolvedEntry } from "@/types/relational";
 
 // The section's own identity in the Overview stack — "Vytal Read" (the reader's read of the stock: their
@@ -39,95 +45,12 @@ const SECTION_ID = "overview-relational";
 const SECTION_LABEL = "Vytal Read";
 const SECTION_ACCENT = "var(--ctx)";
 
-// The page header's band-badge treatment, verbatim — a card that renders "Steady 64" louder than the
-// header would be editorialising by emphasis, so it reuses the exact same colour recipe (§4).
-const BAND_BADGE: Record<LabelBand, string> = {
-  pristine: "border-pristine/30 bg-pristine/10 text-pristine",
-  healthy: "border-healthy/30 bg-healthy/10 text-healthy",
-  steady: "border-steady/30 bg-steady/10 text-steady",
-  below_par: "border-below/30 bg-below/10 text-below",
-  fragile: "border-fragile/30 bg-fragile/10 text-fragile",
-};
-
-// ── small formatters (mirror the backend so a badge matches the claim's own string) ─────────────────
-const trim1 = (n: number) => {
-  const o = Math.round(n * 10) / 10;
-  return Number.isInteger(o) ? `${o}` : o.toFixed(1);
-};
-/** Indian short money — ₹2.4 lakh · ₹40 crore · ₹18,000. Mirrors the backend `formatINR`. */
-function fmtINRShort(v: number): string {
-  const x = Math.round(v);
-  if (x >= 1_00_00_000) return `₹${trim1(x / 1_00_00_000)} crore`;
-  if (x >= 1_00_000) return `₹${trim1(x / 1_00_000)} lakh`;
-  return `₹${x.toLocaleString("en-IN")}`;
-}
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
-}
-const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
-const isLabelBand = (b: unknown): b is LabelBand =>
-  b === "fragile" || b === "below_par" || b === "steady" || b === "healthy" || b === "pristine";
-
-/** Reader-fact vs object-fact (§5): the UH family plus UO4 are facts about the reader's OWN book; the
- *  rest are facts about the object. Derived from `family` (UO4 is the one documented UO exception — the
- *  single reader-fact among a stranger's orientation lines). `family` itself is never rendered. */
-const isReaderFact = (e: ResolvedEntry) => e.family === "UH" || e.entryId === "UO4";
-
-// ═══════════════════════════════════════════════════════════════════════════════════════════════════
-// Badges — quantities a reader SCANS, lifted from `arithmetic`, ≤3 per slot. Built on the app's own
-// `Chip` (neutral pill) so they read exactly like every other Overview chip; the band badge alone wears
-// the page header's band colours. Never a full clause, the header, or the boundary.
-// ═══════════════════════════════════════════════════════════════════════════════════════════════════
-
-function BandBadge({ composite, band }: { composite: number; band: LabelBand }) {
-  return (
-    <Chip className={cn("gap-1 font-medium", BAND_BADGE[band])}>
-      <span className="num">{Math.round(composite)}</span>
-      <span className="opacity-50">·</span>
-      {BAND_META[band].label}
-    </Chip>
-  );
-}
-
-/** The badge set for one entry, from its `arithmetic` (+ standingSince). Order: value, weight, rank,
- *  health+band, duration — capped at 3. */
-function badgesFor(e: ResolvedEntry): ReactNode[] {
-  const a = e.arithmetic ?? {};
-  const out: ReactNode[] = [];
-
-  // Money + weight (a position claim). Never a return / gain / loss / basis — `value` is market value.
-  const value = num(a.value);
-  if (value != null && value > 0) {
-    out.push(<Chip key="val" tone="accent"><span className="num">{fmtINRShort(value)}</span></Chip>);
-  }
-  const weightPct = num(a.weightPct);
-  if (weightPct != null && weightPct > 0 && e.family === "UH") {
-    out.push(<Chip key="wt" tone="accent"><span className="num">{weightPct}%</span>&nbsp;of book</Chip>);
-  }
-
-  // Rank / scale.
-  const rank = num(a.rank);
-  if (rank != null && rank >= 1) out.push(<Chip key="rank" tone="accent">{ordinal(rank)}-largest</Chip>);
-  else if (e.entryId === "UH3" && weightPct != null) out.push(<Chip key="heavy" tone="accent">heavy</Chip>);
-
-  // Health score + band — one badge, the page header's band treatment.
-  const composite = num(a.composite);
-  if (composite != null && isLabelBand(a.band)) out.push(<BandBadge key="hb" composite={composite} band={a.band} />);
-
-  // Duration — the standingSince label (a fact about persistence, quiet + monospace).
-  if (e.standingSince) {
-    out.push(
-      <Chip key="dur">
-        <Icons.clock className="h-3 w-3" />
-        <span className="num">{e.standingSince.label}</span>
-      </Chip>,
-    );
-  }
-
-  return out.slice(0, 3);
-}
+/** Reader-fact vs object-fact (§5): the UH and UW families plus UO4 are facts about the reader's OWN
+ *  book or list; the rest are facts about the object. Derived from `family` (UO4 is the one documented
+ *  UO exception — the single reader-fact among a stranger's orientation lines). `family` itself is never
+ *  rendered. UW is the watchlist namespace: reader-side like UH, but a separate family because UH's
+ *  boundary language is exposure-based and watchlisting is not exposure. */
+const isReaderFact = (e: ResolvedEntry) => e.family === "UH" || e.family === "UW" || e.entryId === "UO4";
 
 function NewPill() {
   // "New" — an annotation, never a reordering (§4.4). Tinted with the theme's own slate context colour.
@@ -141,36 +64,46 @@ function NewPill() {
   );
 }
 
-function SlotRow({ entry }: { entry: ResolvedEntry }) {
+/** The card's LEAD claim — visually heaviest of the body, directly under the header. */
+function LeadLine({ entry }: { entry: ResolvedEntry }) {
   const reader = isReaderFact(entry);
-  const badges = badgesFor(entry);
   return (
-    <li className="flex gap-2.5">
-      {/* leading marker — reader-fact takes the card's calm slate accent, object-fact stays neutral (§5). */}
+    <div className="mt-3 flex gap-2">
       <span
         aria-hidden
-        className="mt-1.75 h-1.5 w-1.5 shrink-0 rounded-full"
+        className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full"
         style={{ background: reader ? "var(--ctx)" : "var(--ink3)" }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-[14.5px] font-medium leading-relaxed text-ink">
+          {entry.claim}
+          {entry.isNewSinceLastLook && <NewPill />}
+        </p>
+        {entry.gloss && <p className="mt-1 text-[12px] leading-relaxed text-ink3">{entry.gloss}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** A supporting claim — subordinate weight, tighter spacing, part of the group beneath the lead. */
+function SupportLine({ entry }: { entry: ResolvedEntry }) {
+  const reader = isReaderFact(entry);
+  return (
+    <div className="flex gap-2">
+      <span
+        aria-hidden
+        className="mt-1.5 h-1.25 w-1.25 shrink-0 rounded-full"
+        style={{ background: reader ? "var(--ctx)" : "var(--ink3)", opacity: 0.7 }}
       />
       <div className="min-w-0 flex-1">
         <p className="text-[13px] leading-relaxed text-ink2">
           {entry.claim}
           {entry.isNewSinceLastLook && <NewPill />}
         </p>
-        {badges.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1.5">{badges}</div>}
-        {entry.gloss && <p className="mt-1 text-[11.5px] leading-relaxed text-ink3">{entry.gloss}</p>}
+        {entry.gloss && <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink3">{entry.gloss}</p>}
       </div>
-    </li>
+    </div>
   );
-}
-
-/** The single inline boundary (§3): the doesntMean of the highest-misread-risk entry — UO6 (strength)
- *  first, then UO2 (health), then UO3 (flags). Facts about the reader's own book are hard to misread;
- *  claims about the object's QUALITY are exactly what gets misread, and UO6 ("sound for six years")
- *  reads as a buy unless its already-priced boundary is visible. Falls back to the top slot. */
-function pickBoundaryEntry(slots: ResolvedEntry[]): ResolvedEntry | null {
-  const byId = (id: string) => slots.find((s) => s.entryId === id);
-  return byId("UO6") ?? byId("UO2") ?? byId("UO3") ?? slots[0] ?? null;
 }
 
 function Boundary({ text }: { text: string }) {
@@ -205,10 +138,12 @@ export function RelationalSection({ symbol }: { symbol: string }) {
   // rest of the Overview.
   if (isError || !data) return null;
 
-  const { header, slots, overflow } = data;
+  const { header, slots, overflow, boundaryEntryId } = data;
   if (slots.length === 0) return null; // guaranteed-resolve upstream; defensive only.
 
-  const boundaryEntry = pickBoundaryEntry(slots);
+  const [lead, ...support] = slots;
+  // The backend picks the boundary — render whichever entryId it names, never re-derive the priority.
+  const boundaryEntry = slots.find((s) => s.entryId === boundaryEntryId) ?? lead;
   const hasOverflow = overflow.length > 0;
   const otherBoundaries = slots.filter((s) => s.entryId !== boundaryEntry?.entryId);
   const canExpand = hasOverflow || otherBoundaries.length > 0;
@@ -227,14 +162,19 @@ export function RelationalSection({ symbol }: { symbol: string }) {
           </h3>
           {header.gloss && <p className="mt-1 text-[12px] leading-relaxed text-ink3">{header.gloss}</p>}
 
-          {/* Slots — in the response order, never re-sorted. */}
-          <ul className="mt-3.5 space-y-3">
-            {slots.map((e) => (
-              <SlotRow key={e.entryId} entry={e} />
-            ))}
-          </ul>
+          {/* Lead — slot 1, visually heaviest of the body, directly under the header. */}
+          <LeadLine entry={lead} />
 
-          {/* Exactly ONE boundary inline. */}
+          {/* Support — remaining slots, subordinate weight, one group beneath the lead. */}
+          {support.length > 0 && (
+            <div className="mt-2.5 space-y-2.5 border-t border-line/60 pt-2.5">
+              {support.map((e) => (
+                <SupportLine key={e.entryId} entry={e} />
+              ))}
+            </div>
+          )}
+
+          {/* Exactly ONE boundary inline — the quietest thing on the card. */}
           {boundaryEntry && (
             <div className="mt-3.5">
               <Boundary text={boundaryEntry.doesntMean} />
@@ -257,11 +197,11 @@ export function RelationalSection({ symbol }: { symbol: string }) {
               {open && (
                 <div className="mt-3 border-t border-line pt-3">
                   {hasOverflow ? (
-                    <ul className="space-y-3">
+                    <div className="space-y-2.5">
                       {overflow.map((e) => (
-                        <SlotRow key={e.entryId} entry={e} />
+                        <SupportLine key={e.entryId} entry={e} />
                       ))}
-                    </ul>
+                    </div>
                   ) : (
                     // No overflow → reveal the boundary lines of the entries not shown inline.
                     <div className="space-y-2.5">
