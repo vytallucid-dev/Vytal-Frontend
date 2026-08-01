@@ -102,7 +102,7 @@ export function UpcomingEventRow({
       >
         {e.impactLevel}
       </span>
-      {showReminder && <SetReminderButton symbol={e.symbol} eventType={e.eventType} eventDate={e.eventDate} />}
+      {showReminder && <SetReminderButton symbol={e.symbol} stockId={e.stockId} eventType={e.eventType} eventDate={e.eventDate} />}
     </motion.div>
   );
 }

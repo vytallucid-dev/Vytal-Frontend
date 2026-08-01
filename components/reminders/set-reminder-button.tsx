@@ -3,11 +3,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // SET-REMINDER BUTTON — the calendar affordance to set an event reminder for a
 // (stock, eventType). Click → a popover to pick the lead time (default 1 day before) and
-// confirm. Symbol-driven: it resolves the stockId from the universe list (like the alert
-// modal), so callers pass only a symbol + eventType. If a reminder already exists for the
-// pair it shows the "set" state with a remove control (the reminder binds semantically by
-// (stock, eventType), so there is only ever one). READ-ONLY over the contract — POST/PATCH/
-// DELETE a rule; the backend resolves the next event, fires, and sends.
+// confirm. If a reminder already exists for the pair it shows the "set" state with a remove
+// control (the reminder binds semantically by (stock, eventType), so there is only ever one).
+// READ-ONLY over the contract — POST/PATCH/DELETE a rule; the backend resolves the next event,
+// fires, and sends.
+//
+// ── ★ `stockId` IS AN INPUT, NOT SOMETHING THIS BUTTON RESOLVES ───────────────────────────────
+// It used to take only `symbol` and resolve the id itself out of the 504-row universe list. That
+// looked self-contained and was the most expensive read on the calendar: the id is needed AT MOUNT
+// (to show the already-set state on every row, before anything is opened), so the fetch could not
+// be deferred the way the alert modal's and the ⌘K palette's could. Every caller already knows the
+// id — the calendar and dashboard rows carry `stockId` on the event itself, and the stock page has
+// it on the health response — so the button takes it and the universe list leaves the route.
+// `null` is accepted and handled: the button renders, and the popover reports it cannot resolve.
 //
 // Rendered as an OVERLAY sibling of the calendar row's <Link> (not a child), so a click
 // never triggers navigation. Honest for any stock — reminders are date-based, no score needed.
@@ -17,7 +25,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
 import { useReminders, useReminderMutations } from "@/lib/api/hooks/use-reminders";
 import {
   eventTypeLabel,
@@ -38,11 +45,15 @@ function parseErr(e: unknown): string {
 
 export function SetReminderButton({
   symbol,
+  stockId,
   eventType,
   eventDate,
   className,
 }: {
   symbol: string;
+  /** The stock's raw id, supplied by the caller (see the header). `null` when the caller's own
+   *  source has not resolved yet — the button still renders; only the write is held back. */
+  stockId: string | null;
   eventType: string;
   /** the event's own date (YYYY-MM-DD) — lets the popover show the resolved remind date. */
   eventDate?: string;
@@ -52,12 +63,6 @@ export function SetReminderButton({
   const [days, setDays] = useState<number>(DEFAULT_DAYS_BEFORE);
   const [err, setErr] = useState<string | null>(null);
   const [flash, setFlash] = useState<"set" | "removed" | null>(null);
-
-  const { data: universe } = useUniverseStocks();
-  const stockId = useMemo(
-    () => universe?.find((s) => s.symbol === symbol)?.id ?? null,
-    [universe, symbol],
-  );
 
   // Enabled always (not just when open) so the "already set" state shows on load. React-query
   // dedupes by key → all rows on the calendar share ONE /me/reminders fetch.

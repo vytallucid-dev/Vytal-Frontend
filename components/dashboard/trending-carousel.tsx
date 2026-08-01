@@ -8,7 +8,7 @@ import { HealthRing } from "@/components/ui/health-ring";
 import { Sparkline } from "@/components/ui/sparkline";
 import { Icons } from "@/lib/icons";
 import { useUniverseHealth } from "@/lib/api/hooks/use-universe-health";
-import { useStockOhlcv } from "@/lib/api/hooks/use-stock-ohlcv";
+import { useStockSpark } from "@/lib/api/hooks/use-stock-ohlcv";
 import { compositeBand } from "@/components/health-hub/lib";
 import { STOCK_BAND_LABEL } from "@/components/portfolio/lib";
 import { sparkFromBars } from "@/components/watchlist/lib";
@@ -41,10 +41,11 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// One slide — pulls the shared per-stock OHLCV read for current price, last-day change %
-// and a 7-day sparkline (honest-omit <3 pts). Health shift + "why" come from the universe read.
+// One slide — pulls the 7-SESSION spark read (key ["stock", symbol, "spark"], not the 365-session
+// chart read) for current price, last-day change % and the sparkline (honest-omit <3 pts). The last
+// two closes are all the day-change needs. Health shift + "why" come from the universe read.
 function MoverSlide({ t, isActive }: { t: MoverCard; isActive: boolean }) {
-  const ohlcv = useStockOhlcv(t.symbol);
+  const ohlcv = useStockSpark(t.symbol);
   const bars = ohlcv.data?.bars ?? [];
   const spark = sparkFromBars(bars);
   const price = bars.length ? bars[bars.length - 1].close : null;

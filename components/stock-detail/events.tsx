@@ -20,6 +20,7 @@
  * label (never dressed as a board announcement), honest-empties, NO insider/analyst data.
  */
 
+import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -220,6 +221,11 @@ function EventBody({ e }: { e: CorporateEvent }) {
  *  Upcoming cards (showStatus) also carry a set-reminder control, mirroring the calendar's. */
 function EventCard({ e, showStatus, symbol }: { e: CorporateEvent; showStatus: boolean; symbol: string }) {
   const meta = metaFor(e.eventType);
+  // The reminder button takes the stock id from its caller. On this page it is already on the health
+  // response the page fetched — same query key, so this resolves from cache and costs no request.
+  // (The per-symbol events endpoint this tab reads does not carry stockId; the market-wide calendar
+  // endpoint does, which is where the calendar and dashboard rows get theirs.)
+  const { data: health } = useStockHealth(symbol);
   return (
     <Panel className="flex h-full flex-col gap-3 p-4 transition-colors hover:border-line3">
       <div className="flex items-start gap-3">
@@ -246,7 +252,7 @@ function EventCard({ e, showStatus, symbol }: { e: CorporateEvent; showStatus: b
         <ImpactChip level={e.impactLevel} />
         {showStatus && (
           <span className="ml-auto">
-            <SetReminderButton symbol={symbol} eventType={e.eventType} eventDate={e.eventDate} />
+            <SetReminderButton symbol={symbol} stockId={health?.identity.id ?? null} eventType={e.eventType} eventDate={e.eventDate} />
           </span>
         )}
       </div>

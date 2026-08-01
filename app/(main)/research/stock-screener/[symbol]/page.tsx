@@ -16,7 +16,6 @@ import { Icons, type Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { roundScore } from "@/lib/format";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
-import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
 import { useWatchlist, useWatchlistMutations } from "@/lib/api/hooks/use-watchlist";
 import { useStockAttentionTracking } from "@/lib/tracking/use-stock-attention";
 import { isApiError } from "@/lib/api/client";
@@ -108,10 +107,10 @@ const StockDetailPage = () => {
     refetch,
   } = useStockHealth(symbol);
 
-  // Quick-action state (header buttons). Resolved independently of the health fetch above —
-  // health's `identity` carries no raw stock id, and the watchlist pin needs the universe id.
-  const { data: universe } = useUniverseStocks();
-  const stockId = useMemo(() => universe?.find((s) => s.symbol === symbol)?.id ?? null, [universe, symbol]);
+  // Quick-action state (header buttons). The stock id now rides on the health response's `identity`
+  // — the fetch this page already awaits — so the pin button no longer downloads the whole universe
+  // (504 rows, 22.1 KB gzip) to run a .find() for one UUID.
+  const stockId = health?.identity.id ?? null;
   const { data: watchlist } = useWatchlist();
   const isWatchlisted = useMemo(
     () => (stockId ? (watchlist?.some((w) => w.stockId === stockId) ?? false) : false),

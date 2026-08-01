@@ -133,7 +133,7 @@ export function EventRow({ e }: { e: CalEvent }) {
 
       {/* set-reminder — above the stretched link so its clicks stay local */}
       <div className="relative z-10 flex shrink-0 items-center self-center">
-        <SetReminderButton symbol={e.symbol} eventType={e.eventType} eventDate={e.eventDate} />
+        <SetReminderButton symbol={e.symbol} stockId={e.stockId} eventType={e.eventType} eventDate={e.eventDate} />
       </div>
     </div>
   );

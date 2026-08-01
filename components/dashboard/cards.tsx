@@ -8,7 +8,7 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { AlertsSheet } from "@/components/alerts/alerts-bell";
 import { useHoldings } from "@/lib/api/hooks/use-holdings";
 import { useAlertEvents } from "@/lib/api/hooks/use-alerts";
-import { useStockOhlcv } from "@/lib/api/hooks/use-stock-ohlcv";
+import { useStockSpark } from "@/lib/api/hooks/use-stock-ohlcv";
 import { useMarketNews } from "@/lib/api/hooks/use-market-news";
 import { STOCK_BAND_LABEL } from "@/components/portfolio/lib";
 import { sparkFromBars } from "@/components/watchlist/lib";
@@ -104,10 +104,11 @@ function RowsSkeleton({ n = 4 }: { n?: number }) {
 }
 
 /* ---------- Top Holdings ---------- */
-// One row calls the shared per-stock OHLCV read (cache key ["stock", symbol, "ohlcv"] —
-// shared with the watchlist/holdings surfaces) for its 7-day sparkline. Honest-omit <3 pts.
+// One row calls the 7-SESSION spark read (cache key ["stock", symbol, "spark"] — deliberately NOT
+// the 365-session ["stock", symbol, "ohlcv"] the chart surfaces use) for its sparkline. Honest-omit
+// <3 pts. This row draws 7 bars; it used to download a year of them to do it.
 function HoldingRow({ h, i }: { h: Holding; i: number }) {
-  const ohlcv = useStockOhlcv(h.symbol);
+  const ohlcv = useStockSpark(h.symbol);
   const spark = sparkFromBars(ohlcv.data?.bars);
   const dayPct = h.dayChangePct;
   const up = (dayPct ?? 0) >= 0;

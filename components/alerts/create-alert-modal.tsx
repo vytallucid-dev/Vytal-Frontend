@@ -111,7 +111,13 @@ export function CreateAlertModal({
   editing?: Alert | null;
 }) {
   const isEdit = !!editing;
-  const { data: universe, isLoading: uniLoading } = useUniverseStocks();
+  // ⚠ GATED ON `open`. This modal is MOUNTED, not conditionally rendered — the stock page keeps
+  // `<CreateAlertModal open={alertOpen} …/>` in the tree at all times and Radix renders nothing until
+  // `open`. So an ungated fetch here meant every stock-detail load downloaded the 504-row universe
+  // (104 KB raw / 22.1 KB gzip) for a dialog that had not been opened. Everything read from it —
+  // stockId, `scored`, the display name — is only rendered inside the dialog, and line 307 already
+  // shows `uniLoading` while it arrives.
+  const { data: universe, isLoading: uniLoading } = useUniverseStocks(open);
   const stock = useMemo(() => universe?.find((s) => s.symbol === symbol) ?? null, [universe, symbol]);
   const scored = stock?.scored ?? false;
   const stockId = stock?.id ?? null;

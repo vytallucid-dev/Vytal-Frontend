@@ -16,6 +16,10 @@ export type BarDirection = "higher_better" | "lower_better";
 export type SectorClass = "Quality" | "Defensive" | "Commodity" | "Cyclical" | "Growth" | "PSU" | null;
 
 export interface IdentitySection {
+  /** Raw Stock.id (UUID). The key every per-stock mutation takes — watchlist pin, alert rule,
+   *  event reminder, relational card. Present on the not-scored path too. Reading it here is what
+   *  replaced downloading GET /api/stocks/universe (22.1 KB gzip) to run a .find() for one field. */
+  id: string;
   symbol: string;
   name: string;
   sector: { key: string; displayName: string } | null;

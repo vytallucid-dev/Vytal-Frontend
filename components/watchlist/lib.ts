@@ -110,10 +110,16 @@ export function priceSinceAdded(e: WatchlistEntry): PriceSinceAdded | null {
   return { pct: p, direction: p > 0.05 ? "up" : p < -0.05 ? "down" : "flat" };
 }
 
-// ── 7d sparkline + 7D return, derived client-side from the SAME OHLCV read the holdings
-//    row-expand uses (query key ["stock", symbol, "ohlcv"] — so the row sparkline and the
-//    sheet chart share one fetch; nothing is added to the list payload). Honest-omit when
-//    <3 points: no line is drawn rather than a misleading two-dot stub. ─────────────────
+// ── 7d sparkline + 7D return, derived client-side from whichever price read the caller holds.
+//    TWO READS FEED THIS, and the difference matters:
+//      · watchlist rows + holdings row-expand → useStockOhlcv, key ["stock", symbol, "ohlcv"],
+//        365 sessions. They need it: the row prints a 1M return (needs >21 sessions, below) and
+//        the sheet chart draws 3M.
+//      · dashboard rows + trending carousel  → useStockSpark, key ["stock", symbol, "spark"],
+//        7 sessions. They draw the line and nothing else, so they fetch the line and nothing else.
+//    `return1m` is therefore null on the 7-session read BY CONSTRUCTION — no dashboard surface
+//    displays it, and the guard below is what makes that honest rather than a wrong number.
+//    Honest-omit when <3 points: no line is drawn rather than a misleading two-dot stub. ────────
 export const SPARK_MIN_POINTS = 3;
 const SESSIONS_1M = 21; // ~one trading month
 

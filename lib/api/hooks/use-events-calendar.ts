@@ -7,6 +7,9 @@ import { apiFetch } from "@/lib/api/client";
  *  eventDate asc, impact tiebreak). The dashboard filters this to the user's holdings. */
 export interface CalendarEvent {
   id: string;
+  /** The stock's raw id — carried so a reminder row can be matched and created without the client
+   *  downloading the 504-row universe list to resolve one symbol. */
+  stockId: string;
   symbol: string;
   companyName: string;
   sector: string | null;

@@ -329,9 +329,20 @@ const Navbar = () => {
   const apple = useIsApplePlatform();
   const vytalLabel = formatShortcut(SC_VYTAL, apple);
 
-  // Full tracked universe (scored + not-yet-scored) — the same source the screener
-  // typeahead uses, cached app-wide, so opening the palette is instant.
-  const { data: universe, isLoading: stocksLoading } = useUniverseStocks();
+  // Full tracked universe (scored + not-yet-scored) — the same source the screener typeahead uses,
+  // cached app-wide.
+  //
+  // ⚠ GATED ON `open`. The navbar mounts on EVERY page in the (main) layout, and this call was
+  // ungated — so every single page load, on every route, downloaded 504 stocks (104 KB raw /
+  // 22.1 KB gzip) so that a palette most loads never open would be instant. It is also why removing
+  // the universe read from the stock-detail page saved nothing on its own: React Query deduped the
+  // page's call into this one, which fired regardless.
+  //
+  // TRADEOFF, STATED: the FIRST ⌘K of a session now waits on the fetch instead of finding it warm —
+  // the dialog already renders `stocksLoading` for exactly that window. Every subsequent open is
+  // instant (staleTime 5 min, and `enabled:false` keeps what was cached). Paid once, by the people
+  // who use the palette, instead of on every page by everyone.
+  const { data: universe, isLoading: stocksLoading } = useUniverseStocks(open);
 
   // Funds/ETFs are a per-term server round-trip (the catalogue is far too large to ship to the
   // client the way the stock universe is), so the term is debounced before it leaves the box.

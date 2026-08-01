@@ -34,7 +34,7 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
 import { BoundaryLine } from "@/components/ui/boundary-line";
-import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
+import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import { useRelationalState } from "@/lib/api/hooks/use-relational";
 import { Section, LoadingBlock } from "./shared";
 import type { ResolvedEntry } from "@/types/relational";
@@ -116,16 +116,18 @@ function Boundary({ text }: { text: string }) {
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 export function RelationalSection({ symbol }: { symbol: string }) {
-  // Resolve the stock's id from the cached universe list (the same source the page uses for the pin
-  // button) — this card takes `symbol` like every other Overview section and self-resolves the id.
-  const { data: universe } = useUniverseStocks();
-  const stockId = useMemo(() => universe?.find((s) => s.symbol === symbol)?.id ?? null, [universe, symbol]);
+  // Resolve the stock's id from the HEALTH read — this card still takes `symbol` like every other
+  // Overview section and still self-resolves the id, but from a response the page has already
+  // fetched under the same query key, so this costs no request. It used to resolve the id out of
+  // GET /api/stocks/universe (504 rows, 22.1 KB gzip) with a .find() for one field.
+  const { data: health } = useStockHealth(symbol);
+  const stockId = health?.identity.id ?? null;
 
   const { data, isLoading, isError } = useRelationalState(stockId);
   const [open, setOpen] = useState(false);
 
   // Loading — the eyebrow + a quiet skeleton at roughly the card's height. Never blocks the rest of the
-  // Overview (each section fetches independently). While the universe list is still resolving, stockId is
+  // Overview (each section fetches independently). While the health read is still resolving, stockId is
   // null and the query is disabled — the skeleton covers that window too.
   if (stockId == null || isLoading) {
     return (
