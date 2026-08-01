@@ -7,13 +7,19 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { NavChart } from "@/components/portfolio/overview/nav-chart";
 import { diversificationRead, sectorCoverageShort } from "@/components/portfolio/lib";
 import { Icons, type Icon } from "@/lib/icons";
-import { useAuth } from "@/components/providers/auth-provider";
+import { AskVytal } from "./ask-vytal";
 import { useHoldings } from "@/lib/api/hooks/use-holdings";
 import { usePortfolioSnapshot } from "@/lib/api/hooks/use-portfolio-snapshot";
 import { usePortfolioNav } from "@/lib/api/hooks/use-portfolio-nav";
 import { HEALTH_BAND_META, healthColor } from "@/components/portfolio/lib";
 import { formatINR, changeColor } from "@/lib/format";
-import { nameFromUser, greeting, signINR, signPct } from "./lib";
+// ★ THE GREETING IS THE CHAT'S, NOT A SECOND ONE. `useGreeting` is the same hook the chat page's welcome
+//   and the sidekick panel's empty state call — fifteen lines across seven IST bands, weekday-gated on
+//   the market-aware ones, and the same first-name resolution. Importing the HOOK (not the strings) is
+//   what makes "the dashboard and the chat greet you identically" true by construction rather than by
+//   two lists someone has to remember to keep in step. See components/chat/welcome.ts.
+import { useGreeting } from "@/components/chat/welcome";
+import { signINR, signPct } from "./lib";
 import { cn } from "@/lib/utils";
 
 const quickActions: { label: string; href: string; icon: Icon }[] = [
@@ -40,27 +46,6 @@ function QuickActions() {
   );
 }
 
-// The Ask-Vytal bar — deferred. The conversational layer isn't built, so this is a
-// clearly-disabled placeholder (consistent with the AI Insights stub), never a live input.
-function AskVytalBar() {
-  return (
-    <div
-      aria-disabled
-      className="mt-5 flex h-12 items-center gap-2 rounded-xl border border-line bg-surface-2/60 px-3"
-    >
-      <Icons.brain weight="duotone" className="size-5 shrink-0 text-primary/70" />
-      <input
-        disabled
-        placeholder="Ask Vytal about your book — coming soon"
-        className="h-full min-w-0 flex-1 cursor-not-allowed bg-transparent text-sm text-ink3 outline-none placeholder:text-ink3/70"
-      />
-      <span className="shrink-0 rounded-md border border-line2 bg-surface-3/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink3">
-        Soon
-      </span>
-    </div>
-  );
-}
-
 function HeroShell({ children }: { children: React.ReactNode }) {
   return (
     <motion.section
@@ -74,15 +59,23 @@ function HeroShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The greeting line. ★ RESOLVED AFTER MOUNT (useGreeting returns null until then — the random pick and
+ *  the reader's name are both browser-side), so the row RESERVES its height: without `min-h` the whole
+ *  hero would shift down by one line the moment the greeting lands. */
+function GreetingLine({ pulse = false }: { pulse?: boolean }) {
+  const greeting = useGreeting();
+  return (
+    <p className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground">
+      <span className={cn("size-1.5 rounded-full bg-primary", pulse && "animate-pulse")} />
+      {greeting}
+    </p>
+  );
+}
+
 export function WelcomeHero() {
-  const { user } = useAuth();
   const holdQ = useHoldings();
   const snapQ = usePortfolioSnapshot();
   const navQ = usePortfolioNav();
-
-  const name = nameFromUser(user?.user_metadata, user?.email);
-  const [hour, setHour] = useState(9);
-  useEffect(() => setHour(new Date().getHours()), []);
 
   const totals = holdQ.data?.totals;
   const holdings = holdQ.data?.holdings ?? [];
@@ -104,7 +97,7 @@ export function WelcomeHero() {
   if (holdQ.isLoading) {
     return (
       <HeroShell>
-        <p className="text-sm text-muted-foreground">{greeting(hour)}, {name}</p>
+        <GreetingLine />
         <div className="mt-4 h-10 w-72 animate-pulse rounded-xl bg-surface-2/60" />
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -120,10 +113,7 @@ export function WelcomeHero() {
     return (
       <HeroShell>
         <div className="max-w-xl">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-primary" />
-            {greeting(hour)}, {name}
-          </p>
+          <GreetingLine />
           <h1 className="mt-1.5 font-display text-2xl font-bold tracking-tight sm:text-3xl">
             Start tracking your holdings.
           </h1>
@@ -140,7 +130,10 @@ export function WelcomeHero() {
               Add your first transaction
             </Link>
           </div>
-          <AskVytalBar />
+          {/* An empty book gets the CONCEPTUAL suggestions — "what is my portfolio health" has no
+              answer here, and offering it would be the same broken promise the SOON pill used to be
+              (ask-vytal §THE EMPTY BOOK). */}
+          <AskVytal hasHoldings={false} />
           <QuickActions />
         </div>
       </HeroShell>
@@ -186,7 +179,9 @@ export function WelcomeHero() {
       sub: dayPct != null ? signPct(dayPct) : undefined,
     },
     {
-      label: "Total return",
+      // Same figure as the mini panel's, so the same words — one card must not have two names for one
+      // number (see the panel's note on why "on cost" is load-bearing here).
+      label: "Return on cost",
       value: Math.abs(returnPct),
       suffix: "%",
       prefix: returnPct >= 0 ? "+" : "−",
@@ -215,10 +210,7 @@ export function WelcomeHero() {
     <HeroShell>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-xl">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="size-1.5 animate-pulse rounded-full bg-primary" />
-            {greeting(hour)}, {name}
-          </p>
+          <GreetingLine pulse />
           <h1 className="mt-1.5 font-display text-2xl font-bold tracking-tight sm:text-3xl">
             Your book is {dayUp ? "up" : "down"}{" "}
             <span className={changeColor(dayVal)}>
@@ -253,7 +245,7 @@ export function WelcomeHero() {
             )}
           </p>
 
-          <AskVytalBar />
+          <AskVytal hasHoldings />
           <QuickActions />
         </div>
 
@@ -263,7 +255,12 @@ export function WelcomeHero() {
           <p className="mt-1 truncate font-display text-2xl font-extrabold sm:text-3xl">
             <AnimatedNumber value={displayValue} prefix="₹" locales="en-IN" />
           </p>
-          <div className="mt-1 flex items-center gap-2 text-sm">
+          {/* ★ "ON COST", NOT BARE "total return" — see nav-chart §THE UNLABELLED LINE. This figure is
+              unrealized P&L over what the held positions COST, with no time window; the sparkline under
+              it is the time-weighted return over the book's whole history. Two honest answers to two
+              different questions, and the card now says which is which instead of leaving a red line
+              beside a green number looking like a contradiction. */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
             <span className={cn("flex items-center gap-0.5 font-mono", changeColor(totalReturn))}>
               {totalReturn >= 0 ? (
                 <Icons.arrowUpRight weight="bold" className="size-3.5" />
@@ -272,7 +269,12 @@ export function WelcomeHero() {
               )}
               {signPct(returnPct)}
             </span>
-            <span className="text-muted-foreground">total return</span>
+            <span
+              className="text-muted-foreground"
+              title="Unrealized gain or loss on the positions you hold now, measured against what they cost. Not time-bounded — each holding counts from its own purchase date, and positions you have sold are not in it."
+            >
+              total return on cost
+            </span>
           </div>
           {navPoints.length >= 2 && (
             <div className="mt-3">

@@ -37,6 +37,7 @@ import { DeleteChatDialog } from "./delete-chat-dialog";
 import { PLACEHOLDER_TITLE, resolveTitle } from "./provisional-title";
 import { useReducedMotion } from "./use-progressive-reveal";
 import { useChatPage } from "./use-chat-page";
+import { takeChatMessage } from "./pending-message";
 
 /** How long after a first exchange to re-read the list once, for the model-written title.
  *
@@ -117,6 +118,31 @@ export function ChatHub({ defaultRailOpen = true }: { defaultRailOpen?: boolean 
   );
 
   const chat = useChatPage({ activeId, onSessionCreated });
+
+  // ── §THE HANDED-OVER FIRST MESSAGE ────────────────────────────────────────────────────────────────
+  // A surface elsewhere in the app (the dashboard's "Ask Vytal about your book") staged a question and
+  // sent the reader here. It is delivered through `chat.send` — the SAME function the composer calls —
+  // so this is not a second way to start a conversation: it is the blank-start path with the first
+  // keystroke supplied by another screen. Everything downstream (session creation, the title job, the
+  // reveal, the guardrail, the daily cap, an error and its retry) is therefore not merely "also handled"
+  // but literally the same code. See pending-message.ts.
+  //
+  // ★ ONLY ON THE BLANK CONVERSATION, and only once. `takeChatMessage` deletes as it reads, and the ref
+  //   guards the double-invoke React runs in development — a question the reader asked once must be
+  //   asked once. Landing on an EXISTING session must never inject anything, hence the activeId check.
+  const deliveredRef = useRef(false);
+  const send = chat.send;
+  const canSend = chat.canSend;
+  useEffect(() => {
+    if (deliveredRef.current || activeId != null) return;
+    // Wait for the blank conversation to be able to take it. `canSend` is true on arrival unless a cap
+    // is already known — and if the cap lands first, the reader gets the composer's own quota notice
+    // rather than a message that vanished into a locked input.
+    if (!canSend) return;
+    deliveredRef.current = true; // one attempt per mount, staged message or not
+    const staged = takeChatMessage();
+    if (staged) send(staged);
+  }, [activeId, canSend, send]);
 
   // ── §THE MOBILE PANE ──────────────────────────────────────────────────────────────────────────────
   // Which of the two regions is on screen below 768px.

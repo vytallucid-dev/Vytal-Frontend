@@ -325,10 +325,26 @@ export function NavChart({
     setActiveIdx(best);
   };
 
-  // ── Compact glance (Dashboard): just the returns trajectory, no chrome. ──
+  // ── Compact glance (Dashboard): the returns trajectory + the ONE line that says what it is. ──
+  //
+  // ⚠ §THE UNLABELLED LINE — why this caption is not optional chrome.
+  // This glance sits directly beneath the hero's "total return" figure, and the two are DIFFERENT
+  // MEASURES OVER DIFFERENT WINDOWS:
+  //   · this line  — TIME-WEIGHTED return, cash-flow-neutral, over the book's WHOLE history (first buy →
+  //                  last close). Deposits are removed, so it answers "how did the money perform".
+  //   · the figure — unrealized P&L over the ENTERED COST of the positions held right now, with NO time
+  //                  window at all (each lot counts from its own purchase date, and sold positions are
+  //                  not in it).
+  // Both are correct, and on a book that grew by deposits they routinely disagree in SIGN — a red line
+  // beside a green number, which reads as a bug and is not one. Nothing on the card said so, so the card
+  // was making the reader reconcile two figures it never told them were different questions. That is what
+  // this line fixes: the WINDOW and the MEASURE, stated, next to the number they belong to.
+  // (The full chart — both lenses, the range picker, the Nifty overlay — is one tap away on /portfolio;
+  // a range selector on a 288px glance would rebuild that surface in a panel that exists to be glanced at.)
   if (compact) {
     if (n < 2) return null;
     if (returnsPending) return <div className="h-14 w-full animate-pulse rounded-lg bg-surface-2/50 sm:h-16" />;
+    const windowPct = navY[n - 1] - 100;
     return (
       <div>
         <div className="relative h-14 w-full select-none sm:h-16" aria-label={title} role="img">
@@ -347,6 +363,18 @@ export function NavChart({
             style={{ left: `${leftPct(n - 1)}%`, top: `${topPct(yOf(navY[n - 1]))}%`, background: navColor }}
           />
         </div>
+        {/* §THE UNLABELLED LINE — the window and the measure, in the reader's own units. `num` for the
+            figures (tabular), and it WRAPS rather than truncating: at 320px this is two lines, and a
+            clipped "…time-wei" would be worse than the extra row it costs. */}
+        {indexed && (
+          <p className="mt-1.5 text-[10px] leading-snug text-ink3">
+            <span className="num font-medium" style={{ color: signColor(windowPct) }}>
+              {signPctStr(windowPct)}
+            </span>{" "}
+            since <span className="num">{fmtTooltipDate(sliced[0].date)}</span> · time-weighted, deposits
+            removed
+          </p>
+        )}
         {/* Dashboard's honest minimum: the same gap, one compact line — a silent mini-chart is the
             same lie in a smaller box. */}
         {gapValue != null && (

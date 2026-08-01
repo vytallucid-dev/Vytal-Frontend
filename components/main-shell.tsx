@@ -41,7 +41,11 @@ export function MainShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex h-svh min-w-0 flex-col">
       <Navbar />
-      <main className="custom-scrollbar min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-10 pt-4 sm:px-5 lg:px-6">
+      {/* `relative` so a page-level popover (the dashboard's Ask-Vytal suggestions) can portal INTO this
+          scroller and be positioned against it. That is what lets such a panel scroll with the content
+          natively — no per-frame JS repositioning, so no jitter — while this element's own overflow
+          clips it, so it can never paint over the Navbar above. See ask-vytal §ANCHORING. */}
+      <main className="custom-scrollbar relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-10 pt-4 sm:px-5 lg:px-6">
         {children}
       </main>
       {manager}
