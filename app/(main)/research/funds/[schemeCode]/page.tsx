@@ -88,9 +88,13 @@ export default function FundDetailPage() {
               : "Something went wrong loading this fund."}
           </p>
           <div className="mt-6 flex justify-center gap-2">
-            <Button variant="outline" onClick={() => router.back()}>
+            {/* ⚠ A DESTINATION, NOT router.back(). This state is reached most often by a link from
+                outside the app or a pasted URL — a fund that hasn't been analysed yet — where there is
+                no previous entry in this tab's history and Back was simply inert. The funds browser is
+                where "back" meant to go anyway. */}
+            <Button variant="outline" onClick={() => router.push("/research/funds")}>
               <Icons.arrowLeft className="mr-2 h-4 w-4" />
-              Back
+              Back to funds
             </Button>
             {!notFound && (
               <Button onClick={() => refetch()}>

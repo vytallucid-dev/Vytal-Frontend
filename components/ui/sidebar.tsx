@@ -98,7 +98,11 @@ function SidebarProvider({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
+        (event.metaKey || event.ctrlKey) &&
+        // ⚠ NOT WITH ALT HELD. Two reasons, one fix: AltGr reports as Ctrl+Alt and is how a Polish or
+        // Croatian reader types a letter, and ⌥B is now Vytal's "your conversations" (lib/shortcuts.ts).
+        // Neither should ever also toggle this sidebar.
+        !event.altKey
       ) {
         event.preventDefault()
         toggleSidebar()

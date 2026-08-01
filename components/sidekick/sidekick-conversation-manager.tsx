@@ -17,6 +17,7 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChatSessionList } from "@/components/chat/chat-session-list";
+import { PLACEHOLDER_TITLE, resolveTitle } from "@/components/chat/provisional-title";
 import { RenameChatDialog } from "@/components/chat/rename-chat-dialog";
 import { DeleteChatDialog } from "@/components/chat/delete-chat-dialog";
 import { useChatSessions } from "@/lib/api/hooks/use-chat-sessions";
@@ -39,7 +40,20 @@ export function SidekickConversationManager({ fullBleed = false }: { fullBleed?:
   const [deleteTarget, setDeleteTarget] = useState<ChatSession | null>(null);
 
   const q = query.trim().toLowerCase();
-  const sessions = sessionsQ.data ?? [];
+  const sessionsData = sessionsQ.data;
+  // The open conversation may still be called "New conversation" server-side while its first reply
+  // generates; the panel's header is already showing the reader's own first message instead, and this
+  // list is the same conversation — it must not contradict the header two inches above it.
+  const sessions = useMemo(() => {
+    const rows = sessionsData ?? [];
+    const provisional = chat.provisionalTitle;
+    if (!provisional || !chat.sessionId) return rows;
+    return rows.map((s) =>
+      s.id === chat.sessionId
+        ? { ...s, title: resolveTitle(s.title, provisional) ?? PLACEHOLDER_TITLE }
+        : s,
+    );
+  }, [sessionsData, chat.provisionalTitle, chat.sessionId]);
   const filtered = useMemo(() => (q ? sessions.filter((s) => matches(s, q)) : sessions), [sessions, q]);
 
   const close = () => setManagerOpen(false);

@@ -23,6 +23,7 @@
  */
 
 import { Icons } from "@/lib/icons";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import type { HealthSnapshotView, PillarKey, PillarView, MetricView, SectorClass } from "@/types/health";
 import { prepareStockFindings, accentVars } from "@/lib/findings";
@@ -199,7 +200,7 @@ function CautionStrip({ health, symbol }: { health: HealthSnapshotView; symbol: 
         </span>
       </div>
       <p className="mt-3 text-[13px] leading-relaxed text-ink2">{lead.verdict}</p>
-      <p className="mt-3 border-l-2 border-line2 pl-3 text-[11.5px] italic text-ink3">{lead.doesntMean}</p>
+      <BoundaryLine text={lead.doesntMean} size="md" className="mt-3" />
       <div className="mt-4 flex items-center justify-between border-t border-line pt-3.5">
         <p className="text-[11.5px] text-ink3">{CAUTION_STRENGTHS_NOTE}</p>
         <Funnel tab="health" symbol={symbol} label="Full health" />

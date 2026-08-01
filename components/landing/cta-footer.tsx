@@ -53,12 +53,12 @@ export function CtaFooter() {
                   <Icons.spark weight="fill" className="size-4 text-primary" />
                 </span>
                 <span className="font-display text-lg font-extrabold tracking-tight">
-                  Invest<span className="text-gradient">IQ</span>
+                  Vy<span className="text-gradient">tal</span>
                 </span>
               </Link>
               <p className="mt-3 max-w-xs text-sm text-muted-foreground">
                 A premium analysis terminal for Indian markets. Clarity over noise —
-                powered by the InvestIQ Health Score.
+                powered by the Vytal Health Score.
               </p>
             </div>
             {footerCols.map((col) => (
@@ -78,7 +78,7 @@ export function CtaFooter() {
           </div>
           <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-6 sm:flex-row">
             <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} InvestIQ. For educational purposes — not investment advice.
+              © {new Date().getFullYear()} Vytal. For educational purposes — not investment advice.
             </p>
             <p className="text-xs text-muted-foreground">
               Made for investors who value clarity.

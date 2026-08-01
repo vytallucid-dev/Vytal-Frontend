@@ -24,10 +24,10 @@ import {
   ALERT_TYPE_TINT,
   DEFAULT_REPEAT,
   REPEAT_COPY,
-  FINDING_OPTIONS,
   draftPreview,
   fmtInr,
 } from "@/lib/alerts";
+import { useFindingOptions } from "@/lib/api/hooks/use-finding-options";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ALERT MODAL — create OR edit (type → condition → repeat). Symbol-driven: it resolves
@@ -131,6 +131,9 @@ export function CreateAlertModal({
   const [band, setBand] = useState<LabelBand>("steady");
   const [findingMode, setFindingMode] = useState<"any" | "specific">("any");
   const [findingKey, setFindingKey] = useState("");
+  // 1d — the picker's own 1.9 KB name projection, not the 54 KB catalogue. Never empty: it falls back
+  // to the bundled list while loading and on failure, so an alert can always be set.
+  const { options: findingOptions, isLoading: findingsLoading } = useFindingOptions();
   const [repeat, setRepeat] = useState<AlertRepeatMode>(DEFAULT_REPEAT.price);
   const [active, setActive] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -546,10 +549,10 @@ export function CreateAlertModal({
                       <FieldLabel>Finding</FieldLabel>
                       <Select value={findingKey} onValueChange={setFindingKey}>
                         <SelectTrigger className="h-9 text-[13px]">
-                          <SelectValue placeholder="Choose a finding…" />
+                          <SelectValue placeholder={findingsLoading ? "Loading findings…" : "Choose a finding…"} />
                         </SelectTrigger>
                         <SelectContent className="max-h-64">
-                          {FINDING_OPTIONS.map((o) => (
+                          {findingOptions.map((o) => (
                             <SelectItem key={o.key} value={o.key} className="text-[12.5px]">
                               {o.name}
                             </SelectItem>

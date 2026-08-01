@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { StaggerGroup, StaggerItem } from "@/components/ui/reveal";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import type { FindingsSection as TFindings } from "@/types/health";
 import {
   prepareStockFindings,
@@ -206,7 +207,7 @@ function FindingCard({ f, symbol }: { f: PreparedFinding; symbol?: string }) {
       {/* The interpretive boundary — what this does NOT mean. Boundary-line-by-construction
           (amendment §2): every family carries one, so f.doesntMean is never empty — render it
           unconditionally. No guard: a missing line is now a compile error, not a rendering gap. */}
-      <p className="mt-3 border-l-2 border-line2 pl-3 text-[11.5px] italic text-ink3">{f.doesntMean}</p>
+      <BoundaryLine text={f.doesntMean} size="md" className="mt-3" />
 
       {href ? (
         <Link

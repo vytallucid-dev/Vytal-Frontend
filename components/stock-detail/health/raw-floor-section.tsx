@@ -374,12 +374,17 @@ function LensDetail({ r }: { r: Row }) {
           </div>
         </LensBlock>
 
+        {/* ⚠ WEIGHT AND CONTRIBUTION USED TO PRINT HERE — "weight 12%" and "contribution 6.5" per
+            metric, so the parts visibly added up to the pillar subtotal. That is precisely the
+            intra-pillar weighting the product does not publish, and the pair gives it up twice
+            over (the weight directly; and contribution ÷ score again). Both removed under the
+            product-wide no-weights rule.
+
+            WHAT STAYS is everything that describes the COMPANY or our COVERAGE of it: the metric's
+            scoring state, and why it was suppressed when it was. A reader still learns that a
+            metric did not count and why — they just do not learn how much it would have counted. */}
         <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-line pt-2.5 text-[11px] text-ink3">
           <span>state: <span className="text-ink2">{m.scoreState}</span></span>
-          <span className="num">weight {(m.effectiveWeight * 100).toFixed(0)}%</span>
-          {/* A contribution is the deduction ledger's arithmetic, not a score on its own —
-              it keeps its place so the parts still visibly add up to the pillar subtotal. */}
-          <span className="num">contribution {fmt(m.contribution, 1)}</span>
           {m.suppressionReason && <span className="text-below">· {m.suppressionReason}</span>}
         </div>
       </div>

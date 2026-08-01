@@ -23,6 +23,8 @@ import { isThisWeek, isToday, isYesterday } from "date-fns";
 import { QueryError } from "@/components/ui/query-error";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { useShortcutLabel } from "@/lib/shortcuts";
+import { SC_CONVERSATIONS, SC_NEW_CHAT } from "@/components/shortcuts/chat-shortcuts";
 import type { ChatSession } from "@/types/chat";
 
 const GROUPS = ["Today", "Yesterday", "This week", "Older"] as const;
@@ -67,6 +69,9 @@ function SessionRow({
       <button
         type="button"
         onClick={onSelect}
+        // The row truncates, so the untruncated title lives on the tooltip — this list is the other
+        // place a reader can go to read a long name in full (chat-conversation §ONE LINE, ALWAYS).
+        title={session.title}
         className={cn(
           "flex w-full flex-col gap-1 rounded-lg py-2.5 pl-3 pr-16 text-left transition-colors duration-150",
           active ? "bg-surface-2" : "hover:bg-surface-2/60",
@@ -147,6 +152,7 @@ export function ChatSessionList({
   title = "Chats",
   toolbar,
   onClose,
+  onCollapse,
   empty,
 }: {
   sessions: ChatSession[];
@@ -164,6 +170,10 @@ export function ChatSessionList({
   toolbar?: ReactNode;
   /** When given, a dismiss button joins the header (the manager overlays; the /chat rail does not). */
   onClose?: () => void;
+  /** When given, a HIDE-THIS-RAIL button joins the header (/chat's desktop rail). Deliberately not
+   *  `onClose`: dismissing an overlay and folding a persistent rail away are different promises, and the
+   *  reader is owed a different glyph for each — an X says "gone", the panel toggle says "put it back". */
+  onCollapse?: () => void;
   /** Replaces the built-in empty state — the manager needs a query-aware "nothing matches". */
   empty?: ReactNode;
 }) {
@@ -171,6 +181,11 @@ export function ChatSessionList({
     label,
     items: sessions.filter((s) => bucketOf(s.lastMessageAt) === label),
   })).filter((g) => g.items.length > 0);
+
+  // The keys that do these two things from anywhere, printed where the buttons are — the only place a
+  // reader would think to look for them. Platform-shaped (⌥N on a Mac, Alt+N elsewhere).
+  const newLabel = useShortcutLabel(SC_NEW_CHAT);
+  const listLabel = useShortcutLabel(SC_CONVERSATIONS);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -186,11 +201,26 @@ export function ChatSessionList({
           <button
             type="button"
             onClick={onNew}
+            title={`New conversation (${newLabel})`}
             className="inline-flex select-none items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-medium text-ink3 transition-colors hover:bg-surface-2 hover:text-ink"
           >
             <Icons.plus className="size-4" />
             <span>New</span>
           </button>
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Hide conversations"
+              title={`Hide conversations (${listLabel})`}
+              aria-expanded
+              // Desktop only, like the preference itself: below 768px this rail IS the list view, and a
+              // control that folds it away would leave nothing to fold it back OUT of.
+              className="hidden size-7 place-items-center rounded-lg text-ink3 transition-colors hover:bg-surface-2 hover:text-ink md:grid"
+            >
+              <Icons.sidebarSimple className="size-4" />
+            </button>
+          )}
           {onClose && (
             <button
               type="button"

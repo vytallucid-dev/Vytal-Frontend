@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icons } from "@/lib/icons";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import type { PfFinding } from "@/types/portfolio";
 import { findingRead } from "./lib";
 
@@ -34,7 +35,8 @@ function DisclosureItem({ f }: { f: PfFinding }) {
             What this doesn&apos;t mean
             <Icons.caretDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
-          {open && <p className="mt-1 border-l-2 border-line2 pl-2.5 text-[11px] italic leading-relaxed text-ink3">{f.doesntMean}</p>}
+          {/* showLabel off — the trigger above already says "What this doesn't mean". */}
+          {open && <BoundaryLine text={f.doesntMean} size="sm" className="mt-1" showLabel={false} />}
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 /**
- * Shared formatting + health-score helpers for the InvestIQ design system.
+ * Shared formatting + health-score helpers for the Vytal design system.
  * Indian numbering conventions (lakh / crore) where appropriate.
  */
 
@@ -37,12 +37,27 @@ export function formatCompact(value: number) {
  */
 export type HealthBand = "fragile" | "below" | "steady" | "healthy" | "pristine";
 
+/**
+ * THE CUTS, as data — lower-bound-inclusive, ordered high→low, mirroring the backend's single
+ * source (scoring/composite/label.ts LABEL_BAND_MAP: <55 Fragile | [55,62) Below par |
+ * [62,68) Steady | [68,74) Healthy | ≥74 Pristine).
+ *
+ * ★ EXPORTED ON PURPOSE. The methodology page publishes these ranges to readers, and a page that
+ * hand-types "68 – 74" beside a `healthBand()` that says something else is exactly the drift this
+ * whole change exists to remove. One table: the classifier reads it, the page renders it.
+ * (Publishing them is not a moat breach — they already ship in this client bundle, and they label
+ * a number the reader can already see. They say nothing about how that number was BUILT.)
+ */
+export const HEALTH_BAND_CUTS: readonly { band: HealthBand; min: number }[] = [
+  { band: "pristine", min: 74 },
+  { band: "healthy", min: 68 },
+  { band: "steady", min: 62 },
+  { band: "below", min: 55 },
+  { band: "fragile", min: -Infinity },
+];
+
 export function healthBand(score: number): HealthBand {
-  if (score >= 74) return "pristine";
-  if (score >= 68) return "healthy";
-  if (score >= 62) return "steady";
-  if (score >= 55) return "below";
-  return "fragile";
+  return (HEALTH_BAND_CUTS.find((c) => score >= c.min) ?? HEALTH_BAND_CUTS[HEALTH_BAND_CUTS.length - 1]).band;
 }
 
 const BAND_LABEL: Record<HealthBand, string> = {

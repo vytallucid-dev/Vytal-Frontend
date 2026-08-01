@@ -44,6 +44,7 @@ import type { MutableRefObject } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { ChatMessage, ChatQuota, ChatRole, ChatUnavailable, SendMessageData } from "@/types/chat";
 import { invalidateChanged } from "@/lib/api/change-keys";
+import { provisionalTitleFrom } from "./provisional-title";
 
 /** The maximum message length the server accepts (SendBody: .max(4000)). Mirror it so the composer caps. */
 export const MAX_MESSAGE_LENGTH = 4000;
@@ -118,6 +119,13 @@ export interface ChatConversationOptions {
 
 export interface ChatConversation {
   messages: UiMessage[];
+  /** ★ THE READER'S FIRST MESSAGE, TRUNCATED — the stand-in title for a conversation that was born in
+   *  this session and has not been named by the server yet. Set by the send that CREATES the session
+   *  (the only send that can happen against a blank one), cleared by every conversation switch, and
+   *  never allowed to outrank a real title (see provisional-title.ts §resolveTitle). It lives here
+   *  rather than in either driver because both surfaces can start a blank conversation, and a title
+   *  that appeared on one of them and not the other would be a difference with no reason. */
+  provisionalTitle: string | null;
   /** A reply is generating → the caller shows the Vytal loader in the assistant slot. */
   generating: boolean;
   /** The last send failed at the transport layer → the caller shows an inline retry. */
@@ -148,6 +156,7 @@ export interface ChatConversation {
 
 export function useChatConversation(opts: ChatConversationOptions = {}): ChatConversation {
   const [messages, setMessages] = useState<UiMessage[]>([]);
+  const [provisionalTitle, setProvisionalTitle] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [sendError, setSendError] = useState(false);
   const [sendBlock, setSendBlock] = useState<ChatUnavailable | null>(null);
@@ -271,6 +280,11 @@ export function useChatConversation(opts: ChatConversationOptions = {}): ChatCon
       setGenerating(false);
       setSendError(false);
       setMessages(msgs);
+      // The stand-in title belongs to ONE conversation — the one whose first message produced it. Any
+      // switch (to another session, or back to a blank one) retires it; the conversation being switched
+      // to has its own name, and inheriting someone else's would be the wrong-title failure this whole
+      // mechanism exists to avoid.
+      setProvisionalTitle(null);
       // ★ A RELOAD INTO A CAPPED DAY MUST STILL FIND THE COMPOSER SHUT — from the FIRST paint, before any
       //   quota read has answered. The loaded transcript already knows: its newest denial whose reset is
       //   still ahead. (The server nulls `resetAt` once the window has passed, so yesterday's denial can
@@ -293,6 +307,10 @@ export function useChatConversation(opts: ChatConversationOptions = {}): ChatCon
     lastAttemptRef.current = { id: id_, text };
     setSendError(false);
     setGenerating(true);
+    // ★ NAME THE CONVERSATION AT THE KEYSTROKE, NOT AT THE REPLY. No session id yet ⇒ this send is the
+    //   one that creates it, so this text is its first message — the same text the server will truncate
+    //   into the same title when the exchange finally lands, minutes later on a heavy question.
+    if (sessionIdRef.current == null) setProvisionalTitle(provisionalTitleFrom(text));
     if (rowId == null) {
       setMessages((prev) => [...prev, { id: id_, role: "user", content: text, reveal: false }]);
     } else {
@@ -382,6 +400,7 @@ export function useChatConversation(opts: ChatConversationOptions = {}): ChatCon
 
   return {
     messages,
+    provisionalTitle,
     generating,
     sendError,
     sendBlock,

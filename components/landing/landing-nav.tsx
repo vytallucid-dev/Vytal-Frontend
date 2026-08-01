@@ -45,7 +45,7 @@ export function LandingNav() {
             <Icons.spark weight="fill" className="size-4 text-primary" />
           </span>
           <span className="font-display text-lg font-extrabold tracking-tight">
-            Invest<span className="text-gradient">IQ</span>
+            Vy<span className="text-gradient">tal</span>
           </span>
         </Link>
 

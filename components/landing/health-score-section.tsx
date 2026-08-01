@@ -5,50 +5,67 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HealthRing } from "@/components/ui/health-ring";
 import { Reveal } from "@/components/ui/reveal";
 import { Icons, type Icon } from "@/lib/icons";
+import { healthColorVar } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+/**
+ * ★ THE FOUR PILLARS, and they are the REAL four. This section used to show nine pillars in three
+ * categories (Fundamentals / Technical / Institutional) with RSI and MACD in the copy — a model the
+ * engine has never run. The scores below are ILLUSTRATIVE by design (this is the marketing page,
+ * not a live read) but the STRUCTURE is the engine's: Foundation · Momentum · Market · Ownership,
+ * listed heaviest-first.
+ *
+ * ⚠ NO WEIGHTS. An earlier version printed "35% weight" on each card and computed the composite
+ * ring from them — between the two, a reader could read the weight off the card and check it
+ * against the ring. Per the product-wide rule, no numeric weight ships on any reader-facing
+ * surface; the ORDER does, because four pillars with nothing said about their pull read as four
+ * equal ones. See lib/health-data.ts.
+ */
 type Pillar = {
   key: string;
   score: number;
   icon: Icon;
   blurb: string;
 };
-type Category = { title: string; tint: string; pillars: Pillar[] };
 
-const categories: Category[] = [
+const pillars: Pillar[] = [
   {
-    title: "Fundamentals",
-    tint: "text-success",
-    pillars: [
-      { key: "Profitability", score: 88, icon: Icons.coins, blurb: "How efficiently the business turns revenue into profit — ROE, margins, ROCE." },
-      { key: "Growth", score: 82, icon: Icons.trendUp, blurb: "Consistency and quality of revenue, profit and EPS expansion over time." },
-      { key: "Stability", score: 90, icon: Icons.shield, blurb: "Balance-sheet strength — low leverage, strong interest coverage, steady earnings." },
-      { key: "Efficiency", score: 85, icon: Icons.bolt, blurb: "How well capital converts into real cash flow, not just accounting profit." },
-      { key: "Valuation", score: 70, icon: Icons.scales, blurb: "Whether you're paying a fair price versus the stock's history and its peers." },
-    ],
+    key: "Foundation",
+    score: 70,
+    icon: Icons.shield,
+    blurb:
+      "The durable quality of the business — how profitably it turns capital into earnings, how solid the balance sheet is, and how much profit arrives as actual cash.",
   },
   {
-    title: "Technical",
-    tint: "text-info",
-    pillars: [
-      { key: "Momentum", score: 75, icon: Icons.pulse, blurb: "Strength of the current move — RSI, MACD and relative price action." },
-      { key: "Trend", score: 80, icon: Icons.chartLine, blurb: "Alignment across short, medium and long-term trend structure." },
-    ],
+    key: "Momentum",
+    score: 59,
+    icon: Icons.trendUp,
+    blurb:
+      "Which way those fundamentals are travelling. Earnings, revenue and margins over trailing twelve-month windows — not the share price.",
   },
   {
-    title: "Institutional",
-    tint: "text-primary",
-    pillars: [
-      { key: "Activity", score: 85, icon: Icons.building, blurb: "What smart money is doing — FII / DII flows, bulk & block deals." },
-      { key: "Sentiment", score: 78, icon: Icons.brain, blurb: "Promoter conviction, insider buying and overall ownership quality." },
-    ],
+    key: "Market",
+    score: 55,
+    icon: Icons.chartLine,
+    blurb:
+      "The only pillar that reads price: where it sits in its own range, its trend, and how it has done against sector peers.",
+  },
+  {
+    key: "Ownership",
+    score: 75,
+    icon: Icons.building,
+    blurb:
+      "Who owns the company and how that is shifting — promoter commitment and pledging, institutional participation, insider and block-deal activity.",
   },
 ];
 
-const allPillars = categories.flatMap((c) => c.pillars);
+/** An illustrative composite for the ring. ⚠ NOT computed from the cards: a published composite
+ *  beside four published pillar scores is one equation, and enough such pairs solve for the
+ *  weights. It sits inside the range the four imply and says nothing more than that. */
+const ILLUSTRATIVE_COMPOSITE = 65;
 
 export function HealthScoreSection() {
-  const [active, setActive] = useState<Pillar>(allPillars[0]);
+  const [active, setActive] = useState<Pillar>(pillars[0]);
 
   return (
     <section id="score" className="relative scroll-mt-24 py-24 sm:py-32">
@@ -57,16 +74,17 @@ export function HealthScoreSection() {
           <div className="mb-3 inline-flex items-center gap-2 text-primary">
             <Icons.health weight="duotone" className="size-4" />
             <span className="text-xs font-semibold uppercase tracking-[0.18em]">
-              The InvestIQ Health Score
+              The Vytal Health Score
             </span>
           </div>
           <h2 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
-            40+ metrics, distilled into <span className="text-gradient">one honest number.</span>
+            Four readings, one <span className="text-gradient">honest number.</span>
           </h2>
           <p className="mt-4 text-muted-foreground sm:text-lg">
-            Nine pillars across three lenses — fundamentals, technicals and
-            institutional flows — combine into a transparent 0–100 score. Hover any
-            pillar to see exactly what it measures.
+            Foundation, Momentum, Market and Ownership — each a 0–100 read of one
+            dimension of the company, blended by fixed weights into a single 0–100
+            score. Foundation carries the most. Hover any pillar to see what it
+            measures.
           </p>
         </Reveal>
 
@@ -78,7 +96,10 @@ export function HealthScoreSection() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Composite Health
               </p>
-              <HealthRing score={85} size={196} strokeWidth={13} showLabel className="mx-auto my-4" />
+              {/* ★ COMPUTED, not typed. The old hardcoded 85 sat above nine invented pillar scores
+                  that could never have produced it. This is the real blend of the four cards on the
+                  right, so the illustration is at least arithmetically honest with itself. */}
+              <HealthRing score={ILLUSTRATIVE_COMPOSITE} size={196} strokeWidth={13} showLabel className="mx-auto my-4" />
               <AnimatePresence mode="wait">
                 <motion.div
                   key={active.key}
@@ -101,65 +122,54 @@ export function HealthScoreSection() {
             </div>
           </Reveal>
 
-          {/* RIGHT — pillar grid */}
-          <div className="space-y-7">
-            {categories.map((cat, ci) => (
-              <Reveal key={cat.title} delay={ci * 0.08}>
-                <p className={cn("mb-2.5 text-xs font-semibold uppercase tracking-[0.16em]", cat.tint)}>
-                  {cat.title}
-                </p>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {cat.pillars.map((p) => {
-                    const isActive = active.key === p.key;
-                    return (
-                      <button
-                        key={p.key}
-                        onMouseEnter={() => setActive(p)}
-                        onFocus={() => setActive(p)}
-                        className={cn(
-                          "group flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-300",
-                          isActive
-                            ? "border-primary/40 bg-primary/8 shadow-[0_0_30px_-12px_var(--glow)]"
-                            : "border-border/70 bg-surface-1/40 hover:border-primary/25 hover:bg-surface-2/50"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "grid size-9 shrink-0 place-items-center rounded-lg transition-colors",
-                            isActive ? "bg-primary/15 text-primary" : "bg-surface-2/70 text-muted-foreground group-hover:text-foreground"
-                          )}
-                        >
-                          <p.icon weight="duotone" className="size-[1.15rem]" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{p.key}</span>
-                            <span className="font-mono text-xs text-muted-foreground">{p.score}</span>
-                          </div>
-                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3/60">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              whileInView={{ width: `${p.score}%` }}
-                              viewport={{ once: true }}
-                              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                              className="h-full rounded-full"
-                              style={{
-                                background:
-                                  p.score >= 80
-                                    ? "var(--success)"
-                                    : p.score >= 60
-                                    ? "var(--warning)"
-                                    : "var(--danger)",
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </Reveal>
-            ))}
+          {/* RIGHT — the four pillars */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {pillars.map((p, i) => {
+              const isActive = active.key === p.key;
+              return (
+                <Reveal key={p.key} delay={i * 0.06}>
+                  <button
+                    onMouseEnter={() => setActive(p)}
+                    onFocus={() => setActive(p)}
+                    className={cn(
+                      "group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-300",
+                      isActive
+                        ? "border-primary/40 bg-primary/8 shadow-[0_0_30px_-12px_var(--glow)]"
+                        : "border-border/70 bg-surface-1/40 hover:border-primary/25 hover:bg-surface-2/50"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-9 shrink-0 place-items-center rounded-lg transition-colors",
+                        isActive ? "bg-primary/15 text-primary" : "bg-surface-2/70 text-muted-foreground group-hover:text-foreground"
+                      )}
+                    >
+                      <p.icon weight="duotone" className="size-[1.15rem]" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">{p.key}</span>
+                        {/* the pillar's own 0–100 read. NOT its weight — see the header note. */}
+                        <span className="font-mono text-[0.7rem] text-muted-foreground">{p.score}</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3/60">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          whileInView={{ width: `${p.score}%` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+                          className="h-full rounded-full"
+                          // ★ THE REAL CONDITION SCALE. This bar used to cut at 80/60 into
+                          // success/warning/danger — a three-band scale the product does not have.
+                          // healthColorVar is the same five-band mapping every other surface uses.
+                          style={{ background: healthColorVar(p.score) }}
+                        />
+                      </div>
+                    </div>
+                  </button>
+                </Reveal>
+              );
+            })}
           </div>
         </div>
       </div>

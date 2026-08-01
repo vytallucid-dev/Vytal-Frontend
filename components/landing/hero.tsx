@@ -11,11 +11,13 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
+/** The four REAL pillars (Foundation · Momentum · Market · Ownership). Scores are illustrative;
+ *  the names and the count are not — they mirror the engine. See lib/health-data.ts. */
 const orbitChips = [
-  { label: "Profitability", score: 88, pos: "left-[-8%] top-[12%]", icon: Icons.coins },
-  { label: "Growth", score: 82, pos: "right-[-6%] top-[6%]", icon: Icons.trendUp },
-  { label: "Stability", score: 90, pos: "left-[-12%] bottom-[20%]", icon: Icons.shield },
-  { label: "Momentum", score: 75, pos: "right-[-10%] bottom-[14%]", icon: Icons.pulse },
+  { label: "Foundation", score: 70, pos: "left-[-8%] top-[12%]", icon: Icons.shield },
+  { label: "Momentum", score: 59, pos: "right-[-6%] top-[6%]", icon: Icons.trendUp },
+  { label: "Market", score: 55, pos: "left-[-12%] bottom-[20%]", icon: Icons.chartLine },
+  { label: "Ownership", score: 75, pos: "right-[-10%] bottom-[14%]", icon: Icons.building },
 ];
 
 const fadeUp: Variants = {
@@ -73,7 +75,7 @@ export function Hero() {
             className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-3 py-1.5 text-xs font-medium text-primary"
           >
             <span className="flex size-1.5 animate-pulse rounded-full bg-primary" />
-            Proprietary Health Score · Built for Indian markets
+            The Vytal Health Score · Built for Indian markets
           </motion.div>
 
           <motion.h1
@@ -95,9 +97,9 @@ export function Hero() {
             animate="show"
             className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
           >
-            InvestIQ reads fundamentals, technicals and institutional flows for
-            every stock — then distills 40+ metrics into one transparent score you
-            can actually trust. No jargon. No noise. Just clarity.
+            Vytal reads the business, its trajectory, its price and its ownership
+            for every stock — four pillars, one 0–100 score, judged against the
+            company&apos;s own peers. No jargon. No noise. Just clarity.
           </motion.p>
 
           <motion.div
@@ -131,10 +133,17 @@ export function Hero() {
             animate="show"
             className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4"
           >
+            {/* ★ THREE CLAIMS THAT ARE TRUE AND STAY TRUE. This row previously read
+                "1,800+ stocks scored · 40+ metrics per stock · 9 health pillars" — three numbers,
+                all wrong. The pillar count is four. There is no fixed metric count (it differs by
+                peer group and by what a company has actually filed), so no number belongs here.
+                And the scored universe is nowhere near 1,800 — that figure is flagged to the
+                operator rather than replaced with a guess, because "scored" vs "tracked" is a
+                product claim, not an engineering one. What is left is structural and checkable. */}
             {[
-              { v: "1,800+", l: "Stocks scored" },
-              { v: "40+", l: "Metrics per stock" },
-              { v: "9", l: "Health pillars" },
+              { v: "4", l: "Health pillars" },
+              { v: "5", l: "Condition bands" },
+              { v: "3", l: "Readings per metric" },
             ].map((s) => (
               <div key={s.l}>
                 <p className="font-display text-2xl font-bold text-foreground">{s.v}</p>

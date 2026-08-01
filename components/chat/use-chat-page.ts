@@ -25,8 +25,14 @@ import { useChatConversation, toUiMessage, type UiMessage } from "./use-chat-con
 
 export type ChatPagePhase = "blank" | "loading" | "ready" | "loadError";
 
+/** Stable empty transcript — a fresh [] each render would restart the transcript's effects (§NO FLICKER). */
+const NO_MESSAGES: UiMessage[] = [];
+
 export interface ChatPage {
   messages: UiMessage[];
+  /** The reader's own first message, standing in for the title until the server writes one (see
+   *  provisional-title.ts). Null on a conversation that already has a name. */
+  provisionalTitle: string | null;
   phase: ChatPagePhase;
   generating: boolean;
   sendError: boolean;
@@ -135,15 +141,35 @@ export function useChatPage(opts: {
     if (opts.activeId) void loadSession(opts.activeId);
   }, [opts.activeId, loadSession]);
 
+  // ── §NO FLICKER ───────────────────────────────────────────────────────────────────────────────────
+  // ★ THE URL NAMES A SESSION WE HAVE NOT INSTALLED YET ⇒ THIS CONVERSATION IS *LOADING AND EMPTY*,
+  //   whatever the state machine has managed to do about it so far.
+  //
+  //   `phase` and the transcript are both moved by an effect, and React runs effects AFTER the browser
+  //   has painted. So for one frame after picking a conversation, this hook still reported the state it
+  //   was in a moment ago — and the surface duly painted it: the blank chat's whole welcome (greeting,
+  //   hero composer, suggestion chips) if you came from a blank one, or the PREVIOUS conversation's
+  //   messages if you came from another. Either way the reader saw something that was not the
+  //   conversation they had just tapped, for a fraction of a second, every single time.
+  //
+  //   Deriving it during render closes that frame at the source, so both surfaces are fixed by one
+  //   change and neither has to know the reason. (The ref read is safe here: `sessionIdRef` only moves
+  //   inside effects and handlers, and every move is paired with a state update that re-renders.)
+  const settling = opts.activeId != null && opts.activeId !== currentSessionId();
+  const effectivePhase: ChatPagePhase = settling ? "loading" : phase;
+
   // Blank AND ready both allow sending; loading / loadError do not — and neither does a live daily cap,
   // where every attempt is a guaranteed failure (the core lifts sendBlock at resetAt on its own).
-  const canSend = (phase === "blank" || phase === "ready") && !conv.generating && !conv.sendBlock;
+  const canSend =
+    (effectivePhase === "blank" || effectivePhase === "ready") && !conv.generating && !conv.sendBlock;
 
   return {
-    messages: conv.messages,
-    phase,
-    generating: conv.generating,
-    sendError: conv.sendError,
+    messages: settling ? NO_MESSAGES : conv.messages,
+    provisionalTitle: conv.provisionalTitle,
+    phase: effectivePhase,
+    // A reply still in flight belongs to the conversation being left, not the one arriving.
+    generating: settling ? false : conv.generating,
+    sendError: settling ? false : conv.sendError,
     sendBlock: conv.sendBlock,
     canSend,
     send: conv.send,

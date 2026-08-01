@@ -20,7 +20,7 @@ const steps: Step[] = [
   {
     n: "01",
     title: "Search any stock",
-    body: "Type a name or ticker. InvestIQ instantly pulls fundamentals, price action and institutional flows from across the market — no spreadsheets, no tabs.",
+    body: "Type a name or ticker. Vytal instantly pulls fundamentals, price action and ownership filings from across the market — no spreadsheets, no tabs.",
     icon: Icons.search,
     visual: (
       <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-surface-1/60 px-3 py-2.5">

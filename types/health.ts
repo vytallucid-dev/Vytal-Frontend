@@ -359,6 +359,10 @@ export interface RedFlagView {
   tier: "auto" | "review";
   triggeringValues: unknown | null;
   guardrailEventId: string | null;
+  /** The File-1 §5 verdict sentence, rendered SERVER-SIDE against this firing's evidence
+   *  (Stage 3). OPTIONAL on purpose: a backend older than Stage 3, or a cached payload, has no
+   *  such field, and the bundled renderVerdict must still produce the same sentence. */
+  verdict?: string;
 }
 
 export interface PatternView {
@@ -372,6 +376,8 @@ export interface PatternView {
   magnitude: number | null;
   evidence: unknown | null;
   metricRefs: unknown | null;
+  /** Server-rendered verdict sentence — see RedFlagView.verdict. Optional for the same reason. */
+  verdict?: string;
 }
 
 export interface FindingsSection {

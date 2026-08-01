@@ -27,13 +27,15 @@ import {
   type DisplayState,
   type Family,
 } from "./classify";
-import { doesntMean, findingConcern, findingDescription, findingName } from "./descriptions";
+import { doesntMean, findingConcern, findingDescription, findingName, lensFindingName } from "./descriptions";
 import { renderVerdict } from "./verdicts";
+import { catalogueSource, reportFallback } from "./catalogue-store";
 
 export * from "./classify";
 export * from "./descriptions";
 export * from "./verdicts";
 export * from "./evidence-shape";
+export * from "./catalogue-store";
 
 /** The concern bucket for a census row. The CATALOG's assignment wins (it knows the structural
  *  B/C/D/F/G/I cards belong to "trajectory" and rehomes ownership_H to "ownership"); classify's
@@ -84,6 +86,25 @@ function caveatsFor(key: string, ev: Record<string, unknown> | null): string[] {
   return out;
 }
 
+/**
+ * ★ STAGE 5 · THE VERDICT NOW ARRIVES ON THE ROW.
+ *
+ * A verdict is an (evidence) => string function bound to THIS stock's numbers, so it cannot be served
+ * from the catalogue endpoint — the backend renders it onto the finding row instead (Stage 3). This is
+ * the repoint: prefer the server's sentence; fall back to the bundled renderer.
+ *
+ * ⚠ `renderVerdict(key, evidence)` KEEPS ITS SIGNATURE and keeps working. It is no longer the first
+ * authority, it is the fallback — which is exactly what 5b requires. A dead backend, or a payload
+ * predating Stage 3, still produces the same sentence it always did.
+ */
+function verdictFor(key: string, ev: Record<string, unknown> | null, served: string | null | undefined): string {
+  if (typeof served === "string" && served.length > 0) return served;
+  // Only a signal when the catalogue IS live: a row without a verdict then means a backend older than
+  // Stage 3, which is a deploy-order problem worth seeing rather than a cold start.
+  if (catalogueSource() === "catalogue") reportFallback("verdict-missing", `verdict for "${key}" was not on the row`);
+  return renderVerdict(key, ev);
+}
+
 function toFinding(
   key: string,
   kind: "red_flag" | "pattern",
@@ -92,13 +113,15 @@ function toFinding(
   magnitude: number | null,
   evidence: unknown,
   pondHot: boolean,
+  servedVerdict?: string | null,
 ): PreparedFinding {
   const ev = asObj(evidence);
   const priceLinked = isPriceLinked(key);
   const family = familyOf(key);
-  // Lens findings (lens_lm3/lm7/lp2/lp5) carry the verbatim catalog label in evidence;
-  // use it as the card name (findingName would mangle the dynamic lens_* key).
-  const name = key.startsWith("lens_") && typeof ev?.label === "string" ? (ev.label as string) : findingName(key);
+  // Lens findings (lens_lm3/lm7/lp2/lp5) have runtime-composed keys, so `findingName` would mangle
+  // them. P2: resolve the FACE from the catalogue and use its label; the evidence label is now the
+  // fallback rather than the source, so a relabelled face no longer leaves old rows on the old word.
+  const name = key.startsWith("lens_") ? lensFindingName(key, ev?.label) : findingName(key);
   return {
     key,
     family,
@@ -108,7 +131,7 @@ function toFinding(
     severity,
     displayState,
     magnitude,
-    verdict: renderVerdict(key, ev),
+    verdict: verdictFor(key, ev, servedVerdict),
     doesntMean: doesntMean(key),
     evidence: ev,
     maskNote: priceLinked && pondHot ? MASK_NOTE : null,
@@ -166,10 +189,10 @@ export function prepareStockFindings(
 ): StockFindings {
   const pondHot = opts.pondHot ?? false;
   const flags = findings.redFlags.map((rf) =>
-    toFinding(rf.flagKey, "red_flag", rf.severity, "active", null, rf.triggeringValues, pondHot),
+    toFinding(rf.flagKey, "red_flag", rf.severity, "active", null, rf.triggeringValues, pondHot, rf.verdict),
   );
   const pats = findings.patterns.map((p) =>
-    toFinding(p.patternKey, "pattern", p.severity, (p.displayState as DisplayState) ?? "active", p.magnitude ?? null, p.evidence, pondHot),
+    toFinding(p.patternKey, "pattern", p.severity, (p.displayState as DisplayState) ?? "active", p.magnitude ?? null, p.evidence, pondHot, p.verdict),
   );
 
   const all = [...flags, ...pats];

@@ -18,6 +18,7 @@
 
 import { prepareStockFindings, accentVars, type PreparedFinding } from "@/lib/findings";
 import type { Comparee } from "@/types/compare";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import { A_HUE, B_HUE, HonestEmpty } from "./shared";
 
 // Tag copy — mirrors the stock-detail findings card (display-only; kept small + in sync).
@@ -53,7 +54,7 @@ function CompactFinding({ f }: { f: PreparedFinding }) {
       </div>
       <p className="mt-1.5 text-[12px] leading-relaxed text-ink2">{f.verdict}</p>
       {/* The interpretive boundary — omitting it is a platform-law gap (Rules Spec card anatomy). */}
-      <p className="mt-1.5 border-l-2 border-line2 pl-2.5 text-[11px] italic text-ink3">{f.doesntMean}</p>
+      <BoundaryLine text={f.doesntMean} size="sm" className="mt-1.5" />
     </div>
   );
 }

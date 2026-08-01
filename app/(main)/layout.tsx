@@ -4,6 +4,7 @@ import { RequireAuth } from "@/components/auth/route-guard";
 import { MainShell } from "@/components/main-shell";
 import { SidekickProvider } from "@/components/sidekick/sidekick-provider";
 import { SidekickPanel } from "@/components/sidekick/sidekick-panel";
+import { ChatShortcutsProvider } from "@/components/shortcuts/chat-shortcuts";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -23,12 +24,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           sidebar it has to collapse) is also what lets the conversation survive navigation: the reader
           keeps browsing while it talks, which is the entire reason it stopped being a sheet. */}
       <SidekickProvider>
-        <AppSidebar />
-        <SidebarInset className="min-w-0 bg-transparent">
-          {/* Per-route frame: Navbar + padded scroll for most pages; full-bleed for /chat. */}
-          <MainShell>{children}</MainShell>
-        </SidebarInset>
-        <SidekickPanel />
+        {/* The Vytal keyboard layer (⌥A / ⌥N / ⌥B). Inside SidekickProvider because it dispatches to
+            the panel's actions, and ABOVE the router outlet because the chat page claims those same
+            three keys while it is mounted. Renders no DOM of its own — the sidebar and the inset stay
+            siblings in the shell's flex row. */}
+        <ChatShortcutsProvider>
+          <AppSidebar />
+          <SidebarInset className="min-w-0 bg-transparent">
+            {/* Per-route frame: Navbar + padded scroll for most pages; full-bleed for /chat. */}
+            <MainShell>{children}</MainShell>
+          </SidebarInset>
+          <SidekickPanel />
+        </ChatShortcutsProvider>
       </SidekickProvider>
       </SidebarProvider>
     </RequireAuth>

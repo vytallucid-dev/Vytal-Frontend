@@ -1,5 +1,5 @@
 /**
- * Thin typed fetch wrapper for the InvestIQ API.
+ * Thin typed fetch wrapper for the Vytal API.
  * Base URL is set via NEXT_PUBLIC_API_BASE_URL (required in production).
  * All helpers throw ApiError on non-2xx so React Query's error state works.
  *

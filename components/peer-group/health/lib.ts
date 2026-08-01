@@ -4,7 +4,7 @@
 // derivations on top of the contract.
 
 import { healthLabel } from "@/lib/format";
-import { humanizeKey } from "@/components/stock-detail/health/shared";
+import { findingName } from "@/lib/findings/descriptions";
 import type {
   PeerGroupAggregate,
   PeerGroupMemberView,
@@ -45,13 +45,26 @@ export function pondCharacterRead(a: PeerGroupAggregate, sectorClass: SectorClas
 }
 
 // ── pathology labelling + interpretation ────────────────────────────────────────
-const FLAG_LABELS: Record<string, string> = {
-  ownership_R1_pledge: "Promoter pledge rising",
-};
-
-export function pathologyLabel(kind: "red_flag" | "pattern", key: string): string {
-  if (kind === "red_flag" && FLAG_LABELS[key]) return FLAG_LABELS[key];
-  return humanizeKey(key);
+//
+// ★ 5e · THE DRIFT SEAM, CLOSED. This surface used to name findings TWICE over, and neither way was
+// the canonical one:
+//
+//   FLAG_LABELS      a one-entry local override — `ownership_R1_pledge: "Promoter pledge rising"`,
+//                    while every other surface in the product called it "Pledging Crisis".
+//   humanizeKey      the fallback for everything else, which lowercases and de-underscores the RAW
+//                    KEY: `ownership_R6_distribution` → "Ownership r6 distribution". Canonical is
+//                    "Distribution Pattern". It never looked broken enough to report.
+//
+// Both are gone. `findingName` is the one authority, and it now resolves through the served catalogue
+// (falling back to the bundled map), so this surface speaks the same vocabulary as the stock page,
+// the census, the chat and the alert picker.
+//
+// ⚠ THIS IS A VISIBLE CHANGE — the one documented exception to byte-identical presentation in this
+// migration. It is a CORRECTION, not a regression: the labels a reader saw here were wrong, and they
+// were wrong in a way that made the same finding look like two different findings depending on which
+// page you were on. Reported explicitly in the Stage-5 notes rather than folded into the diff.
+export function pathologyLabel(_kind: "red_flag" | "pattern", key: string): string {
+  return findingName(key);
 }
 
 export function pathologyRead(reach: PathologyReach, n: number, of: number): string {

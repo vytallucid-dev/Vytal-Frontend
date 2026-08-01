@@ -1,6 +1,12 @@
 /**
  * Centralized demo data for the revamped shell, dashboard and landing page so
  * every surface tells a consistent story. (Mock — wire to the backend later.)
+ *
+ * ⚠ NOTHING IN THIS FILE IS IMPORTED TODAY. It is a prototype fixture, kept as a design
+ * reference. That is exactly why the retired nine-pillar model was removed from it: dead mock
+ * data is where a wrong model survives a rewrite and gets copied back in six months later. If you
+ * revive anything here, the live shapes are in @/types/health and the real model is documented in
+ * @/lib/health-data.
  */
 
 export const marketIndices = [
@@ -34,12 +40,14 @@ export const topHoldings = [
   { symbol: "BAJFINANCE", name: "Bajaj Finance", value: 98200, weight: 7.9, day: -1.2, health: 80, spark: [70, 69, 71, 68, 66, 67, 65, 64] },
 ];
 
+/** The four pillars, as the engine actually has them. (Was: Profitability / Growth / Stability /
+ *  Efficiency / Valuation — five of the nine retired pillars, on a portfolio surface that never
+ *  had per-pillar scores in the first place.) Scores are mock. */
 export const portfolioHealthBreakdown = [
-  { key: "Profitability", score: 85, hint: "Strong margins & ROE across holdings" },
-  { key: "Growth", score: 80, hint: "Healthy double-digit earnings momentum" },
-  { key: "Stability", score: 88, hint: "Low leverage, consistent earnings" },
-  { key: "Efficiency", score: 82, hint: "Capital converts to cash efficiently" },
-  { key: "Valuation", score: 72, hint: "Slightly rich vs sector — watch entries" },
+  { key: "Foundation", score: 70, hint: "Balance sheets and cash conversion across holdings" },
+  { key: "Momentum", score: 59, hint: "Earnings and margin trend, on trailing-twelve-month figures" },
+  { key: "Market", score: 55, hint: "Where prices sit in their own range, versus sector peers" },
+  { key: "Ownership", score: 75, hint: "Promoter commitment, pledging and institutional flow" },
 ];
 
 export const marketNews = [
@@ -102,7 +110,7 @@ export const aiInsights = [
   {
     id: 3,
     title: "Valuation watch",
-    body: "Your portfolio's valuation pillar sits at 72. Two holdings trade above their 5-yr median P/E.",
+    body: "Your portfolio's Market pillar sits at 55 — prices across the book are mid-range, not stretched.",
     priority: "medium" as const,
     tag: "Health",
   },

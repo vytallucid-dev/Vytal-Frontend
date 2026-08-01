@@ -10,7 +10,7 @@
 
 import type { LabelBand } from "@/types/health";
 import type { Alert, AlertOperator, AlertRepeatMode, AlertType, AlertEvent } from "@/types/alerts";
-import { FINDING_NAMES } from "@/lib/findings/descriptions";
+import { FINDING_NAMES, findingName } from "@/lib/findings/descriptions";
 
 // ── band identity (fragile < below_par < steady < healthy < pristine) ───────────────
 export const BAND_ORDER: LabelBand[] = ["fragile", "below_par", "steady", "healthy", "pristine"];
@@ -30,15 +30,50 @@ export const BAND_CVAR: Record<LabelBand, string> = {
 };
 export const bandLabel = (b: LabelBand | null | undefined): string => (b ? BAND_LABEL[b] : "—");
 
-// ── finding catalog for the picker (specific finding, or "any new finding") ─────────
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// ── finding catalog for the picker (specific finding, or "any new finding") ────────────────────────
+//
+// ★ 1d · THE PICKER FETCHES ITS OWN 1.9 KB PROJECTION, NOT THE 54 KB DOCUMENT.
+//
+// This list used to be built at MODULE EVAL from the bundled FINDING_NAMES — which is why it could
+// not simply read the catalogue store: a module-eval constant is computed before any fetch has
+// happened, so it would freeze the bundled names for the life of the tab no matter what the endpoint
+// later returned. It now has a hook (`useFindingOptions`) with a real loading state.
+//
+// The picker takes GET /api/v1/catalogue/names — key → name and nothing else. A dropdown has no use
+// for descriptions, boundaries, families or concerns, and 54 KB to draw a <select> is the kind of
+// cost nobody notices until it is a bundle review.
+//
+// ⚠ FINDING_OPTIONS IS RETAINED AS THE FALLBACK LIST, and the hook returns it while loading and on
+// failure — so the picker is never empty and a reader can always set an alert.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
 export interface FindingOption {
   key: string;
   name: string;
 }
+
+const byName = (a: FindingOption, b: FindingOption) => a.name.localeCompare(b.name);
+
+/** The BUNDLED list — the fallback, and what the hook returns while the 1.9 KB fetch is in flight. */
 export const FINDING_OPTIONS: FindingOption[] = Object.entries(FINDING_NAMES)
   .map(([key, name]) => ({ key, name }))
-  .sort((a, b) => a.name.localeCompare(b.name));
-export const findingLabel = (key: string): string => FINDING_NAMES[key] ?? key;
+  .sort(byName);
+
+/** Build the option list from a served name map. Same shape, same ordering, one source. */
+export const findingOptionsFrom = (names: Record<string, string>): FindingOption[] =>
+  Object.entries(names)
+    .map(([key, name]) => ({ key, name }))
+    .sort(byName);
+
+/**
+ * The display name for a finding key. Reads the SERVED catalogue first (via the same store the four
+ * resolvers use), then the bundled map, then the raw key.
+ *
+ * ⚠ This is a function, not a constant, so it picks up the served name the moment the store hydrates
+ * — which is what lets the alert LIST and the fired-events FEED speak the canonical vocabulary
+ * without either of them being touched.
+ */
+export const findingLabel = (key: string): string => findingName(key);
 
 // ── per-type accent — three DISTINCT hues (blue / violet / amber) so the type is legible
 //    at a glance and never two-of-a-kind. Shared by the modal, the bell, and the manage

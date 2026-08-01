@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Central premium icon language for InvestIQ — built on Phosphor Icons.
+ * Central premium icon language for Vytal — built on Phosphor Icons.
  *
  * Why centralized: swapping the platform's icon set later means editing this one
  * file, not 80 components. New / revamped surfaces import their icons from here so
@@ -67,6 +67,7 @@ import {
   ArrowCounterClockwise,
   ArrowsOutSimple,
   ArrowsInSimple,
+  SidebarSimple,
   Scales,
   Rocket,
   Graph,
@@ -203,6 +204,9 @@ export const Icons = {
   caretUp: CaretUp,
   arrowsOutSimple: ArrowsOutSimple,
   arrowsInSimple: ArrowsInSimple,
+  /** The show/hide-a-side-panel toggle — one glyph for both directions, the way the app sidebar's own
+   *  trigger works. Used by /chat's conversation rail. */
+  sidebarSimple: SidebarSimple,
 } satisfies Record<string, Icon>;
 
 export type IconName = keyof typeof Icons;

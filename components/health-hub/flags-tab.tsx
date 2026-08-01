@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Reveal } from "@/components/ui/reveal";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import { Icons, type Icon } from "@/lib/icons";
 import { Panel, SectionEyebrow, BAND_META } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
@@ -197,7 +198,7 @@ function RedFlagCard({ p }: { p: PreparedCensus }) {
           when the catalog has no entry (never a generic filler sentence). */}
       {p.description && <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink2">{p.description}</p>}
       {/* The interpretive boundary — what this does NOT mean. */}
-      <p className="mt-2 border-l-2 border-line2 pl-2.5 text-[11.5px] italic text-ink3">{p.doesntMean}</p>
+      <BoundaryLine text={p.doesntMean} size="md" className="mt-2" />
       <div className="mt-2 flex items-center justify-between gap-3">
         <p className="text-[11.5px] italic text-ink3">
           Reach: {p.reach} ({p.memberCount} of {p.outOf} scored) — {p.reach === "isolated" ? "a single-name concern, not a universe signal." : p.reach === "widespread" ? "a group-wide read, not company-specific." : "a shared cluster worth watching."}
@@ -227,7 +228,7 @@ function PatternCard({ p }: { p: PreparedCensus }) {
           Accruals Divergence / Capital Tied in Receivables / Quarterly Margin Compression
           finally read as findings about the company. Title-only when absent. */}
       {p.description && <p className="mt-2 text-[12px] leading-relaxed text-ink2">{p.description}</p>}
-      <p className="mt-2 border-l-2 border-line2 pl-2.5 text-[11px] italic text-ink3">{p.doesntMean}</p>
+      <BoundaryLine text={p.doesntMean} size="sm" className="mt-2" />
       <div className="mt-2 flex items-center justify-between gap-3">
         <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
         <InvestigateButton members={p.members} title={p.name} />
@@ -264,9 +265,7 @@ function LensPatternCard({ p }: { p: PreparedCensus }) {
       {/* Catalog "Read" — the descriptive body (was dropped by the wire; now sourced here). */}
       {meta.read && <p className="mt-2 text-[12px] leading-relaxed text-ink2">{meta.read}</p>}
       {/* The interpretive boundary — field-verdicts are context, never a stock call. */}
-      {meta.doesntMean && (
-        <p className="mt-2 border-l-2 border-line2 pl-2.5 text-[11px] italic text-ink3">{meta.doesntMean}</p>
-      )}
+      {meta.doesntMean && <BoundaryLine text={meta.doesntMean} size="sm" className="mt-2" />}
       <div className="mt-2 flex items-center justify-between gap-3">
         <div className="num text-[11.5px] text-ink2">{p.members.join(" · ")}</div>
         <InvestigateButton members={p.members} title={`${meta.lensId} · ${meta.label}`} />

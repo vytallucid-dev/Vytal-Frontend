@@ -15,6 +15,14 @@ import { Icons, type Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { AlertsBell } from "@/components/alerts/alerts-bell";
 import { useSidekick, useSidekickActions } from "@/components/sidekick/sidekick-provider";
+import {
+  SC_CONVERSATIONS,
+  SC_NEW_CHAT,
+  SC_VYTAL,
+  useChatShortcutActions,
+} from "@/components/shortcuts/chat-shortcuts";
+import { focusChatComposer } from "@/components/chat/chat-composer";
+import { formatShortcut, useIsApplePlatform } from "@/lib/shortcuts";
 import { useMe } from "@/lib/api/hooks/use-me";
 import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
 import {
@@ -313,6 +321,14 @@ const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
+  // ── THE KEYBOARD LAYER, AS ROWS ───────────────────────────────────────────────────────────────────
+  // The palette runs the SAME three functions the shortcuts do (components/shortcuts/chat-shortcuts),
+  // never a second copy of the logic — so a row and its key can never come to mean different things,
+  // and the row is where a reader who doesn't know the key finds out there is one.
+  const chatShortcuts = useChatShortcutActions();
+  const apple = useIsApplePlatform();
+  const vytalLabel = formatShortcut(SC_VYTAL, apple);
+
   // Full tracked universe (scored + not-yet-scored) — the same source the screener
   // typeahead uses, cached app-wide, so opening the palette is instant.
   const { data: universe, isLoading: stocksLoading } = useUniverseStocks();
@@ -324,7 +340,9 @@ const Navbar = () => {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      // `!altKey` for the same reason the sidebar's ⌘B now checks it: AltGr is Ctrl+Alt on Windows and
+      // Linux, and it is how a reader types an accented letter — never a request for the palette.
+      if (e.key === "k" && (e.metaKey || e.ctrlKey) && !e.altKey) {
         e.preventDefault();
         setOpen((o) => !o);
       }
@@ -345,6 +363,51 @@ const Navbar = () => {
     setOpen(false);
     setQuery("");
   };
+
+  // A Vytal action from the palette. It runs IMMEDIATELY, so the rail starts opening in the same frame
+  // the row is clicked. `takesCaret` rows then re-take focus once the dialog has finished closing:
+  // Radix restores focus to whatever opened it, which would otherwise pull the cursor straight back out
+  // of the composer the action just put it in. NOT for the conversations row — that one opens a list
+  // whose search field has its own autofocus, and stealing it back would be the same bug in reverse.
+  const runVytalAction = (fn: () => void, takesCaret: boolean) => {
+    setOpen(false);
+    setQuery("");
+    fn();
+    if (takesCaret) window.setTimeout(focusChatComposer, 250);
+  };
+
+  /** The three keyboard intents as palette rows — same order, same words, same keys as the layer. */
+  const vytalActions = [
+    {
+      id: "vytal",
+      // On /chat the key puts the cursor in the composer, which is "Ask Vytal" either way; off it, an
+      // open rail means the row closes it, and the row should say so.
+      title: sidekickOpen && !onChatPage ? "Close Vytal" : "Ask Vytal",
+      keywords: "assistant sidekick panel chat ai",
+      icon: Icons.spark,
+      sc: SC_VYTAL,
+      takesCaret: true,
+      run: chatShortcuts.vytal,
+    },
+    {
+      id: "new-conversation",
+      title: "New conversation",
+      keywords: "new chat vytal ai start fresh",
+      icon: Icons.plus,
+      sc: SC_NEW_CHAT,
+      takesCaret: true,
+      run: chatShortcuts.newConversation,
+    },
+    {
+      id: "conversations",
+      title: "Your conversations",
+      keywords: "history list past chats vytal",
+      icon: Icons.history,
+      sc: SC_CONVERSATIONS,
+      takesCaret: false,
+      run: chatShortcuts.conversations,
+    },
+  ];
 
   // Pages grouped in sidebar order, filtered to the query. Admin-only destinations
   // are hidden from non-admins (kept honest; the route is the real gate).
@@ -393,8 +456,18 @@ const Navbar = () => {
       .map((x) => x.r);
   }, [fundData, fundQuery]);
 
+  const actionResults = useMemo(
+    () => vytalActions.filter((a) => !q || `${a.title} ${a.keywords}`.toLowerCase().includes(q)),
+    // vytalActions is rebuilt each render; its CONTENT depends only on these.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [q, chatShortcuts, sidekickOpen, onChatPage],
+  );
+
   const hasResults =
-    stockResults.length > 0 || fundResults.length > 0 || pageGroups.length > 0;
+    stockResults.length > 0 ||
+    fundResults.length > 0 ||
+    pageGroups.length > 0 ||
+    actionResults.length > 0;
 
   // True while a leg of the search is still outstanding for the CURRENT term — the debounce not yet
   // settled counts, so we never claim "nothing matches" for a term the funds endpoint hasn't been
@@ -437,6 +510,29 @@ const Navbar = () => {
             }
           />
         ))}
+      </CommandGroup>
+    ) : null;
+
+  const vytalBlock =
+    actionResults.length > 0 ? (
+      <CommandGroup heading="Vytal" className={GROUP_CLS}>
+        {actionResults.map((a) => {
+          const ActionIcon = a.icon;
+          return (
+            <CommandItem
+              key={a.id}
+              value={`vytal ${a.title} ${a.keywords}`}
+              onSelect={() => runVytalAction(a.run, a.takesCaret)}
+              className={ITEM_CLS}
+            >
+              <ActionIcon weight="duotone" className="size-4 text-ai-from" />
+              <span className="flex-1 text-[13px] text-ink">{a.title}</span>
+              <kbd className="rounded border border-line2 bg-surface-2/70 px-1.5 py-0.5 font-mono text-[10px] text-ink3">
+                {formatShortcut(a.sc, apple)}
+              </kbd>
+            </CommandItem>
+          );
+        })}
       </CommandGroup>
     ) : null;
 
@@ -500,7 +596,7 @@ const Navbar = () => {
           onClick={toggleSidekick}
           aria-expanded={sidekickOpen}
           aria-label={sidekickOpen ? "Close Vytal" : "Ask Vytal"}
-          title={sidekickOpen ? "Close Vytal" : "Ask Vytal"}
+          title={`${sidekickOpen ? "Close Vytal" : "Ask Vytal"} (${vytalLabel})`}
           className={cn(
             "ai-chip grid size-9 shrink-0 place-items-center rounded-xl",
             sidekickOpen && "ring-2 ring-ai-from/35",
@@ -542,15 +638,21 @@ const Navbar = () => {
               funds because a ticker match is the sharper signal; pages lead the resting
               state as the primary navigation surface. Funds never appear at rest — they'd
               cost a fetch on every page load for a list nobody asked for. */}
+          {/* Vytal's actions sit AFTER the destinations in both orders, deliberately: the palette's
+              first row is what ⏎ runs, and that has always been a place to go rather than a thing to
+              do. Discoverability comes from the row being there at rest at all, plus the key printed
+              beside it — not from taking the Enter key away from navigation. */}
           {q ? (
             <>
               {stocksBlock}
               {fundsBlock}
               {pagesBlock}
+              {vytalBlock}
             </>
           ) : (
             <>
               {pagesBlock}
+              {vytalBlock}
               {stocksBlock}
             </>
           )}

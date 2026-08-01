@@ -13,7 +13,7 @@ interface HealthRingProps {
   className?: string;
   /** show the numeric score in the center */
   showValue?: boolean;
-  /** show the band label (Strong / Moderate / Weak) under the value */
+  /** show the band label (Fragile / Below par / Steady / Healthy / Pristine) under the value */
   showLabel?: boolean;
   /** override the center label text */
   label?: string;
@@ -26,7 +26,7 @@ interface HealthRingProps {
 }
 
 /**
- * The InvestIQ Health Score, made visual. A gradient progress arc whose color
+ * The Vytal Health Score, made visual. A gradient progress arc whose color
  * tracks the health band, with a soft glow and a count-up center value.
  * Pure SVG + transform animation — no layout thrash, GPU-friendly.
  */

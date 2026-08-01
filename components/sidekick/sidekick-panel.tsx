@@ -21,6 +21,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChatTranscript } from "@/components/chat/chat-transcript";
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { composerQuotaNote } from "@/components/chat/chat-message";
+import { PLACEHOLDER_TITLE, resolveTitle } from "@/components/chat/provisional-title";
 import { SUGGESTIONS, WELCOME_FRAMING, WELCOME_NOTE_SHORT, useGreeting } from "@/components/chat/welcome";
 import { QueryError } from "@/components/ui/query-error";
 import { useChatSessions } from "@/lib/api/hooks/use-chat-sessions";
@@ -111,9 +112,14 @@ export function SidekickPanel() {
 
   // The header title, most-live source first: the list (so a rename lands immediately), then the row the
   // open/load returned (a card-originated conversation is unpromoted, so it is NOT in the list yet), then
-  // the subject we are opening on, then the honest blank-state label.
+  // — for a BLANK conversation whose first message is still generating — the reader's own first message
+  // standing in for the title the server hasn't written (provisional-title.ts), then the subject we are
+  // opening on, then the honest blank-state label.
   const fromList = chat.sessionId ? sessionsQ.data?.find((s) => s.id === chat.sessionId)?.title : undefined;
-  const title = fromList ?? chat.session?.title ?? chat.pendingLabel ?? "New conversation";
+  const title =
+    resolveTitle(fromList ?? chat.session?.title, chat.provisionalTitle) ??
+    chat.pendingLabel ??
+    PLACEHOLDER_TITLE;
   const symbol = chat.session?.subjectSymbol ?? null;
   const failed = chat.phase === "openError" || chat.phase === "loadError";
 

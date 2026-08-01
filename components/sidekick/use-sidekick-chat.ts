@@ -43,6 +43,9 @@ export interface SidekickChat {
   sessionId: string | null;
   /** The subject a fresh conversation is opening on, while it has no server title yet. */
   pendingLabel: string | null;
+  /** A BLANK conversation's stand-in title — the reader's first message, truncated (see
+   *  provisional-title.ts). `pendingLabel`'s counterpart for the path that has no subject. */
+  provisionalTitle: string | null;
   /** True when the server picked up an existing thread instead of composing a fresh opening. */
   resumed: boolean;
   /** Reply in flight — INCLUDING the opening exchange, so the loader sits under the reader's line. */
@@ -300,6 +303,7 @@ export function useSidekickChat(): SidekickChat {
     session: sessionRow,
     sessionId: currentSessionId(),
     pendingLabel,
+    provisionalTitle: conv.provisionalTitle,
     resumed,
     generating,
     sendError: conv.sendError,

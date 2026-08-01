@@ -2,6 +2,7 @@
 
 import { useRef, type ReactNode } from "react";
 import { Reveal } from "@/components/ui/reveal";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import { Icons } from "@/lib/icons";
 import { SectionEyebrow, Panel } from "@/components/stock-detail/health/shared";
 import { useChartTooltip, ChartTooltip, TipBody } from "@/components/peer-group/chart-tooltip";
@@ -163,7 +164,7 @@ function PathologyCard({ p }: { p: PreparedCensus }) {
           (title-only when the catalog has no entry, never a filler sentence). */}
       {p.description && <p className="mt-2 text-[11.5px] leading-relaxed text-ink2">{p.description}</p>}
       {/* The interpretive boundary — every card carries one. */}
-      <p className="mt-1.5 border-l-2 border-line2 pl-2 text-[10.5px] italic text-ink3">{p.doesntMean}</p>
+      <BoundaryLine text={p.doesntMean} size="xs" className="mt-1.5" />
       {/* The existing reach note (kept). */}
       <div className="mt-1.5 text-[11px] italic text-ink3">
         {pathologyRead(p.reach, p.memberCount, p.outOf)}
@@ -198,7 +199,7 @@ export function StructureSection({
   return (
     <section>
       <SectionEyebrow label="What's moving inside it" icon={Icons.pulse} accent="var(--p-mom)" />
-      <div className="grid gap-3.5 lg:grid-cols-2">
+      <div className="grid gap-3.5">
         <Reveal>
           <Panel>
             <div className="mb-3.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink3">
@@ -217,7 +218,7 @@ export function StructureSection({
               Group pathology — is it clustering?
             </div>
             {census.length ? (
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col lg:grid lg:grid-cols-2 gap-2.5">
                 {census.map((p) => (
                   <PathologyCard key={`${p.kind}:${p.key}`} p={p} />
                 ))}

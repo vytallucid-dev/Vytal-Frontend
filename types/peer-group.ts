@@ -1,5 +1,5 @@
 // Peer-group aggregate read-models — mirrored VERBATIM from the backend
-// (invest-iq-backend/src/scoring/read/peer-group-view.types.ts). Same conventions
+// (Vytal-Backend/src/scoring/read/peer-group-view.types.ts). Same conventions
 // as types/health.ts: every number is a JS number; a field with no backing data is
 // `null` with the key present — never omitted, never fabricated.
 //

@@ -1,6 +1,7 @@
 "use client";
 
 import { Icons } from "@/lib/icons";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import type { PfFinding } from "@/types/portfolio";
 import { FLAGS_SECTION_ID, type OpenTab } from "../tabs";
 import { FAMILY_META, TONE_META, stockHealthHref } from "../lib";
@@ -85,9 +86,7 @@ export function FindingCard({ f, onOpenTab }: { f: PfFinding; onOpenTab?: OpenTa
       <p className="font-display mt-1.5 text-[14px] font-semibold text-ink">{f.label}</p>
       {showRead && <p className="mt-1 text-[12px] leading-relaxed text-ink2">{read}</p>}
       <Chips f={f} />
-      {f.doesntMean && (
-        <p className="mt-2.5 border-l-2 border-line2 pl-2.5 text-[11px] italic leading-relaxed text-ink3">{f.doesntMean}</p>
-      )}
+      {f.doesntMean && <BoundaryLine text={f.doesntMean} size="sm" className="mt-2.5" />}
       <div className="mt-2">
         <FindingLink f={f} onOpenTab={onOpenTab} />
       </div>
@@ -115,9 +114,7 @@ export function FindingRow({ f, onOpenTab }: { f: PfFinding; onOpenTab?: OpenTab
         )}
         {showRead && <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink3">{read}</p>}
         <Chips f={f} />
-        {f.doesntMean && (
-          <p className="mt-1.5 border-l-2 border-line2 pl-2 text-[10.5px] italic leading-relaxed text-ink3">{f.doesntMean}</p>
-        )}
+        {f.doesntMean && <BoundaryLine text={f.doesntMean} size="xs" className="mt-1.5" />}
       </div>
       <FindingLink f={f} onOpenTab={onOpenTab} />
     </div>

@@ -233,7 +233,7 @@ export default function ResultsPage() {
             Earnings, decoded
           </h1>
           <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-ink3">
-            Every quarterly result, scored by the InvestIQ Health Score — so you see what actually
+            Every quarterly result, scored by the Vytal Health Score — so you see what actually
             changed, not just the numbers.
           </p>
 

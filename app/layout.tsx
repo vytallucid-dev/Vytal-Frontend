@@ -1,5 +1,6 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { CatalogueProvider } from "@/components/providers/catalogue-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Toaster } from "@/components/ui/toast";
 import type { Metadata } from "next";
@@ -56,7 +57,12 @@ export default function RootLayout({
           enableSystem={false}
         >
           <AuthProvider>
-            <QueryProvider>{children}</QueryProvider>
+            <QueryProvider>
+              {/* Fetches the copy catalogue ONCE and hydrates the module store the four finding
+                  resolvers read. Renders children unchanged and never blocks — a failed fetch
+                  leaves every surface on its bundled copy, not on title-only. */}
+              <CatalogueProvider>{children}</CatalogueProvider>
+            </QueryProvider>
           </AuthProvider>
           <Toaster />
         </ThemeProvider>

@@ -93,6 +93,29 @@ export function ChatTranscript({
     if (generating) setSkipSignal((s) => s + 1);
   }, [generating]);
 
+  // ★ COMING BACK TO A TRANSCRIPT THAT WAS HIDDEN. On mobile the conversation pane is `display:none`
+  //   while the reader is on the list — and a display:none box has no scroll position to keep, so the
+  //   conversation would come back scrolled to its very first message instead of its newest.
+  //
+  //   Detected from the ELEMENT rather than from a prop, deliberately: "am I on screen" is not
+  //   something either surface should have to thread down, and a ResizeObserver notices every way of
+  //   being hidden, not just the one this pane happens to use today. Its callback is delivered after
+  //   layout and BEFORE paint, so the re-pin is never a visible jump. Only re-pins if the reader was
+  //   following the newest message when they left — a reader who had scrolled up to re-read comes back
+  //   exactly where they were.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let onScreen = el.clientHeight > 0;
+    const ro = new ResizeObserver(() => {
+      const now = el.clientHeight > 0;
+      if (now && !onScreen && stickRef.current) scrollToEnd();
+      onScreen = now;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scrollToEnd]);
+
   const onListScroll = () => {
     const el = listRef.current;
     if (!el) return;

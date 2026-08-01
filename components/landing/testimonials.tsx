@@ -17,7 +17,9 @@ type Testimonial = {
 const testimonials: Testimonial[] = [
   { quote: "I stopped drowning in 20 browser tabs. One Health Score tells me more than an hour of digging ever did.", name: "Ananya Rao", role: "Long-term investor", initials: "AR", stat: "82", statLabel: "Avg health" },
   { quote: "The score caught a stock deteriorating two quarters before the price did. That alone paid for the year.", name: "Vikram Shah", role: "Swing trader", initials: "VS", stat: "+31%", statLabel: "YTD return" },
-  { quote: "Finally a finance app that explains *why* in plain English. My dad actually uses it now.", name: "Priya Nair", role: "First-time investor", initials: "PN", stat: "9", statLabel: "Pillars" },
+  // ★ "9 Pillars" → "4". The engine has four (Foundation · Momentum · Market · Ownership); nine
+  //   was the retired model this page outlived. See lib/health-data.ts.
+  { quote: "Finally a finance app that explains *why* in plain English. My dad actually uses it now.", name: "Priya Nair", role: "First-time investor", initials: "PN", stat: "4", statLabel: "Pillars" },
   { quote: "Comparison view is brutal in the best way — it ends the 'which bank is better' debate in ten seconds.", name: "Karthik Iyer", role: "Portfolio builder", initials: "KI", stat: "15", statLabel: "Holdings" },
   { quote: "The dashboard feels like a cockpit. Market pulse, my book, alerts — it's the first tab I open daily.", name: "Meera Joshi", role: "Active investor", initials: "MJ", stat: "₹24L", statLabel: "Tracked" },
   { quote: "Sector deep-dives helped me rotate out of IT before the drawdown. The data was just… there.", name: "Rohan Gupta", role: "Value investor", initials: "RG", stat: "Top 12%", statLabel: "Percentile" },

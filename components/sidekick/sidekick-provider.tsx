@@ -23,6 +23,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "@/components/ui/sidebar";
+import { focusChatComposer } from "@/components/chat/chat-composer";
 import { useInvalidateChatSessions } from "@/lib/api/hooks/use-chat-sessions";
 import type { DiscussContext } from "@/components/discuss/discuss-context";
 import { useSidekickChat, type SidekickChat } from "./use-sidekick-chat";
@@ -38,6 +39,13 @@ export interface SidekickActions {
   toggle: () => void;
   close: () => void;
   setManagerOpen: (open: boolean) => void;
+  /** ⌥N — a FRESH conversation, and the rail open to hold it. Deliberately not `toggle`: that restores
+   *  whatever was running, which is the opposite of what "new" means. */
+  newConversation: () => void;
+  /** ⌥B — show / hide the conversation manager. A no-op while the panel is closed: there is no list on
+   *  screen to toggle, and one keystroke that opened a rail AND an overlay would be too much motion for
+   *  a key whose whole job is "let me see my conversations". */
+  toggleManager: () => void;
   /** Continue this conversation full-width on /chat, and close the panel (restore rule applies). */
   goFullScreen: () => void;
 }
@@ -104,6 +112,12 @@ export function SidekickProvider({ children }: { children: React.ReactNode }) {
       weCollapsedRef.current = sb.open; // we only "own" the collapse if it was expanded
       appliedRef.current = false; // either way the sidebar is collapsed from here
       if (sb.open) sb.setOpen(false);
+      // Opening the rail is a request to talk, so the cursor goes where the talking happens — the
+      // composer mounts in this same commit, and focusChatComposer waits a frame for it. NOT on mobile,
+      // where the panel is the whole screen and stealing focus would throw the keyboard up over the
+      // conversation before the reader has seen it. A disabled composer (a reply in flight from a card
+      // open, the daily cap) is skipped by the helper, so this can never look like a broken focus.
+      focusChatComposer();
     }
     setOpen(true);
   }, []);
@@ -170,6 +184,21 @@ export function SidekickProvider({ children }: { children: React.ReactNode }) {
     if (isChatRoute(pathname) && openRef.current) close();
   }, [pathname, close]);
 
+  // ── THE KEYBOARD'S TWO ACTIONS ────────────────────────────────────────────────────────────────────
+  // Both read the panel's live state through refs rather than props, which is what lets the shortcut
+  // layer subscribe to the IDENTITY-STABLE actions context only. Reading `open` reactively up there
+  // would re-render the whole shell on every turn of every conversation (see §TWO CONTEXTS).
+  const newConversation = useCallback(() => {
+    chatRef.current.startBlank();
+    if (openRef.current) focusChatComposer(); // already open: nothing mounts, so focus it ourselves
+    else openPanel(); // opening focuses on its way in
+  }, [openPanel]);
+
+  const toggleManager = useCallback(() => {
+    if (!openRef.current) return; // nothing on screen to show a list in — see the interface note
+    setManagerOpenState((v) => !v);
+  }, []);
+
   const goFullScreen = useCallback(() => {
     const id = chatRef.current.sessionId;
     routerRef.current.push(id ? `/chat?session=${encodeURIComponent(id)}` : "/chat", { scroll: false });
@@ -209,8 +238,8 @@ export function SidekickProvider({ children }: { children: React.ReactNode }) {
   }, [open, sidebar.isMobile]);
 
   const actions = useMemo<SidekickActions>(
-    () => ({ discuss, toggle, close, setManagerOpen, goFullScreen }),
-    [discuss, toggle, close, setManagerOpen, goFullScreen],
+    () => ({ discuss, toggle, close, setManagerOpen, newConversation, toggleManager, goFullScreen }),
+    [discuss, toggle, close, setManagerOpen, newConversation, toggleManager, goFullScreen],
   );
   const state: SidekickState = { open, managerOpen, isMobile: sidebar.isMobile, chat };
 

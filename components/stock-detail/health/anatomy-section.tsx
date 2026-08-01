@@ -478,10 +478,12 @@ function PillarCard({ p, featured, open, onToggle, change }: { p: PillarView; fe
                 <span className={cn("h-1.5 w-1.5 rounded-sm", meta.dot)} />
                 {meta.label}
               </span>
-              <span className="text-[10px] font-normal text-ink3">
-                {(p.appliedWeight * 100).toFixed(0)}%
-                {p.appliedWeight !== p.nominalWeight && ` (nom ${(p.nominalWeight * 100).toFixed(0)})`}
-              </span>
+              {/* ⚠ THE PILLAR WEIGHT USED TO PRINT HERE — "35%", plus "(nom 35)" when redistribution
+                  had moved it. On every scored stock's health tab, which made it the widest weight
+                  disclosure in the product: read four pillars off one stock and you had the vector.
+                  Removed under the product-wide no-weights rule. The `redistributed` chip STAYS —
+                  that a pillar's weight was reallocated is a fact about our data coverage for this
+                  company, and it carries no magnitude. */}
               {redistributed && <span className="rounded bg-surface-3 px-1.5 py-0.5 text-[9px] text-ink3">redistributed</span>}
             </div>
             <ChangeChip change={change} />

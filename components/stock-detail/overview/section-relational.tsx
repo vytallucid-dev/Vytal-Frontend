@@ -33,6 +33,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
+import { BoundaryLine } from "@/components/ui/boundary-line";
 import { useUniverseStocks } from "@/lib/api/hooks/use-stocks";
 import { useRelationalState } from "@/lib/api/hooks/use-relational";
 import { Section, LoadingBlock } from "./shared";
@@ -107,8 +108,9 @@ function SupportLine({ entry }: { entry: ResolvedEntry }) {
 }
 
 function Boundary({ text }: { text: string }) {
-  // The app's existing doesn't-mean treatment (findings-section): a left hairline rule + muted italic.
-  return <p className="border-l-2 border-line2 pl-3 text-[11.5px] italic leading-relaxed text-ink3">{text}</p>;
+  // The app's shared doesn't-mean treatment (BoundaryLine): a left hairline rule, a derived label, and
+  // the "≠" notation rendered as a real list rather than printed as a glyph.
+  return <BoundaryLine text={text} size="md" />;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
