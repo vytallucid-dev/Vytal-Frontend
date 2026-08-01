@@ -255,7 +255,7 @@ const StockDetailPage = () => {
             {/* Right: Action Buttons — three standalone colour-coded buttons (no dropdown).
                 flex-wrap is the safety net if a phone width ever squeezes tighter than the
                 icon-only buttons allow. */}
-            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <div className="flex flex-wrap items-center justify-between  sm:justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => router.push("/research/stock-screener")}
                 className="inline-flex items-center gap-1.5 text-xs cursor-pointer text-ink3 underline-offset-4 transition-colors hover:text-ink hover:underline"
