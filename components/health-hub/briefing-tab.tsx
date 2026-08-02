@@ -533,7 +533,10 @@ function Attention({ view }: { view: UniverseHealthView }) {
           count={a.wideDivergence.count}
           title="carry a wide pillar spread"
           tag="Context"
-          names={a.wideDivergence.names.map((s) => ({ label: s, note: "≥25 gap" }))}
+          // ⚠ The per-name note read "≥25 gap" — a THRESHOLD in copy, and the wrong one after Phase 2
+          //   moved the material cut to 12. This aggregate carries no per-symbol gap, so the note is
+          //   dropped rather than replaced with a number that isn't here. The stock's own row shows it.
+          names={a.wideDivergence.names.map((s) => ({ label: s }))}
         />
       )}
     </div>

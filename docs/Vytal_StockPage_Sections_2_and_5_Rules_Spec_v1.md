@@ -91,6 +91,24 @@ Everything else is text. Pattern cards may carry a tiny inline sparkline of the 
 
 ---
 
+### ⚠️ RETIRED FAMILIES — READ BEFORE THE TABLE BELOW
+
+**Families B, C, D, G and I described in this section were retired** in the Divergence/Trajectory
+rebuild (backend Phases 2–3) and replaced with new pattern sets:
+
+- **Divergence** (was family C) → **D1–D7 + S2**, per `Vytal_Divergence_Tool_Spec.md` — the authoritative
+  document for triggers, evidence and copy.
+- **Trajectory** (was families B, D, G, I) → **T1–T9**, per `Vytal_Trajectory_Tool_Spec.md` — same
+  authority for that family.
+
+The retired keys (`trajectory_B_deterioration`, `divergence_C1_price_ahead` and its C2/C3/C-over-time
+siblings, `trajectory_D_recovery`, `trajectory_G_convergence`, `trajectory_I_band_transition`) no
+longer fire — their rule files are unregistered and the catalogue carries no copy for them
+(`src/catalogue/retired-findings.ts`). The subsections below are kept as a historical record of what
+this page originally specified; they are marked **RETIRED** individually and must not be used to
+build against. Families **A**, **E**, **F** and **H** are unaffected and still describe the live
+behaviour.
+
 ### The findings (every card that can appear)
 
 #### A · Critical Red Flags — *severity Critical · marker "Watch With Care" · always rendered top*
@@ -113,7 +131,8 @@ The six core flags (locked universal thresholds):
 - **Funnel:** → metric decomposition for the breached input.
 - **Sector additions:** peer groups may *add* sector R-flags (e.g., banks "Gross NPA >4%"); render identically. Core six can never be removed or weakened.
 
-#### B · Deterioration from a high base — *severity High*
+#### B · Deterioration from a high base — *severity High* — **⚠️ RETIRED, see note above**
+*Superseded by T2 (Deterioration from a High Base) and T9 (Foundation Weak and Still Declining) in `Vytal_Trajectory_Tool_Spec.md`.*
 
 - **Fire:** composite crosses **down** out of Healthy/Pristine, OR any pillar crosses **down** below its strong mark, sustained `≥2` snapshots. **Special copy** when composite crosses **below 74 (out of Pristine)** — flagged negative in hot/stretched regimes by the tests.
 - **Verdict:** "Sliding from a high base — an early risk-regime change, typically before price reacts."
@@ -121,7 +140,10 @@ The six core flags (locked universal thresholds):
 - **Doesn't mean:** "review your thesis, not sell — an early risk read, not a price call."
 - **Funnel:** → trajectory explorer. **Mask caveat applies.**
 
-#### C · Divergence — *severity High if wide (K2), else Medium*
+#### C · Divergence — *severity High if wide (K2), else Medium* — **⚠️ RETIRED, see note above**
+*Superseded by D1 (Price Ahead of Quality), D2 (Price Ahead of Trajectory), D3/D4 (Ownership movement
+against Foundation) and S2 (Sticky Divergence) in `Vytal_Divergence_Tool_Spec.md`. The K2 15/25pp
+thresholds this section describes are gone — the current material/stretched/extreme bands are 12/16/25.*
 
 - **Fire:** any pillar gap `≥` notable (K2). Sub-types (name the dominant gap(s), max 2 in one card):
   - **C1 Price ahead of fundamentals:** `Market − mean(Foundation, Momentum) ≥ wide`.
@@ -133,7 +155,9 @@ The six core flags (locked universal thresholds):
 - **Funnel:** → divergence explorer (→ ownership tool when C2 dominant), pre-filtered to the type. **Mask caveat applies to C1.**
 - **Test grounding:** the value config (fundamentals-high / Market-low) and Ownership-build-under-weakness were the regime-robust divergence signals; price-ahead-of-fundamentals is the regime-masked caution. Copy must reflect this asymmetry.
 
-#### D · Recovery from weakness — *severity Recovery (the one lean-in card)*
+#### D · Recovery from weakness — *severity Recovery (the one lean-in card)* — **⚠️ RETIRED, see note above**
+*Superseded by T1 (Recovery from the Low Zone), T4 (Recovering Out of Below Par), T5/T7/T8 (per-pillar
+recoveries) in `Vytal_Trajectory_Tool_Spec.md` — one rule per pillar/level instead of one multi-leg rule.*
 
 - **Fire:** composite crosses **up** out of Below-par/Fragile, OR any pillar crosses **up** out of its weak zone — strongest case **Momentum rising toward a stronger Foundation** (laggard catching up).
 - **Verdict:** "Turning up out of weakness — <which pillar> leads the recovery."
@@ -183,7 +207,11 @@ Conditional cross-metric/cross-pillar relationships from the **closed 13-pattern
 - **Doesn't mean:** "a place to investigate, not a re-rate signal."
 - **Funnel:** → composition tool.
 
-#### G · Convergence — *severity Low*
+#### G · Convergence — *severity Low* — **⚠️ RETIRED, see note above**
+*Narrowing spread is on `Vytal_Divergence_Tool_Spec.md`'s EXCLUDED list (+0.2%, 51% positive,
+n=239 — "indistinguishable from nothing"). Its resolution TYPING (laggard-rose vs leader-fell)
+survives as a pure function, `src/scoring/findings/divergence/resolution.ts`, unfired and
+unregistered — kept for a future resolution-tracking build, not for this card.*
 
 - **Fire:** a previously-notable gap narrows `≥` a set amount. Typed: *healthy resolution* (laggard rose) vs *deterioration convergence* (leader fell).
 - **Verdict:** states which pillar moved and therefore which story it is.
@@ -199,7 +227,10 @@ Conditional cross-metric/cross-pillar relationships from the **closed 13-pattern
 - **Doesn't mean:** "risk/flow context, not a verdict."
 - **Funnel:** → ownership read.
 
-#### I · Band transition — *severity Low*
+#### I · Band transition — *severity Low* — **⚠️ RETIRED, see note above**
+*Fired the composite ↓62 crossing, which is on `Vytal_Trajectory_Tool_Spec.md`'s EXCLUDED list
+(+5.4%, bull-masked), and the untested composite ↑68. The one composite down-cross that survived
+the phase split is at 74 — that is T3 (Falling Out of Pristine).*
 
 - **Fire:** composite crosses into Healthy (up) or Below-par (down) — the average-band edges. **Suppress if already represented by B or D** (no double-cards).
 - **Verdict:** "Crossed into <band>."
@@ -208,24 +239,27 @@ Conditional cross-metric/cross-pillar relationships from the **closed 13-pattern
 
 ---
 
-### Ordering (strict, when multiple fire)
+### Ordering (strict, when multiple fire) — ⚠️ describes the RETIRED B/C/D/G/I letters; superseded
 
 1. Red flags (A)
-2. Deterioration (B)
-3. Divergence — wide (C)
-4. Recovery (D)
-5. Divergence — notable (C)
+2. Deterioration (B) — *retired, see T2/T9*
+3. Divergence — wide (C) — *retired, see D1/D2/D3/D4*
+4. Recovery (D) — *retired, see T1/T4/T5/T7/T8*
+5. Divergence — notable (C) — *retired, see S2*
 6. Patterns (E)
 7. Composition (F)
-8. Convergence (G)
+8. Convergence (G) — *retired, no successor card (excluded — see the G note above)*
 9. Ownership events (H)
-10. Band transition (I)
+10. Band transition (I) — *retired, see T3*
 
-Encodes the product spine: **risk before opportunity, signal before context.**
+Encodes the product spine: **risk before opportunity, signal before context.** The current family
+mapping in `src/catalogue/tool-families.ts` and `familyOf()` (`src/catalogue/stock-findings.ts`) is
+authoritative for how the live keys classify; the letter-ordering above is retained only to show the
+spine's intent (risk before opportunity), not as a literal live ordering table.
 
 ### Density states (this *is* the triage signal — build exactly)
 
-- **Loud** — any of A–E fire → render all, ordered; show a count ("4 findings"). Page length itself signals "look hard."
+- **Loud** — any of A–E fire → render all, ordered; show a count ("4 findings"). Page length itself signals "look hard." (The live loud/quiet family set is `LOUD_FAMILIES` in `lib/findings/classify.ts` — A–E, unchanged by the B/C/D/G/I retirement since the new D1–D7/S2/T-family keys carry family letters **C**, **B** and **D** themselves, per `familyOf()`.)
 - **Quiet-but-context** — only F–I fire → softer header "Quiet — only context, nothing pressing," then the low cards.
 - **Empty** — nothing fires → the calm panel: *"Nothing notable. Steady, average-zone — sound but unremarkable. No divergence, no transition, no flag. You can move on."*
 

@@ -175,7 +175,10 @@ function buildConditionFilters(view: UniverseHealthView): {
     {
       id: "wide_divergence",
       label: "Divergence",
-      note: "Two pillars ≥ 25 pts apart",
+      // ⚠ NO THRESHOLD IN COPY. This read "Two pillars ≥ 25 pts apart" and went stale the day
+      //   Phase 2 moved the material cut to 12 — a rule typed into prose cannot follow the engine.
+      //   The number a reader needs is the stock's OWN gap, which the row already prints.
+      note: "The widest pillar spread on this stock",
       match: (m) => m.divergence.flag === "wide",
     },
     {

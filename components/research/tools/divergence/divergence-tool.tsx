@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
 import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
-import type { DivergenceScanItem, DivergenceConfig } from "@/types/research-tools";
+import type { ToolScanItem } from "@/types/research-tools";
 import { ToolFrame } from "../tool-frame";
 import {
   DEFAULT_WINDOW,
@@ -30,12 +30,11 @@ import { DivergenceScanCard } from "./divergence-card";
 import {
   pickScoredPair,
   buildSpread,
-  divergenceConfig,
-  divergenceFlag,
-  directionOf,
   buildDivergenceRead,
+  spreadSlope,
   buildDivergenceChips,
 } from "./divergence-data";
+import { findingsForTool } from "@/lib/findings/tool-findings";
 
 const DIVERGENCE_META: ToolMeta = {
   id: "divergence",
@@ -63,7 +62,7 @@ export function DivergenceTool() {
   }
 
   const stocksQ = useScoredStocks();
-  const scanQ = useStockScan<DivergenceScanItem>("divergence", !symbol);
+  const scanQ = useStockScan<ToolScanItem>("divergence", !symbol);
   const healthQ = useStockHealth(symbol ?? "", windowQuarters(window));
 
   const data = healthQ.data;
@@ -113,14 +112,26 @@ export function DivergenceTool() {
   // screen), else the full quarterly spread (stable + honest on an empty/thin window).
   const readSpread = spread.length >= 2 ? spread : quarterlySpread;
   const gap = readSpread.length ? readSpread[readSpread.length - 1].gap : 0;
-  const flag = divergenceFlag(gap);
-  const baseConfig: DivergenceConfig = pair ? divergenceConfig(pair.high, pair.low) : "none";
-  // Honest "no notable divergence" → an aligned read, never a manufactured tension.
-  const readConfig: DivergenceConfig = flag === "none" ? "none" : baseConfig;
-  const direction =
-    readSpread.length >= 2
-      ? directionOf(readSpread[0].gap, readSpread[readSpread.length - 1].gap)
-      : "steady";
+
+  // ★ THE READ COMES FROM THE FIRED FINDINGS, NOT FROM THIS COMPONENT.
+  //   The tool no longer decides whether a divergence exists — it renders the C-family findings the
+  //   engine persisted, the same rows the stock page and the Hub show. `gap` survives only as CHART
+  //   GEOMETRY (the spread line's latest value) and as a chip; it is never classified here.
+  //   Separation is by FAMILY (lib/findings/tool-findings.ts), so a T pattern cannot appear here.
+  const divergenceFindings = useMemo(
+    () => findingsForTool(data?.findings?.patterns, "divergence"),
+    [data],
+  );
+
+  // Chart geometry only — which way the drawn line goes, for shading the gap band. Not a
+  // classification: see spreadSlope's note on why widening/narrowing is not a pattern here.
+  const slope = useMemo(
+    () =>
+      readSpread.length >= 2
+        ? spreadSlope(readSpread[0].gap, readSpread[readSpread.length - 1].gap)
+        : ("steady" as const),
+    [readSpread],
+  );
 
   const noPair = !!data && !!trajectory && pair === null;
 
@@ -151,11 +162,8 @@ export function DivergenceTool() {
             ? `${symbol} · ${data.identity.sector?.displayName ?? data.identity.industryPath}`
             : symbol,
         },
-        chips: verdict ? buildDivergenceChips(verdict, gap, readConfig, direction) : [],
-        promotedRead:
-          verdict && trajectory && pair
-            ? buildDivergenceRead(readConfig, direction, pair.high, pair.low)
-            : null,
+        chips: verdict ? buildDivergenceChips(verdict, gap, divergenceFindings) : [],
+        promotedRead: verdict && trajectory ? buildDivergenceRead(divergenceFindings) : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
         renderChart: (active, setActive) =>
           pair && spread.length >= 2 ? (
@@ -163,7 +171,7 @@ export function DivergenceTool() {
               spread={spread}
               highPillar={pair.high}
               lowPillar={pair.low}
-              direction={direction}
+              direction={slope}
               isDaily={sliced?.isDaily ?? false}
               resultMarks={sliced?.resultMarks ?? []}
               clampedEarlier={sliced?.clampedEarlier ?? false}
@@ -181,7 +189,7 @@ export function DivergenceTool() {
               spread={spread}
               highPillar={pair.high}
               lowPillar={pair.low}
-              direction={direction}
+              direction={slope}
               active={active}
             />
           ) : null,
@@ -191,8 +199,7 @@ export function DivergenceTool() {
               spread={spread}
               highPillar={pair.high}
               lowPillar={pair.low}
-              config={readConfig}
-              direction={direction}
+              findings={divergenceFindings}
             />
           ) : null,
       }
@@ -214,9 +221,9 @@ export function DivergenceTool() {
         isError: scanQ.isError,
         onRetry: () => void scanQ.refetch(),
         renderCard: (it, onSelect) => (
-          <DivergenceScanCard item={it as DivergenceScanItem} onSelect={onSelect} />
+          <DivergenceScanCard item={it as ToolScanItem} onSelect={onSelect} />
         ),
-        keyOf: (it) => (it as DivergenceScanItem).symbol,
+        keyOf: (it) => (it as ToolScanItem).symbol,
       }}
       single={single}
     />

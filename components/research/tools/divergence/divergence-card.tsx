@@ -1,47 +1,35 @@
 "use client";
 
 /**
- * Divergence landing-scan card — one tension per card, typed by config and tagged
- * widening/narrowing. Mirrors the TrajectoryScanCard pattern (Card · lift · tokens);
- * the mini chart is the fixed pair's GAP over time, coloured by direction.
+ * Divergence landing-scan card — one row per stock, reading the SAME persisted C-family
+ * findings the single view, the stock page and the Hub read (Phase 4). No tool-local
+ * taxonomy: the badge is the lead finding's own catalogue name, toned off its severity
+ * (or the S1 aligned copy when the stock carries no live divergence). A finding with an
+ * unrecognised severity still resolves to a tone (toneOf's default is neutral `ctx`), so
+ * an unfamiliar key renders quietly instead of throwing.
  */
 
 import { Card } from "@/components/ui/card";
 import { BAND_META } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
-import type { DivergenceScanItem } from "@/types/research-tools";
-import { CONFIG_META, DIRECTION_META, pillarLabel } from "./divergence-data";
-
-function GapSpark({ values, color }: { values: number[]; color: string }) {
-  if (values.length < 2) return <div className="h-[44px] rounded-md bg-surface-2" />;
-  const w = 240;
-  const h = 44;
-  const pad = 4;
-  const min = Math.min(...values, 0);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const xo = (i: number) => pad + (i * (w - 2 * pad)) / (values.length - 1);
-  const yo = (v: number) => pad + (1 - (v - min) / span) * (h - 2 * pad);
-  const line = values.map((v, i) => `${xo(i).toFixed(1)},${yo(v).toFixed(1)}`).join(" ");
-  const area = `${pad},${h - pad} ${line} ${w - pad},${h - pad}`;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="block h-auto w-full" preserveAspectRatio="none">
-      <polygon points={area} fill={color} opacity={0.13} />
-      <polyline points={line} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
-    </svg>
-  );
-}
+import { toneOf } from "@/lib/findings/tool-findings";
+import type { ToolScanItem } from "@/types/research-tools";
 
 export function DivergenceScanCard({
   item,
   onSelect,
 }: {
-  item: DivergenceScanItem;
+  item: ToolScanItem;
   onSelect: (symbol: string) => void;
 }) {
-  const cfg = CONFIG_META[item.config];
-  const dir = DIRECTION_META[item.direction];
+  const lead = item.findings[0] ?? null;
   const band = BAND_META[item.band];
+  const badge = lead
+    ? { label: lead.name, color: `var(--${toneOf(lead)})` }
+    : item.alignedCopy
+      ? { label: item.alignedCopy.name, color: "var(--ink3)" }
+      : { label: "Building", color: "var(--ink3)" };
+  const verdict = lead?.verdict ?? item.alignedCopy?.verdict ?? null;
 
   return (
     <button onClick={() => onSelect(item.symbol)} className="block w-full text-left">
@@ -50,27 +38,18 @@ export function DivergenceScanCard({
           <span className="num text-[13.5px] font-medium text-ink">{item.symbol}</span>
           <span
             className="rounded-md px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-            style={{ color: cfg.color, background: `color-mix(in oklab, ${cfg.color} 14%, transparent)` }}
+            style={{ color: badge.color, background: `color-mix(in oklab, ${badge.color} 14%, transparent)` }}
           >
-            {cfg.label}
+            {badge.label}
           </span>
         </div>
 
         <div className="flex items-baseline gap-2">
-          <span className="num text-[28px] font-medium leading-none text-ink">{item.gap.toFixed(0)}</span>
-          <span className="num text-[11px]" style={{ color: dir.color }}>
-            {dir.arrow} {dir.label}
-          </span>
+          <span className="num text-[28px] font-medium leading-none text-ink">{Math.round(item.composite)}</span>
+          <span className={cn("text-[11px]", band.text)}>{band.label}</span>
         </div>
 
-        <GapSpark values={item.spark} color={dir.color} />
-
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-ink3">
-            {pillarLabel(item.highPillar)} <span className="text-ink2">ahead of</span> {pillarLabel(item.lowPillar)}
-          </span>
-          <span className={cn("text-[10.5px]", band.text)}>{band.label}</span>
-        </div>
+        {verdict && <p className="line-clamp-2 text-[11px] leading-snug text-ink3">{verdict}</p>}
       </Card>
     </button>
   );

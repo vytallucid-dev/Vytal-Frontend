@@ -17,22 +17,26 @@
 //   2. npx tsx src/scripts/gen-frontend-fallback.ts
 //   3. commit BOTH repos
 //
-// catalogue version at generation: 1d33f5f19e6ddf50
+// catalogue version at generation: 63125c0072c11bbe
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** The catalogue document version these constants were generated from. Compared against the SERVED
  *  version at runtime — a mismatch means a deploy shipped a frontend built against different copy,
  *  which the provider reports loudly rather than rendering two vocabularies at once. */
-export const GENERATED_FROM_VERSION = "1d33f5f19e6ddf50";
+export const GENERATED_FROM_VERSION = "63125c0072c11bbe";
 
 /** key → display name. */
 export const GEN_FINDING_NAMES: Record<string, string> = {
   "composition_F1_atypical": "Atypical Composition",
-  "divergence_C_over_time_widening": "Divergence Widening",
-  "divergence_C1_price_ahead": "Price Ahead of Fundamentals",
-  "divergence_C2_ownership_vs_fundamentals": "Ownership Against Fundamentals",
-  "divergence_C3_floor_trajectory_split": "Floor–Trajectory Split",
   "divergence_consolidated": "Divergence",
+  "divergence_D1_price_ahead_quality": "Price Ahead of Quality",
+  "divergence_D2_price_ahead_trajectory": "Price Ahead of Trajectory",
+  "divergence_D3_ownership_building_weak_foundation": "Ownership Building Against a Weak Foundation",
+  "divergence_D4_ownership_exiting_healthy": "Ownership Exiting a Healthy Business",
+  "divergence_D5_laggard_catching_up": "Laggard Catching Up",
+  "divergence_D6_quality_rolling_over": "Quality Rolling Over",
+  "divergence_D7_trajectory_breaking_base_holds": "Trajectory Breaking While the Base Holds",
+  "divergence_S2_sticky_divergence": "Sticky Divergence",
   "foundation_N1_cash_backed_earnings": "Cash-backed earnings",
   "foundation_N2_working_capital": "Working-capital discipline",
   "foundation_N3_deleveraging": "Sustained deleveraging",
@@ -57,11 +61,16 @@ export const GEN_FINDING_NAMES: Record<string, string> = {
   "ownership_R1_pledge": "Pledging Crisis",
   "ownership_R2_promoter_exit": "Promoter Exit",
   "ownership_R6_distribution": "Distribution Pattern",
-  "trajectory_B_deterioration": "Deterioration from a High Base",
-  "trajectory_D_recovery": "Recovery from Weakness",
-  "trajectory_F2_composition_shift": "Composition Shift",
-  "trajectory_G_convergence": "Convergence",
-  "trajectory_I_band_transition": "Band Transition"
+  "trajectory_B_T2_deterioration_high_base": "Deterioration from a High Base",
+  "trajectory_B_T3_falling_out_of_pristine": "Falling Out of Pristine",
+  "trajectory_B_T6_momentum_breaking_into_weak": "Momentum Breaking Into Weak",
+  "trajectory_B_T9_foundation_weak_declining": "Foundation Weak and Still Declining",
+  "trajectory_D_T1_recovery_low_zone": "Recovery from the Low Zone",
+  "trajectory_D_T4_recovering_out_of_below_par": "Recovering Out of Below Par",
+  "trajectory_D_T5_foundation_out_of_weak": "Foundation Growing Out of the Weak Zone",
+  "trajectory_D_T7_momentum_improving_while_weak": "Momentum Improving While Still Weak",
+  "trajectory_D_T8_foundation_strong_improving": "Foundation Strong and Still Improving",
+  "trajectory_F2_composition_shift": "Composition Shift"
 };
 
 /** key → { description, family, concern, doesntMean }. `doesntMean` is already RESOLVED. */
@@ -75,33 +84,57 @@ export const GEN_FINDING_DESCRIPTIONS: Record<
     "doesntMean": "a place to investigate, not a re-rate signal.",
     "family": "F"
   },
-  "divergence_C_over_time_widening": {
-    "concern": "trajectory",
-    "description": "The gap between how this company's share price reads and what the business underneath supports was already notable, and has widened further over recent snapshots. Price and fundamentals are drifting further apart rather than converging.",
-    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
-    "family": "C"
-  },
-  "divergence_C1_price_ahead": {
-    "concern": "trajectory",
-    "description": "The Market read sits well above what Foundation and Momentum support. Price has run ahead of the business underneath it.",
-    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
-    "family": "C"
-  },
-  "divergence_C2_ownership_vs_fundamentals": {
-    "concern": "trajectory",
-    "description": "Ownership behaviour contradicts the fundamentals — either owners are stepping back from a business that looks sound, or building into one that looks weak. Both are worth understanding; the second is the classic smart-money tell.",
-    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
-    "family": "C"
-  },
-  "divergence_C3_floor_trajectory_split": {
-    "concern": "trajectory",
-    "description": "Foundation and Momentum are far apart — a sound balance sheet with deteriorating trends, or improving trends built on a weak base. What the company is and where it's heading disagree.",
-    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
-    "family": "C"
-  },
   "divergence_consolidated": {
     "concern": "trajectory",
     "description": "Two or more pillar reads of this company disagree materially. The parts of the score are telling different stories about the same business.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_D1_price_ahead_quality": {
+    "concern": "trajectory",
+    "description": "The market is paying far more than the underlying quality of the business justifies. Foundation is a slow-moving read on how fundamentally sound a company is, so when price runs away from it the market is changing what it is willing to pay for a given level of quality. A re-rating story — structural and slower-moving.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_D2_price_ahead_trajectory": {
+    "concern": "trajectory",
+    "description": "The market is pricing a turn the results have not delivered. Momentum reads how the business is trending right now, so a gap here is about earnings expectations rather than quality. Faster-moving and noisier than the quality version, and more likely to resolve quickly in either direction, because a single set of results can close it.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_D3_ownership_building_weak_foundation": {
+    "concern": "ownership",
+    "description": "Institutions are increasing their stake in a business whose published fundamentals look weak. That is a deliberate, costly decision taken against the visible evidence, which is what makes it informative — someone with a better view is putting real money behind a thesis the numbers do not yet reflect.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_D4_ownership_exiting_healthy": {
+    "concern": "ownership",
+    "description": "Institutions have cut their position while the business still reads as healthy on the published numbers. The exit tends to precede the deterioration showing up in the financials.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_D5_laggard_catching_up": {
+    "concern": "trajectory",
+    "description": "A fundamentally sound business whose trajectory had fallen behind is now turning up. The weaker pillar is converging toward the stronger one — and the direction of convergence is the whole point, because the same improvement moving away from a weak base reads very differently.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_D6_quality_rolling_over": {
+    "concern": "trajectory",
+    "description": "A high-quality business the market has already priced as high-quality, whose only fresh input — the trajectory — has turned down. When quality is fully priced in, there is no upside surprise left to deliver, and a cooling trajectory is the thing that tends to matter.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_D7_trajectory_breaking_base_holds": {
+    "concern": "trajectory",
+    "description": "The balance sheet is still intact but the operating trajectory has broken into weakness. This is early — the base has not deteriorated yet, but the direction has changed. The intact balance sheet does not cushion it.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_S2_sticky_divergence": {
+    "concern": "trajectory",
+    "description": "Foundation and Momentum have disagreed materially for more than one reading and are not converging. At this distance neither pillar reliably closes the gap at the next reading. The tension is real and unresolved — the state is readable, the timing is not.",
     "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
     "family": "C"
   },
@@ -249,15 +282,57 @@ export const GEN_FINDING_DESCRIPTIONS: Record<
     "doesntMean": "a hard risk/quality warning to investigate — not a prediction the stock will fall.",
     "family": "A"
   },
-  "trajectory_B_deterioration": {
+  "trajectory_B_T2_deterioration_high_base": {
     "concern": "trajectory",
-    "description": "The composite, or one pillar, has crossed down out of strong territory and stayed there across at least two snapshots. A company that was solid is sliding — a change in risk profile that usually shows up before price reacts.",
+    "description": "A business that was in good shape is measurably weakening — the overall score has fallen materially from a strong starting point. This is the kind of change worth reviewing your reasons for holding it. How much weight it carries depends on the market phase, which is why this reading always shows the phase it fired in.",
     "doesntMean": "review your thesis, not sell — an early risk read, not a price call.",
     "family": "B"
   },
-  "trajectory_D_recovery": {
+  "trajectory_B_T3_falling_out_of_pristine": {
     "concern": "trajectory",
-    "description": "The composite, or one pillar, has turned up out of weak territory and held the improvement. In this program's testing, recovery from weakness has been the most durable signal observed — stated descriptively, not as a forecast.",
+    "description": "This business has slipped out of the top health band. That band is defined as fully priced — a company already recognised as excellent — so falling out of it means the one thing supporting a premium rating has started to slip. Whether this carries a directional read depends entirely on the market phase.",
+    "doesntMean": "review your thesis, not sell — an early risk read, not a price call.",
+    "family": "B"
+  },
+  "trajectory_B_T6_momentum_breaking_into_weak": {
+    "concern": "trajectory",
+    "description": "The operating trajectory has broken into weak territory. The balance sheet may still be intact, but the direction of the business has changed. This reading is located at the trajectory pillar's own weak mark rather than a borrowed one — measured at the wrong threshold, the same condition reads the opposite way.",
+    "doesntMean": "review your thesis, not sell — an early risk read, not a price call.",
+    "family": "B"
+  },
+  "trajectory_B_T9_foundation_weak_declining": {
+    "concern": "trajectory",
+    "description": "A business that was already weak is continuing to deteriorate. Not a dramatic break — steady erosion from a low base. Of all the trajectory readings tested, this one had the poorest odds of the price holding up: roughly two-thirds of cases fell.",
+    "doesntMean": "review your thesis, not sell — an early risk read, not a price call.",
+    "family": "B"
+  },
+  "trajectory_D_T1_recovery_low_zone": {
+    "concern": "trajectory",
+    "description": "A struggling business is genuinely turning — the overall score has risen materially from a weak starting point. This is a real improvement in the underlying fundamentals rather than a price move: on shifts of this size the non-price pillars contribute most of the change. The market has typically already begun repricing it by the time this shows.",
+    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "family": "D"
+  },
+  "trajectory_D_T4_recovering_out_of_below_par": {
+    "concern": "trajectory",
+    "description": "This business has moved out of below-par territory into steady — a recovery that has held long enough to cross a band. Directional only: the sample behind this reading was not preserved, so it has not been established with the confidence of the other trajectory patterns.",
+    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "family": "D"
+  },
+  "trajectory_D_T5_foundation_out_of_weak": {
+    "concern": "trajectory",
+    "description": "The latest results moved the balance-sheet reading out of weak territory — a real improvement from a low base, and the most consistent of the single-pillar improvements observed. Notably it is the small gains that carried this: large jumps in the same reading did not.",
+    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "family": "D"
+  },
+  "trajectory_D_T7_momentum_improving_while_weak": {
+    "concern": "trajectory",
+    "description": "Still weak, but improving — the trajectory has turned up from a low base, the earliest point at which a recovery becomes visible in the numbers. On the larger improvements the price has usually already moved by the time the reading catches up.",
+    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "family": "D"
+  },
+  "trajectory_D_T8_foundation_strong_improving": {
+    "concern": "trajectory",
+    "description": "An already-strong business that is still strengthening — the balance-sheet reading sits above its strong mark and has risen again. Uncommon, and one of the more consistent positive readings on the strong side of the range.",
     "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
     "family": "D"
   },
@@ -266,18 +341,6 @@ export const GEN_FINDING_DESCRIPTIONS: Record<
     "description": "The overall score held steady since the last snapshot, but the mix beneath it moved — either one pillar shifted markedly, or a different pillar is now the strongest of the four. What's driving the number has changed, even though the number hasn't.",
     "doesntMean": "a place to investigate, not a re-rate signal.",
     "family": "F"
-  },
-  "trajectory_G_convergence": {
-    "concern": "trajectory",
-    "description": "A pillar gap that was previously notable has narrowed. Which way it closed matters: the laggard rising is a different story from the leader falling.",
-    "doesntMean": "the move isn't over, and which way it resolved depends on which pillar moved — not buy/sell.",
-    "family": "G"
-  },
-  "trajectory_I_band_transition": {
-    "concern": "trajectory",
-    "description": "The composite crossed into Healthy on the way up, or into Below-par on the way down — the two boundaries either side of the middle of the scale.",
-    "doesntMean": "a band change to note — not a buy/sell call.",
-    "family": "I"
   }
 };
 

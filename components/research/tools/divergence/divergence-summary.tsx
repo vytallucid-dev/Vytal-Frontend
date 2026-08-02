@@ -1,32 +1,43 @@
 "use client";
 
 /**
- * The STATIC summary (bottom-right) — the asymmetric interpretation: "whose move?"
- * (which line moved to change the gap) + "what it means" (robust value vs masked
- * caution vs ownership tell). Templated from real subtotal deltas; stable on scrub.
+ * The STATIC summary (bottom-right): "whose move?" (which line moved to change the gap — computed
+ * from real subtotal deltas, stable on scrub) + "what it means" (the FIRED FINDING's own
+ * interpretive boundary, from the catalogue).
+ *
+ * ⚠ The old header described the second panel as "robust value vs masked caution vs ownership tell".
+ * The "robust value" reading is removed, not reworded: fundamentals-ahead-of-price is on the
+ * Divergence spec's EXCLUDED list because its evidence conflicts, so no claim about what it has
+ * historically meant may be made here at any strength.
  */
 
 import { Panel } from "@/components/stock-detail/health/shared";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-import type { PillarKey } from "@/types/health";
-import type { DivergenceConfig, DivergenceDirection } from "@/types/research-tools";
-import { CONFIG_META, buildWhoseMove, type SpreadPoint } from "./divergence-data";
+import type { PillarKey, PatternView } from "@/types/health";
+import { buildWhoseMove, type SpreadPoint } from "./divergence-data";
+import { findingName } from "@/lib/findings/descriptions";
+import { toneOf } from "@/lib/findings/tool-findings";
 
 export function DivergenceSummary({
   spread,
   highPillar,
   lowPillar,
-  config,
-  direction,
+  findings,
 }: {
   spread: SpreadPoint[];
   highPillar: PillarKey;
   lowPillar: PillarKey;
-  config: DivergenceConfig;
-  direction: DivergenceDirection;
+  /** The stock's C-family findings, most-severe first. The summary DESCRIBES them; it never
+   *  re-derives a configuration of its own (the old `config`/`direction` pair did, on a taxonomy
+   *  that mapped to no finding key). */
+  findings: PatternView[];
 }) {
-  const points = buildWhoseMove(spread, highPillar, lowPillar, config, direction);
+  const lead = findings[0];
+  // The chip names the FIRED FINDING — not a recomputed config token that maps to no key.
+  const chipLabel = lead ? findingName(lead.patternKey) : "Aligned";
+  const chipColor = lead ? `var(--${toneOf(lead)})` : "var(--ink3)";
+  const points = buildWhoseMove(spread, highPillar, lowPillar, findings);
 
   return (
     <Panel className="px-4 py-4">
@@ -35,11 +46,11 @@ export function DivergenceSummary({
         <span
           className="rounded-md px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
           style={{
-            color: CONFIG_META[config].color,
-            background: `color-mix(in oklab, ${CONFIG_META[config].color} 14%, transparent)`,
+            color: chipColor,
+            background: `color-mix(in oklab, ${chipColor} 14%, transparent)`,
           }}
         >
-          {CONFIG_META[config].label}
+          {chipLabel}
         </span>
       </div>
 

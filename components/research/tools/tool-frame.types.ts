@@ -97,6 +97,20 @@ export interface PromotedRead {
   body: string;
   /** masked/deferred caveat (e.g. hot pond) — null when not applicable. */
   note?: string | null;
+  /** A short reader-facing word taken DIRECTLY from the fired finding's own evidence — never a
+   *  new threshold invented here. Today this is divergence's gap tier (evidence.tierWord:
+   *  material/stretched/extreme, Vytal_Divergence_Tool_Spec §1.2). Absent on findings that carry
+   *  no such tier (D3/D4/D6/D7, S1) and — BY DESIGN — on every trajectory read: the Trajectory
+   *  spec's own study found magnitude does NOT scale the signal (a 15+pt Foundation gain drifted
+   *  no better than a 1–3pt one; a 15+pt Momentum gain went negative), so buildTrajectoryRead
+   *  never sets this field. Divergence ranks by gap; trajectory does not — do not "harmonise" by
+   *  inventing a trajectory tier to fill this slot. */
+  tag?: string | null;
+  /** The market phase (HOT/NORMAL/STRESSED) stamped on THIS finding at the moment it fired —
+   *  never the live phase (see stampedRegime() in lib/findings/tool-findings.ts). null when the
+   *  finding doesn't declare a regime dependency or no phase could be established. Render as a
+   *  historical fact about this reading, never as present-tense sector context. */
+  firedInPhase?: string | null;
 }
 
 /** Tool identity + landing copy. */

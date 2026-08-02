@@ -19,8 +19,11 @@ import type {
   CrossingEvent,
   LabelBand,
   PillarKey,
+  PatternView,
 } from "@/types/health";
 import type { ChipSpec, PromotedRead } from "../tool-frame.types";
+import { findingName, findingDescription, doesntMean } from "@/lib/findings/descriptions";
+import { toneOf, stampedRegime } from "@/lib/findings/tool-findings";
 
 /** The chart's plotted lines — composite + the four pillars. */
 export const TRAJECTORY_LINES: {
@@ -54,68 +57,58 @@ function lastBandCrossing(crossings: CrossingEvent[]): CrossingEvent | null {
   return bands.length ? bands[bands.length - 1] : null;
 }
 
-/** Is this a "price ahead" divergence (Market leads, fundamentals/momentum lag)? */
-function isPriceAhead(div: VerdictSection["divergence"]): boolean {
-  return (
-    div.flag !== "none" &&
-    div.high?.pillar === "market" &&
-    (div.low?.pillar === "foundation" || div.low?.pillar === "momentum")
-  );
-}
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// THE READ — RENDERED FROM THE FIRED T-FAMILY FINDINGS.
+//
+// ── ★ WHAT WAS REMOVED ────────────────────────────────────────────────────────────────────────────
+// 1. isPriceAhead() — a DIVERGENCE predicate (Market leads, fundamentals lag), independently
+//    derived here, on the TRAJECTORY tool. Two violations at once: it was a seventh derivation of
+//    a two-pillar reading, and both specs state that two-pillar readings are "deliberately absent"
+//    from this tool. The separation is now structural — findingsForTool() partitions by FAMILY, so
+//    a C-family finding cannot reach this file at all.
+// 2. The marker-driven verdict bank (improving / deteriorating / stable).  is a
+//    ±1.0-composite-point classifier — not a T pattern, and not something the study measured. It
+//    survives ONLY as a chip; it no longer authors an interpretation.
+//
+// ── ★ R1 — THIS TOOL MUST NOT PRESENT A BIGGER MOVE AS A BIGGER SIGNAL ───────────────────────
+// Measured: a 1–3pt Foundation gain drifted +1.9% (64% positive); a 15+ point gain did nothing; a
+// 15+ point Momentum gain reacted NEGATIVELY (−1.1%, 31% positive). So the read leads with the
+// pattern, never with the size of the move, and the delta is demoted to a chip.
+// ⚠ NOR IS IT INVERTED — the evidence supports not ranking by size, not "smaller is stronger".
+// ⚠ THE DIVERGENCE TOOL IS DELIBERATELY THE OPPOSITE (severity IS the gap, spec §1.2). Do not
+//   "harmonise" the two tools' sorting; one of the two measured findings would be inverted.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
-/** The promoted read — interpretation sentence above the grid. */
-export function buildTrajectoryRead(
-  verdict: VerdictSection,
-  trajectory: TrajectorySection,
-): PromotedRead {
-  const marker = verdict.trajectoryMarker;
-  const delta = verdict.trajectoryDelta;
-  const band = verdict.label.band;
-  const word = healthLabel(verdict.composite);
-  const cross = lastBandCrossing(trajectory.crossings);
-  const deltaTxt = delta != null ? `${delta > 0 ? "+" : ""}${delta.toFixed(1)}` : null;
+export function buildTrajectoryRead(findings: PatternView[]): PromotedRead {
+  const lead = findings[0];
 
-  // recovery — featured.
-  if (marker === "improving") {
-    const crossedUp = cross && bandIndex(cross.to as LabelBand) > bandIndex(cross.from as LabelBand);
-    const body =
-      `The composite has turned up${deltaTxt ? ` (${deltaTxt} last quarter)` : ""}` +
-      (crossedUp ? `, crossing back into ${BAND_META[cross!.to as LabelBand].label}.` : ".") +
-      " The model's most durable signal — a place to look, not a buy.";
+  // §1.6 — silence is correct. ~79% of composites sit in the crowded 55–72 band where nothing
+  // discriminates; a stock with no T pattern reads "stable, no material change", not an empty panel.
+  if (!lead) {
     return {
-      tone: "rec",
-      title: bandIndex(band) >= bandIndex("healthy") ? "Recovering into strength." : "Turning up out of weakness.",
-      body,
+      tone: "ctx",
+      title: "Stable — no material change.",
+      body:
+        "Nothing in this stock's own path has moved enough to read this window. Most scores sit in the crowded middle of the scale, where the record has nothing to add — that quiet is what makes the loud readings credible.",
     };
   }
 
-  // deterioration — noted, with the masked caveat when price has run ahead.
-  if (marker === "deteriorating") {
-    const crossedDown = cross && bandIndex(cross.to as LabelBand) < bandIndex(cross.from as LabelBand);
-    const body =
-      `The composite is sliding${deltaTxt ? ` (${deltaTxt} last quarter)` : ""}` +
-      (crossedDown
-        ? `, having left ${BAND_META[cross!.from as LabelBand].label} for ${BAND_META[cross!.to as LabelBand].label}.`
-        : ".") +
-      " An early risk-regime change — usually visible in the recording before price reacts.";
-    return {
-      tone: "high",
-      title: "A base, sliding.",
-      body,
-      note: isPriceAhead(verdict.divergence)
-        ? "Price has run ahead of cooling fundamentals — this read may be deferred further."
-        : null,
-    };
-  }
-
-  // stable / aligned — calm.
+  const extra = findings.length - 1;
   return {
-    tone: "ctx",
-    title: `${word}, holding its level.`,
-    body:
-      verdict.divergence.flag === "none"
-        ? "The pillars sit close and steady; nothing has moved this window. Sound and fully understood — little for the recording to add."
-        : `${PILLAR_META[verdict.divergence.high!.pillar].label} leads while ${PILLAR_META[verdict.divergence.low!.pillar].label.toLowerCase()} lags, but the level is steady — a state to understand, not a move to chase.`,
+    tone: toneOf(lead),
+    title: findingName(lead.patternKey),
+    // Already evidence-bound AND regime-resolved by the backend verdict layer — including the
+    // "no directional read in this phase" wording for T3 in NORMAL and T6 in HOT.
+    body: lead.verdict ?? findingDescription(lead.patternKey) ?? "",
+    note: extra > 0
+      ? doesntMean(lead.patternKey) + " (+" + extra + " more trajectory reading" + (extra === 1 ? "" : "s") + " on this stock)"
+      : doesntMean(lead.patternKey),
+    // ⚠ NO `tag` HERE, DELIBERATELY. PromotedRead.tag exists for divergence's gap tier — a scale
+    // this tool must never adopt (§1.3/R1 above: magnitude does not scale the trajectory signal,
+    // and in the Momentum case a large move read WORSE). Divergence ranks severity by gap size;
+    // trajectory does not rank by move size at all. Leaving `tag` unset is what keeps that
+    // asymmetry true in the render, not just in a comment.
+    firedInPhase: stampedRegime(lead),
   };
 }
 

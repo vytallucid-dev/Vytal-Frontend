@@ -2,16 +2,10 @@
  * Read-model contracts for the Research TOOLS (Trajectory / Divergence / Ownership).
  * Mirrors the backend `stocks-list.types.ts` verbatim:
  *   • GET /api/stocks            → ScoredStockLite[]
- *   • GET /api/stocks/scan?tool= → StockScanItem[]
+ *   • GET /api/stocks/scan?tool= → ToolScanItem[]  (trajectory + divergence, Phase 4)
  */
 
-import type {
-  LabelBand,
-  TrajectoryMarker,
-  DivergenceFlag,
-  PillarKey,
-  FlowCategoryView,
-} from "@/types/health";
+import type { LabelBand, FlowCategoryView } from "@/types/health";
 
 export interface SectorRef {
   key: string;
@@ -41,45 +35,51 @@ export interface UniverseStockLite {
   band: LabelBand | null;
 }
 
-/** A scored stock ranked for a tool's landing scan. `marker`/`delta`/`previousComposite`
- *  are null for a single-period (building-history) stock. `spark` = recent in-force
- *  composites, oldest→newest (≤8), for the card's mini chart. */
-export interface StockScanItem {
-  symbol: string;
-  name: string;
-  sector: SectorRef | null;
-  composite: number;
-  band: LabelBand;
-  periodKey: string;
-  marker: TrajectoryMarker | null;
-  delta: number | null;
-  previousComposite: number | null;
-  previousPeriodKey: string | null;
-  spark: number[];
-}
-
-/** Divergence configuration TYPE — the asymmetric taxonomy (mirrors backend). */
-export type DivergenceConfig = "value" | "price_ahead" | "ownership" | "mixed" | "none";
 export type DivergenceDirection = "widening" | "narrowing" | "steady";
 
-/** A scored stock for the DIVERGENCE landing scan — typed by config + direction,
- *  `spark` = the fixed pair's gap over time (oldest→newest). Mirrors the backend. */
-export interface DivergenceScanItem {
+/** One fired finding on a tool scan row — already resolved server-side from the
+ *  catalogue (name/description/doesntMean/verdict). Mirrors backend ToolFinding
+ *  (tool-scan.service.ts). The tool renders this; it computes nothing from it. */
+export interface ToolFinding {
+  key: string;
+  name: string;
+  description: string;
+  doesntMean: string;
+  /** The evidence-bound sentence, already regime-resolved by the verdict layer. */
+  verdict: string;
+  severity: string | null;
+  direction: string | null;
+  evidence: unknown;
+}
+
+/** ★ DIVERGENCE ONLY — the S1 "no tension" tool state. Computed in exactly one
+ *  backend place (findings/divergence/aligned.ts) and never a finding. Mirrors
+ *  backend AlignedState. */
+export interface AlignedState {
+  aligned: boolean;
+  spread: number | null;
+  highPillar: string | null;
+  lowPillar: string | null;
+  alignedMax: number;
+}
+
+/** A scored stock ranked for a tool's landing scan — Trajectory AND Divergence share
+ *  this SAME shape (Phase 4): the tool renders the stock's own persisted findings,
+ *  filtered to that tool's family, ranked by that tool's own rule. Mirrors backend
+ *  ToolScanItem (tool-scan.service.ts) — no `config`/`flag`/`marker`/`spark`/`gap`,
+ *  which were the retired client-recomputed taxonomy. */
+export interface ToolScanItem {
   symbol: string;
   name: string;
   sector: SectorRef | null;
   composite: number;
   band: LabelBand;
   periodKey: string;
-  gap: number;
-  flag: DivergenceFlag;
-  config: DivergenceConfig;
-  direction: DivergenceDirection;
-  highPillar: PillarKey;
-  lowPillar: PillarKey;
-  previousGap: number | null;
-  gapDelta: number | null;
-  spark: number[];
+  findings: ToolFinding[];
+  /** Present only on the divergence tool, only when the stock is aligned. */
+  aligned: AlignedState | null;
+  /** Spec copy for the aligned state — carried so no surface re-types it. */
+  alignedCopy: { name: string; description: string; verdict: string } | null;
 }
 
 // ── OWNERSHIP (mirrors backend ownership-series.types + OwnershipScanItem) ───────

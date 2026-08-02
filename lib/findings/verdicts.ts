@@ -147,41 +147,17 @@ export const VERDICTS: Record<string, (ev: Ev) => string> = {
     return `Revenue growth ${accel ? "accelerated" : "decelerated"} from ${prior.toFixed(1)}% to ${latest.toFixed(1)}%.`;
   },
 
-  // ── C · Divergence (§5C — the read layer consolidates the family; each sub-type's
-  //        File-1 sentence is authored here so the consolidated card can compose them) ──
-  divergence_C1_price_ahead: (ev) =>
-    `Price (${f(ev.market, 0)}) sits ${f(ev.gap, 1)} pts above its fundamentals (F${f(ev.foundation, 0)} / M${f(ev.momentum, 0)}) — a wide gap.`,
-  divergence_C2_ownership_vs_fundamentals: (ev) => {
-    const fnd = f(ev.foundation, 0), own = f(ev.ownership, 0), g = f(ev.gap, 0);
-    return str(ev.subtype) === "exit_under_strength"
-      ? `Owners stepping back beneath a holding floor — Foundation ${fnd} but Ownership only ${own} (a ${g}pt gap).`
-      : `Smart money building under weakness — Ownership ${own} above a weak Foundation ${fnd} (a ${g}pt gap, the regime-robust tell).`;
-  },
-  divergence_C3_floor_trajectory_split: (ev) => {
-    const fnd = f(ev.foundation, 0), m = f(ev.momentum, 0), g = f(ev.gap, 0);
-    return ev.floorLed
-      ? `Floor–trajectory split — a strong Foundation ${fnd} over weak Momentum ${m} (a ${g}pt gap): the balance sheet holds while the near-term trajectory lags.`
-      : `Floor–trajectory split — Momentum ${m} running well ahead of Foundation ${fnd} (a ${g}pt gap): the trajectory outruns the floor.`;
-  },
-  divergence_C_over_time_widening: (ev) =>
-    `Price-vs-fundamentals gap widening — up from ${f(ev.recentLowGap, 1)} to ${f(ev.currentGap, 1)} pts over recent snapshots (a developing divergence, not yet wide).`,
-
-  // ── B / D · Trajectory crosses (§5B / §5D) ──
-  trajectory_B_deterioration: (ev) => {
-    const variant = str(ev.variant);
-    const where =
-      variant === "pillar"
-        ? `${pl(ev.leg)} slipped below its strong mark`
-        : variant === "out_of_pristine"
-          ? "composite fell below 74, out of Pristine"
-          : "composite fell out of Healthy";
-    return `Sliding from a high base — ${where}, sustained ${num(ev.sustainedSnapshots) ?? "≥2"} snapshots — an early risk-regime change, typically before price reacts.`;
-  },
-  trajectory_D_recovery: (ev) => {
-    const where = ev.isPillar ? `${pl(ev.leg)} leads the recovery` : "composite crossed up out of Below-par";
-    return `Turning up out of weakness — ${where}, sustained ${num(ev.sustainedSnapshots) ?? "≥2"} snapshots.`;
-  },
-
+  // ⚠ REMOVED IN PHASE 4 — the renderers for eight RETIRED keys:
+  //     divergence_C1_price_ahead · C2_ownership_vs_fundamentals · C3_floor_trajectory_split
+  //     divergence_C_over_time_widening · trajectory_G_convergence
+  //     trajectory_B_deterioration · trajectory_D_recovery · trajectory_I_band_transition
+  //
+  // They were UNREACHABLE, not merely unused: the backend drops retired rows at all nine read
+  // boundaries, so no payload can carry these keys and renderVerdict can never be called with one.
+  // Dead code that renders a sentence is worse than dead code that does not — it reads as a
+  // supported path and invites someone to "restore" the finding behind it.
+  // Their successors (D1–D7, S2 · T1–T9) are rendered SERVER-SIDE and arrive on the payload as
+  //  strings, which is why nothing replaces them here.
   // ── F · Composition (§5F) ──
   composition_F1_atypical: (ev) => {
     const band = str(ev.band).replace("_", "-");
@@ -195,15 +171,6 @@ export const VERDICTS: Record<string, (ev: Ev) => string> = {
     return `Mix shifted while the score held (${prior}→${current})${lead}.`;
   },
 
-  // ── G · Convergence (§5G) ──
-  trajectory_G_convergence: (ev) => {
-    const healthy = str(ev.type) === "healthy_resolution";
-    const peak = f(ev.peakSpread, 1), cur = f(ev.currentSpread, 1);
-    return healthy
-      ? `Converging — the ${pl(ev.laggardPillar)} laggard rose ${f(ev.laggardRosePp, 1)}pp, closing a ${peak}pp pillar gap to ${cur}pp (healthy resolution).`
-      : `Converging — the ${pl(ev.leaderPillar)} leader fell ${f(ev.leaderFellPp, 1)}pp, closing a ${peak}pp pillar gap to ${cur}pp (deterioration convergence).`;
-  },
-
   // ── H · Ownership events (§5H) ──
   ownership_H_block_events: (ev) => {
     const n = num(ev.deals) ?? 0;
@@ -212,8 +179,6 @@ export const VERDICTS: Record<string, (ev: Ev) => string> = {
     return `Ownership event — ${n} block/bulk deal${n === 1 ? "" : "s"} (₹${f(ev.grossCr, 0)} Cr, ${lean}) this window.`;
   },
 
-  // ── I · Band transition (§5I) ──
-  trajectory_I_band_transition: (ev) => `Crossed into ${str(ev.toBand)}.`,
 };
 
 /** Generic last-resort copy when no renderer matched and the engine wrote no sentence. */

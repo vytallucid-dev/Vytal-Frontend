@@ -72,15 +72,32 @@ function PromotedReadBanner({
         <ReadIcon tone={read.tone} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="diagnosis text-[16px] font-medium sm:text-[19px]" style={{ color: t.fg }}>
-          {read.title}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="diagnosis text-[16px] font-medium sm:text-[19px]" style={{ color: t.fg }}>
+            {read.title}
+          </p>
+          {/* Tier word straight off the finding's own evidence (never fabricated here) — see
+              PromotedRead.tag. Divergence-only by construction; trajectory never sets this. */}
+          {read.tag && (
+            <span
+              className="rounded-full border px-2 py-0.5 text-[10.5px] font-medium"
+              style={{ color: t.fg, borderColor: t.bd, background: t.bg }}
+            >
+              {read.tag}
+            </span>
+          )}
+        </div>
         <p className="mt-1.5 max-w-[62ch] text-[12.5px] leading-relaxed text-ink2 sm:text-[13px]">{read.body}</p>
         {read.note && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-high">
             <Icons.warning weight="fill" className="size-3" />
             {read.note}
           </p>
+        )}
+        {/* Fire-time regime stamp — a historical fact about THIS reading, not live sector
+            context. See PromotedRead.firedInPhase; never conflate with a landing's live phase. */}
+        {read.firedInPhase && (
+          <p className="mt-1.5 text-[11px] text-ink3">Market phase when this fired: {read.firedInPhase}</p>
         )}
       </div>
       {/* forced onto its own full-width row on mobile — sharing a row with the icon +

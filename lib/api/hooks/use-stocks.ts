@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api/client";
 import type {
   ScoredStockLite,
   UniverseStockLite,
-  StockScanItem,
+  ToolScanItem,
   ToolId,
 } from "@/types/research-tools";
 
@@ -46,7 +46,7 @@ export function useUniverseStocks(enabled = true) {
  *  scored universe differently and returns its own item shape, so the row type is a
  *  type param (defaults to the trajectory item). `trajectory` + `divergence` are
  *  backed today; others 400 until implemented. */
-export function useStockScan<T = StockScanItem>(tool: ToolId, enabled = true) {
+export function useStockScan<T = ToolScanItem>(tool: ToolId, enabled = true) {
   return useQuery<T[]>({
     queryKey: ["stocks", "scan", tool],
     queryFn: () => apiFetch<T[]>(`/api/stocks/scan?tool=${tool}`),

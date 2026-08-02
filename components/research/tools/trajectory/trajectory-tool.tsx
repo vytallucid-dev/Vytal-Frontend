@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
 import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
-import type { StockScanItem } from "@/types/research-tools";
+import type { ToolScanItem } from "@/types/research-tools";
 import { ToolFrame } from "../tool-frame";
 import {
   DEFAULT_WINDOW,
@@ -27,6 +27,7 @@ import { TrajectoryReadout } from "./trajectory-readout";
 import { TrajectorySummary } from "./trajectory-summary";
 import { TrajectoryScanCard } from "./trajectory-card";
 import { buildTrajectoryChips, buildTrajectoryRead } from "./trajectory-data";
+import { findingsForTool } from "@/lib/findings/tool-findings";
 
 const TRAJECTORY_META: ToolMeta = {
   id: "trajectory",
@@ -62,6 +63,13 @@ export function TrajectoryTool() {
   const data = healthQ.data;
   const verdict = data?.verdict ?? null;
   const trajectory = data?.trajectory ?? null;
+
+  // ★ THE READ COMES FROM THE FIRED T-FAMILY FINDINGS — partitioned by FAMILY, so a divergence
+  //   (C-family) finding cannot appear on this tool. Both specs state that boundary explicitly.
+  const trajectoryFindings = useMemo(
+    () => findingsForTool(data?.findings?.patterns, "trajectory"),
+    [data],
+  );
 
   // The sliced window — quarterly series, daily series, or custom range (all client-side).
   const sliced = useMemo(
@@ -99,7 +107,7 @@ export function TrajectoryTool() {
             : symbol,
         },
         chips: verdict ? buildTrajectoryChips(verdict) : [],
-        promotedRead: verdict && trajectory ? buildTrajectoryRead(verdict, trajectory) : null,
+        promotedRead: verdict && trajectory ? buildTrajectoryRead(trajectoryFindings) : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
         renderChart: (active, setActive) =>
           trajectory && sliced ? (
@@ -137,9 +145,9 @@ export function TrajectoryTool() {
         isError: scanQ.isError,
         onRetry: () => void scanQ.refetch(),
         renderCard: (it, onSelect) => (
-          <TrajectoryScanCard item={it as StockScanItem} onSelect={onSelect} />
+          <TrajectoryScanCard item={it as ToolScanItem} onSelect={onSelect} />
         ),
-        keyOf: (it) => (it as StockScanItem).symbol,
+        keyOf: (it) => (it as ToolScanItem).symbol,
       }}
       single={single}
     />
