@@ -8,7 +8,7 @@
 // so the three surfaces can never drift. No fire-logic: we only order/format what was written.
 
 import type { RedFlagView, PatternView } from "@/types/health";
-import type { PathologyCensusItem, PathologyReach } from "@/types/peer-group";
+import type { FiredFlag, FiredPattern, PathologyCensusItem, PathologyReach } from "@/types/peer-group";
 import {
   accentOf,
   concernOf,
@@ -27,7 +27,15 @@ import {
   type DisplayState,
   type Family,
 } from "./classify";
-import { doesntMean, findingConcern, findingDescription, findingName, lensFindingName } from "./descriptions";
+import {
+  doesntMean,
+  faceIdOfLensKey,
+  findingConcern,
+  findingDescription,
+  findingName,
+  lensCatalogFace,
+  lensFindingName,
+} from "./descriptions";
 import { renderVerdict } from "./verdicts";
 import { catalogueSource, reportFallback } from "./catalogue-store";
 
@@ -205,6 +213,145 @@ export function prepareStockFindings(
   const merged = consolidated ? [...rest, consolidated] : rest;
 
   merged.sort((a, b) => a.orderRank - b.orderRank || severityWeight(a.severity) - severityWeight(b.severity) || a.key.localeCompare(b.key));
+
+  return { ordered: merged, density, count: merged.length };
+}
+
+// ── per-MEMBER fired set (universe / peer-group list payloads) ──────────────────
+//
+// THE THIRD PREPARER, AND WHY IT IS NOT ONE OF THE OTHER TWO.
+//
+// A list payload's member row (UniverseMemberView / PeerGroupMemberView) carries `firedFlags`
+// and `firedPatterns` — the finding KEYS plus severity and display state, and NOTHING ELSE. No
+// evidence object. That single fact decides the shape:
+//
+//   prepareStockFindings  needs evidence  → it renders a VERDICT ("what happened at THIS company"),
+//                                           which is an (evidence) => string function. Unusable here.
+//   prepareCensus         needs memberCount / outOf / members / reach — aggregate coordinates a
+//                                           single member does not have. Also unusable.
+//
+// So this preparer renders the layer that IS available: the catalogue's static, rule-level
+// `description` ("what this pattern means"), which is exactly what that layer exists for on
+// evidence-free surfaces. ⚠ It MUST NOT synthesise a verdict — a sentence claiming to describe this
+// company's numbers, written without this company's numbers, is the one failure mode worse than
+// showing less. If a caller needs verdicts it needs evidence on the payload first.
+//
+// EVERYTHING ELSE IS SHARED, DELIBERATELY: the same familyOf / orderRankOf / severityWeight ladder,
+// the same accent map, the same C-family consolidation. The Screener expansion, the stock page and
+// the Flags board therefore order and colour one stock's findings identically — which is the whole
+// reason the three preparers live in one module instead of three components.
+export interface PreparedMemberFinding {
+  key: string;
+  family: Family;
+  kind: "red_flag" | "pattern";
+  name: string;
+  /** Static, rule-level catalogue description. null → the surface renders TITLE ONLY, never filler.
+   *  This is NOT a verdict and must never be presented as one — see the note above. */
+  description: string | null;
+  doesntMean: string;
+  accent: Accent;
+  severity: string | null;
+  displayState: DisplayState;
+  orderRank: number;
+  /** For a `lens_<id>_<suffix>` key, the instance coordinate — the metricKey (LM) or pillar (LP).
+   *  null on every non-lens finding. Without it two LM3 cards on one stock render the same title;
+   *  the label lookup is the CALLER's (it owns the metric-label map), the coordinate is ours. */
+  lensSuffix: string | null;
+  /** Consolidated divergence card only: the ≤2 dominant sub-type names + the total fired. */
+  subTypes?: { key: string; name: string }[];
+  divergenceCount?: number;
+}
+
+export interface MemberFindings {
+  ordered: PreparedMemberFinding[];
+  density: Density;
+  count: number;
+}
+
+function toMemberFinding(
+  key: string,
+  kind: "red_flag" | "pattern",
+  severity: string | null,
+  displayState: DisplayState,
+): PreparedMemberFinding {
+  const family = familyOf(key);
+  const isLens = key.startsWith("lens_");
+  const faceId = isLens ? faceIdOfLensKey(key) : null;
+  return {
+    key,
+    family,
+    kind,
+    // Lens keys are runtime-composed and in no registry, so `findingName` would mangle them into
+    // "Lens lm3 NII" — same resolution `toFinding` applies on the stock surface.
+    name: isLens ? lensFindingName(key) : findingName(key),
+    // The lens library's "read" IS its static description; the stock registry has no lens_* entry.
+    description: faceId ? (lensCatalogFace(faceId)?.read ?? null) : findingDescription(key),
+    doesntMean: doesntMean(key),
+    accent: accentOf(severity, family),
+    severity,
+    displayState,
+    orderRank: orderRankOf(key, severity),
+    lensSuffix: faceId ? key.slice(`lens_${faceId.toLowerCase()}_`.length) : null,
+  };
+}
+
+/** Collapse every fired C-family finding into ONE divergence card — the same consolidation the
+ *  stock surface and the census boards apply, so a stock showing "Divergence" on its own page can
+ *  never show three separate D cards in a list. Name / description / boundary all come from the
+ *  catalogue's `divergence_consolidated` entry; severity, accent and order follow the widest
+ *  sub-type. Returns null when no divergence fired. */
+function consolidateMemberDivergence(rows: PreparedMemberFinding[]): PreparedMemberFinding | null {
+  if (rows.length === 0) return null;
+  const sorted = [...rows].sort((a, b) => severityWeight(a.severity) - severityWeight(b.severity));
+  const lead = sorted[0];
+  const anyWide = sorted.some((c) => severityWeight(c.severity) <= severityWeight("high"));
+  return {
+    key: "divergence_consolidated",
+    family: "C",
+    kind: "pattern",
+    name: findingName("divergence_consolidated"),
+    description: findingDescription("divergence_consolidated"),
+    doesntMean: doesntMean("divergence_consolidated"),
+    accent: lead.accent,
+    severity: lead.severity,
+    displayState: sorted.find((r) => r.displayState !== "active")?.displayState ?? "active",
+    orderRank: anyWide ? 3 : 5, // C wide → slot 3, notable → slot 5 (File 1 ordering)
+    lensSuffix: null,
+    subTypes: sorted.slice(0, 2).map((r) => ({ key: r.key, name: r.name })),
+    divergenceCount: sorted.length,
+  };
+}
+
+/**
+ * Prepare ONE member's fired set from a list payload: every finding named / described / bounded by
+ * the catalogue, the C-family consolidated, all sorted by the File-1 A→I ladder. `density` is read
+ * over the RAW keys (before consolidation), exactly as prepareStockFindings does it.
+ */
+export function prepareMemberFindings(member: {
+  firedFlags: FiredFlag[];
+  firedPatterns: FiredPattern[];
+}): MemberFindings {
+  const flags = member.firedFlags.map((f) =>
+    toMemberFinding(f.flagKey, "red_flag", f.severity, "active"),
+  );
+  const pats = member.firedPatterns.map((p) =>
+    toMemberFinding(p.patternKey, "pattern", p.severity, (p.displayState as DisplayState) ?? "active"),
+  );
+
+  const all = [...flags, ...pats];
+  const density = densityOf(all.map((x) => x.key));
+
+  const cRows = all.filter((x) => x.family === "C");
+  const rest = all.filter((x) => x.family !== "C");
+  const consolidated = consolidateMemberDivergence(cRows);
+  const merged = consolidated ? [...rest, consolidated] : rest;
+
+  merged.sort(
+    (a, b) =>
+      a.orderRank - b.orderRank ||
+      severityWeight(a.severity) - severityWeight(b.severity) ||
+      a.key.localeCompare(b.key),
+  );
 
   return { ordered: merged, density, count: merged.length };
 }

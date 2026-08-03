@@ -32,7 +32,16 @@ export interface ReportedResultItem {
   xbrlUrl: string;
 
   healthScore: number | null; // composite (0–100) when scored, else null
-  aiHeadline: string | null; // real earnings_analysis headline when present, else null
+
+  /** The COMPUTED Quarter in Brief verdict label for THIS period ("Grew, margins thinner").
+   *
+   *  ⚠ NOT model output, and not a headline. The backend derives it from the quarter's own figures
+   *  and stores it beside the prose; the model never sees it, so it cannot be restated or softened.
+   *
+   *  Null covers three things that are one thing to a reader — no brief written, a brief hidden
+   *  because a correction moved its inputs, or a brief whose figures supported no verdict (MMTC has
+   *  prose and no verdict). All three render as no badge, never as an empty one. */
+  quarterBriefVerdict: string | null;
 }
 
 export interface UpcomingResultItem {
@@ -44,24 +53,51 @@ export interface UpcomingResultItem {
   description: string | null;
 }
 
-export interface ResultsListData {
-  reported: ReportedResultItem[];
-  upcoming: UpcomingResultItem[];
+/** Which half of the feed a request pages over — one request, one half, one cursor. */
+export type ResultsFeedKind = "reported" | "upcoming";
+
+/** One PAGE of one half. `cursor` is opaque: hand it back verbatim for the next page.
+ *  `total` counts the whole set matching the query's filters, NOT the page. */
+export interface ResultsFeedPage<T> {
+  feed: ResultsFeedKind;
+  items: T[];
+  total: number;
+  cursor: string | null; // null once the feed is exhausted
+  hasMore: boolean;
+}
+
+export interface ResultsFeedResponse<T> {
+  success: boolean;
+  data: ResultsFeedPage<T>;
+}
+
+/** Whole-feed context for the landing header — deliberately NOT part of a page, so the
+ *  stats and chip counts don't shift as the reader scrolls or searches. */
+export interface ResultsOverview {
   counts: {
     reported: number;
-    upcoming: number;
     reportedThisWeek: number;
+    scored: number;
+    upcoming: number;
   };
+  averages: {
+    revenueYoy: number | null; // % — mean across results that report it, nulls excluded
+    profitYoy: number | null; // %
+  };
+  topGrowers: ReportedResultItem[]; // highest net-profit YoY first
 }
 
-export interface ResultsListResponse {
+export interface ResultsOverviewResponse {
   success: boolean;
-  data: ResultsListData;
+  data: ResultsOverview;
 }
 
-export interface ResultsListParams {
-  filter?: "reported" | "upcoming" | "all";
+/** Feed filters. `days` / `scored` apply to the reported half; `upcomingDays` to the other. */
+export interface ResultsFeedParams {
+  q?: string;
   days?: number;
+  scored?: boolean;
   upcomingDays?: number;
   limit?: number;
+  enabled?: boolean;
 }

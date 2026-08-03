@@ -166,13 +166,13 @@ function Hero() {
         How the <span className="text-primary">Health Score</span> is built
       </h1>
 
-      <p className="mt-4 max-w-2xl text-[13.5px] leading-relaxed text-ink2 sm:text-sm">
+      <p className="mt-4 max-w-full text-[13.5px] leading-relaxed text-ink2 sm:text-sm">
         A Health Score is one number, 0–100, describing how sound a company looks right now. It is
         built from four pillars, each a 0–100 read of one dimension of the business, combined with
         fixed weights. Every reading is made against the company&apos;s own peer group, so a score
         means the same thing in pharma as it does in metals.
       </p>
-      <p className="mt-3 max-w-2xl text-[13.5px] leading-relaxed text-ink3">
+      <p className="mt-3 max-w-full text-[13.5px] leading-relaxed text-ink3">
         Below, the plain version first — the pillars, the bands, and a real company scored end to
         end. The mechanics underneath are one click further down.
       </p>
@@ -202,7 +202,7 @@ function PillarsSection() {
   return (
     <section>
       <SectionEyebrow label="The four pillars" icon={Icons.stack} accent="var(--p-found)" />
-      <p className="mb-5 max-w-2xl text-[13px] leading-relaxed text-ink2">
+      <p className="mb-5 max-w-full text-[13px] leading-relaxed text-ink2">
         They are not weighted equally. <strong className="font-medium text-ink">{PILLAR_ORDER_NOTE}</strong>{" "}
         Foundation leads because the business itself is the anchor — a company is what it is before
         it is what the market thinks of it. Whatever the split, it is fixed for every company and
@@ -257,7 +257,7 @@ function BandsSection() {
   return (
     <section>
       <SectionEyebrow label="Reading the score" icon={Icons.scales} accent="var(--c-steady)" />
-      <p className="mb-5 max-w-2xl text-[13px] leading-relaxed text-ink2">
+      <p className="mb-5 max-w-full text-[13px] leading-relaxed text-ink2">
         The 0–100 scale carries a band — a plain tier word. The cuts are the same for every company.
         A band summarises soundness now; it is never a verdict on the price.
       </p>
@@ -307,7 +307,7 @@ function WorkedExample() {
         pill={WORKED_EXAMPLE_SYMBOL}
         tip="This panel is not written by hand. It reads the same scored snapshot the stock's own page reads, so it can never describe a model we don't run."
       />
-      <p className="mb-5 max-w-2xl text-[13px] leading-relaxed text-ink2">
+      <p className="mb-5 max-w-full text-[13px] leading-relaxed text-ink2">
         One real company, scored end to end. Every number below is read live from the same snapshot
         that powers {WORKED_EXAMPLE_SYMBOL}&apos;s own page — nothing here is typed in.
       </p>
@@ -397,6 +397,11 @@ function ExampleScored({ view }: { view: HealthSnapshotView }) {
   // pillar's weight — showing four of them alongside four subtotals hands over the whole vector.
   // The panel shows each pillar's raw 0–100 read and the finished composite, and nothing between.
   const anyRedistributed = pillars.some((p) => p.state !== "scored");
+  // Whole numbers everywhere a score is printed. The ring and the pillar gauges already round, so
+  // a `.toFixed(1)` beside them put two different renders of the same value on screen (a ring
+  // reading 68 above a total reading 67.6). The band is still derived from the full-precision
+  // score upstream — this is a display rounding only, and BandsSection says so.
+  const compositeShown = Math.round(clampPct(v.composite));
 
   return (
     <Reveal>
@@ -452,7 +457,7 @@ function ExampleScored({ view }: { view: HealthSnapshotView }) {
             <span className="ml-1.5 text-[11.5px] font-normal text-ink3">weighted blend of the four</span>
           </span>
           <span className="num text-[17px] font-semibold" style={{ color: bandMeta.cssVar }}>
-            {v.composite.toFixed(1)}
+            {compositeShown}
           </span>
         </div>
 
@@ -461,7 +466,7 @@ function ExampleScored({ view }: { view: HealthSnapshotView }) {
             the weights withheld, and a reader deserves to be told that rather than left to
             wonder whether the page can add up. */}
         <p className="mt-2.5 text-[11.5px] leading-relaxed text-ink3">
-          The four pillar reads above will not add up to {v.composite.toFixed(1)}, and they are not
+          The four pillar reads above will not add up to {compositeShown}, and they are not
           meant to — the score is a <em>weighted</em> blend, so each read counts for more or less
           than the others.{" "}
           {anyRedistributed
@@ -542,7 +547,7 @@ function PillarRow({ p, open, onToggle }: { p: PillarView; open: boolean; onTogg
           className="num shrink-0 text-right text-[13.5px] font-semibold"
           style={{ color: dropped ? "var(--ink3)" : meta.cssVar }}
         >
-          {dropped ? "—" : p.subtotal.toFixed(1)}
+          {dropped ? "—" : Math.round(clampPct(p.subtotal))}
         </span>
 
         {hasDetail && (

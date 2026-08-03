@@ -8,12 +8,13 @@
  * verbatim — they differ only in the slots they pass.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { QueryError } from "@/components/ui/query-error";
 import { Panel, SectionEyebrow } from "@/components/stock-detail/health/shared";
 import { StockAutocomplete } from "@/components/stock-autocomplete";
+import { SCAN_PAGE_SIZE } from "@/lib/api/hooks/use-stocks";
 import type { Stock } from "@/lib/indian-stocks-data";
 import { NameSwitcher } from "./name-switcher";
 import {
@@ -245,6 +246,26 @@ export function ToolFrame({
 
   const Tool = meta.Icon;
 
+  // ── landing infinite scroll — a sentinel below the scan grid pulls the next page as it
+  //    nears the viewport (rootMargin preloads before it's actually visible). Frame-owned,
+  //    so every tool inherits it by passing its paging fields; a tool that passes none
+  //    (hasMore undefined) simply renders a static grid. ──
+  const { hasMore, isFetchingMore, fetchMore } = landing;
+  const scanSentinelRef = useRef<HTMLDivElement>(null);
+  const scanCount = landing.items?.length ?? 0;
+  useEffect(() => {
+    const el = scanSentinelRef.current;
+    if (!el || !hasMore || !fetchMore) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingMore) fetchMore();
+      },
+      { rootMargin: "600px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, isFetchingMore, fetchMore, scanCount]);
+
   // Scored universe → the StockAutocomplete shape, for the landing hero search.
   const autocompleteStocks: Stock[] = useMemo(
     () =>
@@ -320,24 +341,78 @@ export function ToolFrame({
 
           <SectionEyebrow label={meta.landingEyebrow} icon={Tool} accent={meta.accentVar} pill={meta.scopeTag} />
 
+          {/* filter row — frame-PLACED, tool-owned. It renders through every state below
+              (including error/empty) so a reader can always widen or clear a filter that
+              produced nothing, instead of being stranded with a dead grid. */}
+          {landing.filters}
+
           {landing.isError ? (
             <QueryError message="Couldn't load the scan for your scope." onRetry={landing.onRetry} />
           ) : landing.isLoading ? (
             <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-44 animate-pulse rounded-xl border border-line bg-surface-1" />
+                <div key={i} className="h-48 animate-pulse rounded-xl border border-line bg-surface-1" />
               ))}
             </div>
           ) : landingItems.length === 0 ? (
-            <Panel className="py-10 text-center text-[13px] text-ink3">
-              No scored journeys in your scope yet. Search any name above.
-            </Panel>
+            // Two different empties, and conflating them is a bug a reader can't diagnose:
+            // "your scope has nothing" vs "your FILTER matched nothing".
+            landing.isFiltered ? (
+              <Panel className="flex flex-col items-center gap-3 py-10 text-center">
+                <p className="text-[13px] text-ink3">No stock in this scan matches those filters.</p>
+                {landing.onClearFilters && (
+                  <button
+                    onClick={landing.onClearFilters}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink transition-colors hover:border-line3 hover:bg-surface-3"
+                  >
+                    <Icons.close className="size-3" />
+                    Clear filters
+                  </button>
+                )}
+              </Panel>
+            ) : (
+              <Panel className="py-10 text-center text-[13px] text-ink3">
+                No scored journeys in your scope yet. Search any name above.
+              </Panel>
+            )
           ) : (
-            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-              {landingItems.map((it) => (
-                <div key={landing.keyOf(it)}>{landing.renderCard(it, onSelectSymbol)}</div>
-              ))}
-            </div>
+            <>
+              <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+                {landingItems.map((it) => (
+                  <div key={landing.keyOf(it)}>{landing.renderCard(it, onSelectSymbol)}</div>
+                ))}
+                {/* placeholders for the page in flight — the grid grows into the loader
+                    instead of jumping when the cards land */}
+                {isFetchingMore &&
+                  Array.from({
+                    length: Math.min(
+                      SCAN_PAGE_SIZE,
+                      Math.max(0, (landing.total ?? scanCount) - scanCount),
+                    ),
+                  }).map((_, i) => (
+                    <div
+                      key={`scan-pending-${i}`}
+                      className="h-48 animate-pulse rounded-xl border border-line bg-surface-1"
+                    />
+                  ))}
+              </div>
+
+              <div ref={scanSentinelRef} aria-hidden className="h-px w-full" />
+              <div className="mt-6 flex flex-col items-center gap-2" aria-live="polite">
+                {isFetchingMore && (
+                  <div className="flex items-center gap-2 text-[12px] text-ink3">
+                    <Icons.spinner className="h-4 w-4 animate-spin" />
+                    Loading more…
+                  </div>
+                )}
+                {!hasMore && (landing.total ?? 0) > SCAN_PAGE_SIZE && (
+                  <p className="text-[11.5px] text-ink3">
+                    Showing all <span className="num">{landing.total}</span>{" "}
+                    {landing.isFiltered ? "matching your filters" : "in your scope"}
+                  </p>
+                )}
+              </div>
+            </>
           )}
         </div>
       ) : (

@@ -15,6 +15,7 @@ import {
   type Family,
   type Accent,
   DENSITY_EMPTY_COPY,
+  DENSITY_EMPTY_PILL,
   DENSITY_QUIET_HEADER,
 } from "@/lib/findings";
 import { Sparkline } from "@/components/ui/sparkline";
@@ -246,7 +247,7 @@ export function FindingsSection({
   if (density === "empty") {
     return (
       <section>
-        <SectionEyebrow label="Notable findings" icon={Icons.pulse} accent="var(--p-mkt)" pill="all clear" />
+        <SectionEyebrow label="Notable findings" icon={Icons.pulse} accent="var(--p-mkt)" pill={DENSITY_EMPTY_PILL} />
         <Panel className="flex flex-col items-center gap-2 py-10 text-center">
           <Icons.success weight="duotone" className="h-9 w-9 text-healthy" />
           <p className="max-w-md text-[13px] leading-relaxed text-ink2">{DENSITY_EMPTY_COPY}</p>

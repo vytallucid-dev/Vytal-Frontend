@@ -206,7 +206,13 @@ function KpiRail({ view }: { view: UniverseHealthView }) {
           label={k.redFlags === 1 ? "red flag · watch with care" : "red flags · watch with care"}
         />
         <Kpi value={k.recovering.length} tone="rec" label="recovering from weakness" />
-        <Kpi value={k.wideSpread} tone="ctx" label="wide pillar spread (≥25)" />
+        {/* ⚠ The label read "wide pillar spread (≥25)". The COUNT was always right — it reads the
+            served `divergence.flag === "wide"`, which the backend bands off the canonical
+            GAP_STRETCHED. The (≥25) was the RETIRED threshold typed into copy, stale since Phase 2
+            moved the cut, and copy cannot follow the engine. It is removed rather than corrected to
+            (≥16), for the same reason the sibling AttentionCard below dropped its "≥25 gap" note: a
+            threshold in a string is the defect, not the particular number. */}
+        <Kpi value={k.wideSpread} tone="ctx" label="wide pillar spread" />
       </div>
     </div>
   );

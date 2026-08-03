@@ -16,7 +16,7 @@
  * compact form suited to the narrow comparison columns.
  */
 
-import { prepareStockFindings, accentVars, type PreparedFinding } from "@/lib/findings";
+import { prepareStockFindings, accentVars, DENSITY_EMPTY_COPY, type PreparedFinding } from "@/lib/findings";
 import type { Comparee } from "@/types/compare";
 import { BoundaryLine } from "@/components/ui/boundary-line";
 import { A_HUE, B_HUE, HonestEmpty } from "./shared";
@@ -82,7 +82,10 @@ function EntityFindings({ entity, hue }: { entity: Comparee; hue: string }) {
       </div>
 
       {prepared.density === "empty" ? (
-        <HonestEmpty>No patterns fired this period.</HonestEmpty>
+        // Shared with the stock page, the results tab, the watchlist sheet and the Screener pill —
+        // see classify.ts. The scope this line used to carry ("this period") is stated by the
+        // section hint directly above it, so the shared string loses nothing here.
+        <HonestEmpty>{DENSITY_EMPTY_COPY}</HonestEmpty>
       ) : (
         <div className="space-y-4">
           {flags.length > 0 && (

@@ -2,9 +2,10 @@
 
 // The timeline's date-range control (§3) — a dropdown of presets (Today · Tomorrow · This
 // week · This month · All) plus the shadcn Calendar in range mode for a custom window.
-// Drives the timeline only (the grid has its own month nav). Bounded to the fetched
-// [today, +90d]. The calendar inherits the app tokens (primary/accent = the brand blues),
-// with a few slots nudged to the calm-ink palette.
+// Drives the timeline only (the grid has its own month nav). The far end is the last event
+// we actually hold (`maxDate`), not a hardcoded +90d: the timeline pages the feed now, so the
+// picker must be able to name any date the feed can reach. The calendar inherits the app
+// tokens (primary/accent = the brand blues), with a few slots nudged to the calm-ink palette.
 
 import { useState } from "react";
 import { addDays, startOfMonth } from "date-fns";
@@ -27,11 +28,15 @@ export function RangePicker({
   preset,
   custom,
   bounds,
+  maxDate,
   onChange,
 }: {
   preset: RangePresetKey;
   custom: DateRange | null;
   bounds: Bounds;
+  /** The furthest-out event we hold. Undefined while the bounds request is in flight — the
+   *  picker then falls back to the old +90d reach rather than offering empty months. */
+  maxDate?: Date;
   onChange: (preset: RangePresetKey, custom: DateRange | null) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -41,7 +46,8 @@ export function RangePicker({
 
   const label = rangeLabel(preset, custom);
   const isDefault = preset === "all";
-  const maxDay = addDays(bounds.today, 90);
+  const fallbackMax = addDays(bounds.today, 90);
+  const maxDay = maxDate && maxDate > fallbackMax ? maxDate : fallbackMax;
 
   const handleOpenChange = (o: boolean) => {
     setOpen(o);

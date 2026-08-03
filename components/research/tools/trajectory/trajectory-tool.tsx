@@ -10,10 +10,18 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
-import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
+import { useScoredStocks, useStockScan, useStockScanFacets } from "@/lib/api/hooks/use-stocks";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
-import type { ToolScanItem } from "@/types/research-tools";
+import {
+  EMPTY_SCAN_FILTERS,
+  scanFilterCount,
+  type ScanFilters,
+  type ToolScanItem,
+} from "@/types/research-tools";
+import { BAND_META } from "@/components/stock-detail/health/shared";
+import type { LabelBand } from "@/types/health";
 import { ToolFrame } from "../tool-frame";
+import { ScanFilterBar, relabel } from "../scan-filters";
 import {
   DEFAULT_WINDOW,
   windowQuarters,
@@ -57,7 +65,22 @@ export function TrajectoryTool() {
   }
 
   const stocksQ = useScoredStocks();
-  const scanQ = useStockScan("trajectory", !symbol);
+
+  // ── Landing filters — peer group · pattern, both multi-select ─────────────────────────
+  // ★ Held here and sent to the SERVER, never applied to `scanRows`. The scan is cursor-paged,
+  //   so the client holds only the pages it has scrolled to; filtering those would filter a
+  //   prefix of the ranking and hide matches that live on a page nobody fetched. The narrowing
+  //   is part of the query key, so a change starts a fresh page-1 fetch and the frame's
+  //   infinite-scroll sentinel then pages the NARROWED ranking the same way.
+  const [filters, setFilters] = useState<ScanFilters>(EMPTY_SCAN_FILTERS);
+  const isFiltered = scanFilterCount(filters) > 0;
+
+  // Landing scan — cursor-paged; the frame's sentinel asks for the next page.
+  const scanQ = useStockScan("trajectory", !symbol, filters);
+  const scanRows = useMemo(() => scanQ.data?.pages.flatMap((p) => p.items), [scanQ.data]);
+  // Filter OPTIONS come off the scan itself (only values that return cards), with counts
+  // cross-filtered against the other dropdown's selection.
+  const facetsQ = useStockScanFacets("trajectory", !symbol, filters);
   const healthQ = useStockHealth(symbol ?? "", windowQuarters(window));
 
   const data = healthQ.data;
@@ -140,14 +163,31 @@ export function TrajectoryTool() {
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}
       landing={{
-        items: scanQ.data,
+        items: scanRows,
         isLoading: scanQ.isLoading,
         isError: scanQ.isError,
         onRetry: () => void scanQ.refetch(),
+        total: scanQ.data?.pages[0]?.total,
+        hasMore: scanQ.hasNextPage,
+        isFetchingMore: scanQ.isFetchingNextPage,
+        fetchMore: () => void scanQ.fetchNextPage(),
         renderCard: (it, onSelect) => (
           <TrajectoryScanCard item={it as ToolScanItem} onSelect={onSelect} />
         ),
         keyOf: (it) => (it as ToolScanItem).symbol,
+        isFiltered,
+        onClearFilters: () => setFilters(EMPTY_SCAN_FILTERS),
+        filters: (
+          <ScanFilterBar
+            peerGroupOptions={facetsQ.data?.peerGroups ?? []}
+            patternOptions={facetsQ.data?.patterns ?? []}
+            bandOptions={relabel(facetsQ.data?.bands ?? [], (v) => BAND_META[v as LabelBand]?.label)}
+            filters={filters}
+            onChange={setFilters}
+            loading={facetsQ.isLoading}
+            matchCount={scanQ.data?.pages[0]?.total}
+          />
+        ),
       }}
       single={single}
     />

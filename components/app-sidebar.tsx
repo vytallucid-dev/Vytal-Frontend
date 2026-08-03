@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 
 import {
   Sidebar,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { SidebarUser } from "@/components/app-sidebar-user";
+import { SidebarDock } from "@/components/app-sidebar-dock";
 import { HealthRing } from "@/components/ui/health-ring";
 import { Icons, type Icon } from "@/lib/icons";
 import { usePortfolioSnapshot } from "@/lib/api/hooks/use-portfolio-snapshot";
@@ -29,6 +31,20 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { title: string; url: string; icon: Icon; adminOnly?: boolean; ai?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
+
+/**
+ * The rail's own width transition (`duration-200` in ui/sidebar.tsx).
+ *
+ * ⚠ THE SWAP TO THE DOCK WAITS FOR THE FULL TRAVEL, and the reason is geometric: the expanded card is
+ * left-aligned and the dock is centre-aligned, so the two layouts only agree once the rail has
+ * actually reached its collapsed width. Swap at the halfway mark and the health ring jumps across a
+ * rail that is still ~130px wide; wait, and both layouts are measured in the same 68px rail and the
+ * ring moves ~6px. Waiting also hands the interval back to shadcn's own collapse CSS (the menu
+ * buttons' size-8 transition, the group labels' fade), which is what should be running there anyway.
+ */
+const RAIL_TRANSITION_MS = 200;
+/** The copy leaves well inside that window — gone BEFORE the swap, rather than cut off by it. */
+const COPY_EXIT_S = 0.13;
 
 // Product surfaces above the Settings group. The Settings group is assembled in
 // the component because its "Admin Panel" item is admin-gated (role-aware).
@@ -83,18 +99,65 @@ export function AppSidebar() {
   const { isAdmin } = useMe();
 
   // Settings group — assembled here so Admin Panel can be dropped for non-admins.
-  const groups: NavGroup[] = [
-    ...baseGroups,
-    {
-      label: "Settings",
-      items: [
-        ...(isAdmin
-          ? [{ title: "Admin Panel", url: "/admin", icon: Icons.shield, adminOnly: true } as NavItem]
-          : []),
-        { title: "Settings", url: "/settings", icon: Icons.settings },
-      ],
-    },
-  ];
+  // Memoised on isAdmin: the collapsed dock derives its tile geometry from this array, and a fresh
+  // identity every render would recompute that layout (and every tile's distance transform) on each
+  // unrelated re-render.
+  const groups: NavGroup[] = useMemo(
+    () => [
+      ...baseGroups,
+      {
+        label: "Settings",
+        items: [
+          ...(isAdmin
+            ? [{ title: "Admin Panel", url: "/admin", icon: Icons.shield, adminOnly: true } as NavItem]
+            : []),
+          { title: "Settings", url: "/settings", icon: Icons.settings },
+        ],
+      },
+    ],
+    [isAdmin],
+  );
+
+  // ── ★ THE CONTENT SWAP IS NOT THE RAIL'S TRANSITION, AND PRETENDING IT IS IS THE BUG ────────────
+  // `collapsed` flips on the tick the toggle is hit, but the rail itself takes 200ms to travel (the
+  // width transition in ui/sidebar.tsx). Branching the markup straight off `collapsed` therefore
+  // mounted the expanded health card — "Portfolio Health" and its band — at full opacity inside a
+  // rail that was still 68px wide, so the label popped in over the top of the opening animation.
+  //
+  // So the two directions are decoupled and each runs with the rail rather than against it:
+  //   OPENING   swap immediately — the card needs to be mounted to be revealed — then fade + slide
+  //             the copy in behind the widening rail, so it arrives as the space does.
+  //   CLOSING   fade the copy out first (130ms), and hold the swap to the dock until the rail has
+  //             finished travelling (200ms) — see RAIL_TRANSITION_MS for why it waits the full trip.
+  // `showDock` is the structural state (which markup renders); `collapsed` stays the intent (where
+  // the copy should be animating TO). They differ only during that closing window.
+  const reduced = useReducedMotion() ?? false;
+  const [showDock, setShowDock] = useState(collapsed);
+  useEffect(() => {
+    if (!collapsed) {
+      setShowDock(false); // opening: the card is mounted at once and animates itself in
+      return;
+    }
+    if (reduced) {
+      setShowDock(true);
+      return;
+    }
+    const t = setTimeout(() => setShowDock(true), RAIL_TRANSITION_MS);
+    return () => clearTimeout(t);
+  }, [collapsed, reduced]);
+
+  // Fade/slide for the copy that only exists in the expanded rail. Asymmetric on purpose: leaving is
+  // quicker than arriving, so the rail is never briefly empty on the way open or still full on the
+  // way closed.
+  const copyMotion = {
+    initial: { opacity: 0, x: -6 },
+    animate: { opacity: collapsed ? 0 : 1, x: collapsed ? -6 : 0 },
+    transition: reduced
+      ? { duration: 0 }
+      : collapsed
+        ? { duration: COPY_EXIT_S, ease: "easeIn" as const }
+        : { duration: 0.18, delay: 0.07, ease: "easeOut" as const },
+  };
 
   // On mobile the sidebar is an overlay Sheet — close it whenever the route changes
   // so tapping a nav item navigates AND dismisses the sheet (instead of staying open).
@@ -111,7 +174,7 @@ export function AppSidebar() {
           (no frosted glass, no aurora, no gradient washes). */}
       <div className="flex h-full flex-col rounded-lg border border-line bg-surface-1">
         <SidebarHeader className="px-2 pt-3">
-          {collapsed ? (
+          {showDock ? (
             <button
               onClick={toggleSidebar}
               aria-label="Expand sidebar"
@@ -144,7 +207,7 @@ export function AppSidebar() {
 
           {/* Portfolio health pulse — the real health snapshot (never a fabricated score).
               No score yet (empty / unscored / pending) → an honest neutral state. */}
-          {collapsed ? (
+          {showDock ? (
             health != null ? (
               <Link
                 href="/portfolio"
@@ -170,33 +233,42 @@ export function AppSidebar() {
               {health != null ? (
                 <>
                   <HealthRing score={health} size={48} strokeWidth={5} showValue color={band ? healthColor(band) : undefined} />
-                  <div className="min-w-0">
+                  <motion.div className="min-w-0" {...copyMotion}>
                     <p className="text-[0.7rem] uppercase tracking-wider text-ink3">
                       Portfolio Health
                     </p>
                     <p className="text-sm font-semibold" style={bandLabel ? { color: healthColor(band) } : undefined}>
                       {bandLabel ?? "Scored"}
                     </p>
-                  </div>
+                  </motion.div>
                 </>
               ) : (
                 <>
                   <span className="grid size-12 shrink-0 place-items-center rounded-full border border-line2 bg-surface-3 text-ink3">
                     <Icons.health weight="duotone" className="size-5" />
                   </span>
-                  <div className="min-w-0">
+                  <motion.div className="min-w-0" {...copyMotion}>
                     <p className="text-[0.7rem] uppercase tracking-wider text-ink3">
                       Portfolio Health
                     </p>
                     <p className="text-sm font-semibold text-ink2">No read yet</p>
-                  </div>
+                  </motion.div>
                 </>
               )}
-              <Icons.caretRight className="ml-auto size-4 text-ink3 transition-transform group-hover:translate-x-0.5" />
+              <motion.span className="ml-auto" {...copyMotion}>
+                <Icons.caretRight className="size-4 text-ink3 transition-transform group-hover:translate-x-0.5" />
+              </motion.span>
             </Link>
           )}
         </SidebarHeader>
 
+        {/* ── COLLAPSED: the dock. Its own rail, because magnification needs geometry this markup
+            cannot give it — SidebarContent clips overflow when collapsed, SidebarMenuButton forces
+            size-8, and SidebarMenuButton's `tooltip` prop would stack a Radix tooltip on top of the
+            dock's own label. The expanded branch below is untouched. */}
+        {showDock ? (
+          <SidebarDock groups={groups} isActive={isActive} className="mt-1" />
+        ) : (
         <SidebarContent className="custom-scrollbar mt-1 gap-0.5">
           {groups.map((group, gi) => (
             <SidebarGroup
@@ -225,7 +297,7 @@ export function AppSidebar() {
                         >
                           <Link href={item.url}>
                             {/* leading primary rail — the single accent marking the active row */}
-                            {active && !collapsed && (
+                            {active && !showDock && (
                               <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
                             )}
                             <item.icon
@@ -239,11 +311,18 @@ export function AppSidebar() {
                                     : "text-ink3 group-hover/nav:text-ink"
                               )}
                             />
-                            <span className="font-medium">{item.title}</span>
-                            {item.adminOnly && !collapsed && (
-                              <span className="ml-auto inline-flex items-center rounded-md border border-line2 bg-surface-3 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-primary">
+                            {/* The nav labels carry the same arrival as the health card's — one rail,
+                                one motion, rather than the copy landing in two different ways. */}
+                            <motion.span className="font-medium" {...copyMotion}>
+                              {item.title}
+                            </motion.span>
+                            {item.adminOnly && !showDock && (
+                              <motion.span
+                                className="ml-auto inline-flex items-center rounded-md border border-line2 bg-surface-3 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-primary"
+                                {...copyMotion}
+                              >
                                 Admin
-                              </span>
+                              </motion.span>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -255,14 +334,15 @@ export function AppSidebar() {
             </SidebarGroup>
           ))}
         </SidebarContent>
+        )}
 
         <SidebarFooter className="border-t border-line p-2">
-          {collapsed ? (
+          {showDock ? (
             <SidebarUser collapsed />
           ) : (
-            <div className="px-1">
+            <motion.div className="px-1" {...copyMotion}>
               <SidebarUser collapsed={false} />
-            </div>
+            </motion.div>
           )}
         </SidebarFooter>
       </div>

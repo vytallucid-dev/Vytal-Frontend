@@ -27,22 +27,72 @@ import {
   pctChange,
   bps,
   toneColor,
-  tint,
+  VerdictBadge,
+  VerdictCaveat,
+  QuarterBriefProse,
+  REACTION_EMPTY_COPY,
+  REACTION_NOT_OPENED_KICKER,
+  REACTION_NOT_OPENED_COPY,
+  REACTION_COMPLETE_COPY,
+  reactionFormingKicker,
+  reactionFormingCopy,
 } from "./shared";
 import { HealthContext } from "./HealthContext";
 
-const fmtFullDay = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-const fmtShortDay = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+// Both accept a timestamp as well as an ISO day, because the reaction chart's axis is now
+// numeric. `Date.parse("2026-08-01")` is UTC midnight — the exact value `new Date("2026-08-01")`
+// produced before — so what these render is unchanged.
+const fmtFullDay = (d: string | number) =>
+  new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const fmtShortDay = (d: string | number) =>
+  new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
-export default function SnapshotTab({
-  data,
-  onTab,
-}: {
-  data: ResultDetailData;
-  onTab: (tab: string) => void;
-}) {
+/** ── THE X AXIS IS TIME, NOT A LIST OF TRADING DAYS ────────────────────────────────────────────
+ *  The axis used to be Recharts' default `type="category"`, whose domain is exactly the plotted
+ *  date strings. A filing on a non-trading day is not one of them, so `scale(filingDate)` was
+ *  `undefined` → `NaN` → ReferenceLine's `ifOverflow: 'discard'` returned null. The marker vanished
+ *  on 695 of 7,040 renderable charts (599 weekends, 96 market holidays) with no warning, and the
+ *  same missing domain member kept the filing date off the axis labels — one defect, two symptoms.
+ *
+ *  An ordinal scale cannot be made to fix this: it maps domain members to evenly-spaced slots and
+ *  has no coordinate at all for a value between two of them. So the axis is numeric/time. Dates are
+ *  continuous and trading days are a sample of them — that is the honest model, and the filing date
+ *  lands at its true position between the closes either side of it. The visible cost is that
+ *  weekend gaps are now proportional: 31 Jul → 3 Aug is drawn three times as wide as a one-day step.
+ *
+ *  ⚠ THE MARKER IS NEVER SNAPPED TO THE NEAREST TRADING DAY. Snapping a Saturday filing back to
+ *  Friday would draw the line on a day the filing had not happened. */
+const tsOf = (iso: string): number => Date.parse(iso);
+
+/** ── EVERY AXIS TICK IS A DAY THIS CHART HAS A CLOSE FOR ───────────────────────────────────────
+ *  Candidates are the PLOTTED DATES ONLY, thinned evenly toward ~6 with both ends kept. The filing
+ *  date is not a candidate and is never inserted here.
+ *
+ *  ⚠ THE FILING DATE USED TO BE FORCED IN, AND IT COST A REAL TRADING DAY ITS LABEL. Protecting it
+ *  from Recharts' backwards-walking thinner meant clearing a neighbourhood around it, which on the
+ *  1 Aug window deleted 31 Jul — a real close, and the very one the pre-filing baseline and the
+ *  +1.3% are measured from. The tooltip showed "31 Jul 2026 · ₹94.67" over a date the axis denied.
+ *  Two things were conflated: keeping the filing marker legible (right) and evicting real days to
+ *  do it (wrong). A label that names a day the market did not trade is worth less than a label
+ *  naming one it did, and it is not the axis's job to carry it — the dotted line already sits at
+ *  the true position and now names the date itself, so nothing is lost by leaving the axis alone.
+ *
+ *  There is no clear zone, no guard fraction and no special case: real days compete only with each
+ *  other, on density, and the marker never takes one of their slots at any width. */
+function axisTicks(pointTs: number[], max = 6): number[] {
+  const uniq = Array.from(new Set(pointTs)).sort((a, b) => a - b);
+  if (uniq.length <= max) return uniq;
+
+  const keep = new Set<number>([uniq[0], uniq[uniq.length - 1]]);
+  const slots = max - keep.size;
+  const step = (uniq.length - 1) / (slots + 1);
+  for (let i = 1; i <= slots; i++) keep.add(uniq[Math.round(i * step)]);
+  return Array.from(keep).sort((a, b) => a - b);
+}
+
+// `onTab` is gone: the only caller was the brief's "Read the full analysis" button, and the brief
+// now renders in full here. A prop no child reads is half-wiring, so it comes out with its use.
+export default function SnapshotTab({ data }: { data: ResultDetailData }) {
   const { current: c, prevQuarter: prev, sameQuarterLastYear: sqly, spine, marketReaction: mr, ai, peers } = data;
 
   // Derived YoY/QoQ for the aggregates that have no stored growth column — real
@@ -63,9 +113,25 @@ export default function SnapshotTab({
   const profitSeries = sparkSeries(spine, (q) => q.netProfit);
 
   // Market-reaction chart data + factual window move (direction only — no verdict).
-  const reactionData = mr.points.map((p) => ({ date: p.date, close: p.close }));
-  const lastClose = mr.points.length ? mr.points[mr.points.length - 1].close : null;
-  const windowMove = pctChange(lastClose, mr.preClose);
+  const reactionData = mr.points.map((p) => ({ ts: tsOf(p.date), close: p.close }));
+  const filingTs = tsOf(mr.filingDate);
+  const pointTs = reactionData.map((p) => p.ts);
+  const reactionDomain: [number, number] = [
+    Math.min(filingTs, ...pointTs),
+    Math.max(filingTs, ...pointTs),
+  ];
+  const reactionTicks = axisTicks(pointTs);
+
+  const lastPoint = mr.points.length ? mr.points[mr.points.length - 1] : null;
+  /** ⚠ SUPPRESSED WHEN THE LATEST CLOSE IS THE BASELINE ITSELF. A window filed on a Saturday and
+   *  read on the Sunday has its last point BEFORE the filing, so this would render "+0.0% close vs
+   *  pre-filing" — a value measured against itself, which reads as "the market did not react" when
+   *  the market has not yet had the chance. Where a close at or after the filing exists (including
+   *  a same-day filing's own close), the figure is real and shows. */
+  const windowMove =
+    lastPoint && lastPoint.date >= mr.filingDate ? pctChange(lastPoint.close, mr.preClose) : null;
+
+  const windowNotOpened = mr.reactionState === "forming" && mr.tradingDaysSinceFiling === 0;
 
   return (
     <div className="space-y-2">
@@ -138,7 +204,7 @@ export default function SnapshotTab({
           <SectionEyebrow label="Market reaction" icon={Icons.chartLine} accent="var(--p-mkt)" />
           <Panel>
             {!mr.available ? (
-              <HonestEmpty>Price reaction data not available for this result date.</HonestEmpty>
+              <HonestEmpty>{REACTION_EMPTY_COPY}</HonestEmpty>
             ) : (
               <>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -146,7 +212,10 @@ export default function SnapshotTab({
                     Daily close around the filing ({fmtFullDay(mr.filingDate)})
                     {mr.reactionState === "forming" && (
                       <span className="ml-1.5 text-ink3">
-                        · still forming — {mr.tradingDaysSinceFiling} of ~12 trading days
+                        ·{" "}
+                        {windowNotOpened
+                          ? REACTION_NOT_OPENED_KICKER
+                          : reactionFormingKicker(mr.tradingDaysSinceFiling, mr.expectedTradingDays)}
                       </span>
                     )}
                   </span>
@@ -157,7 +226,7 @@ export default function SnapshotTab({
                   )}
                 </div>
                 <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={reactionData} margin={{ top: 8, right: 12, bottom: 4, left: -6 }}>
+                  <AreaChart data={reactionData} margin={{ top: 18, right: 12, bottom: 4, left: -6 }}>
                     <defs>
                       <linearGradient id="reactionFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="var(--p-mkt)" stopOpacity={0.22} />
@@ -165,12 +234,16 @@ export default function SnapshotTab({
                       </linearGradient>
                     </defs>
                     <XAxis
-                      dataKey="date"
+                      dataKey="ts"
+                      type="number"
+                      scale="time"
+                      domain={reactionDomain}
+                      ticks={reactionTicks}
                       tickFormatter={fmtShortDay}
                       tick={{ fill: "var(--ink3)", fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
-                      minTickGap={28}
+                      minTickGap={16}
                     />
                     <YAxis
                       domain={["auto", "auto"]}
@@ -183,20 +256,39 @@ export default function SnapshotTab({
                     {mr.preClose != null && (
                       <ReferenceLine y={mr.preClose} stroke="var(--line3)" strokeDasharray="3 3" />
                     )}
-                    <ReferenceLine x={mr.filingDate} stroke="var(--p-mkt)" strokeDasharray="2 3" strokeOpacity={0.6} />
+                    {/* Positioned by TIME, so it lands on the true filing date whether or not the
+                        market traded that day. ★ THE LABEL CARRIES THE DATE. It is the only thing
+                        that has to — the axis is reserved for days with a close, so on a weekend or
+                        holiday filing this annotation is where the filing date is named on the
+                        chart, and it is always present because it travels with the line. */}
+                    <ReferenceLine
+                      x={filingTs}
+                      stroke="var(--p-mkt)"
+                      strokeDasharray="2 3"
+                      strokeOpacity={0.6}
+                      label={{
+                        value: `Filed ${fmtShortDay(filingTs)}`,
+                        position: "top",
+                        fill: "var(--p-mkt)",
+                        fontSize: 10,
+                        opacity: 0.75,
+                      }}
+                    />
                     <Tooltip
                       contentStyle={{ background: "var(--surface2)", border: "1px solid var(--line2)", borderRadius: 10, fontSize: 12 }}
                       labelStyle={{ color: "var(--ink2)", fontSize: 11 }}
-                      labelFormatter={(l: string) => fmtFullDay(l)}
+                      labelFormatter={(l: number) => fmtFullDay(l)}
                       formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Close"]}
                     />
                     <Area type="monotone" dataKey="close" stroke="var(--p-mkt)" strokeWidth={1.8} fill="url(#reactionFill)" dot={false} activeDot={{ r: 3 }} />
                   </AreaChart>
                 </ResponsiveContainer>
                 <p className="mt-2 text-[11px] text-ink3">
-                  {mr.reactionState === "forming"
-                    ? `Partial window — ${mr.tradingDaysSinceFiling} of ~12 trading days since filing. The line extends as daily closes come in.`
-                    : "Closing price across the window — the path, stated as fact. No reaction verdict is implied."}
+                  {mr.reactionState !== "forming"
+                    ? REACTION_COMPLETE_COPY
+                    : windowNotOpened
+                      ? REACTION_NOT_OPENED_COPY
+                      : reactionFormingCopy(mr.tradingDaysSinceFiling, mr.expectedTradingDays)}
                 </p>
               </>
             )}
@@ -204,29 +296,46 @@ export default function SnapshotTab({
         </section>
       </Reveal>
 
-      {/* ── AI quick take ────────────────────────────────────────────── */}
+      {/* ── Quarter in Brief ─────────────────────────────────────────── */}
+      {/* The whole brief renders HERE. It previously showed a headline plus a button through to the
+          Context tab, which never rendered the body — so the "full analysis" was one click from
+          nowhere. A brief is short by design; there is nothing to page through. */}
       <Reveal>
         <section>
-          <SectionEyebrow label="AI quick take" icon={Icons.spark} accent="var(--p-own)" />
+          <SectionEyebrow
+            label="Quarter in Brief"
+            icon={Icons.spark}
+            accent="var(--p-own)"
+            pill={`${c.quarter} ${c.fiscalYear}`}
+          />
           <Panel>
-            {ai.available && ai.headline ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex gap-2.5">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border" style={tint("var(--p-own)")}>
-                    <Icons.spark weight="duotone" className="h-4 w-4" />
-                  </span>
-                  <p className="text-[14px] font-medium leading-snug text-ink">{ai.headline}</p>
+            {ai.available && ai.content ? (
+              <div className="flex flex-col gap-4">
+                {/* ★ THE BADGE AND ITS LIMIT, TOGETHER, ABOVE THE PROSE. Not a footer, not a tooltip.
+                    The verdict is the line a reader is most likely to act on, so what it does not
+                    claim is the next thing they read — before the figures, not after them.
+                    ⚠ VerdictBadge renders NOTHING when there is no verdict, and that is a shipped
+                    state: MMTC has real prose and no verdict. The caveat still holds — it qualifies
+                    the reading, not only the badge — so this block never collapses to empty. */}
+                <div className="flex flex-col gap-2 border-b border-line pb-4">
+                  <VerdictBadge verdictKey={ai.verdictKey} label={ai.verdictLabel} />
+                  <VerdictCaveat />
                 </div>
-                <button
-                  onClick={() => onTab("context")}
-                  className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1 text-[12px] text-ink2 transition-colors hover:border-line3 hover:text-ink"
-                >
-                  Read the full analysis
-                  <Icons.arrowRight className="h-3 w-3" />
-                </button>
+
+                <QuarterBriefProse content={ai.content} scoredAsOf={ai.scoredAsOf} />
+
+                {ai.generatedAt && (
+                  <p className="num text-[10.5px] text-ink3">
+                    Written from the filed figures on {fmtFullDay(ai.generatedAt)}.
+                  </p>
+                )}
               </div>
             ) : (
-              <HonestEmpty>AI earnings analysis is coming soon — not yet generated for this result.</HonestEmpty>
+              /* ⚠ NOT "coming soon", and not a failure. Absence here means exactly one thing to a
+                 reader — nothing has been written for this quarter — and the sentence says that and
+                 stops. A brief that was withdrawn because a correction moved its figures reads the
+                 same way, deliberately: a reader is owed the absence, not the reason. */
+              <HonestEmpty>No Quarter in Brief has been written for this quarter.</HonestEmpty>
             )}
           </Panel>
         </section>

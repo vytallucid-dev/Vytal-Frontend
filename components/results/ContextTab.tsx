@@ -69,50 +69,6 @@ export default function ContextTab({ data }: { data: ResultDetailData }) {
         </section>
       </Reveal>
 
-      {/* ── AI earnings analysis ─────────────────────────────────────── */}
-      <Reveal>
-        <section>
-          <SectionEyebrow label="AI earnings analysis" icon={Icons.spark} accent="var(--p-own)" />
-          <Panel>
-            {ai.available ? (
-              <div className="flex flex-col gap-3">
-                {ai.headline && <p className="text-[15px] font-semibold leading-snug text-ink">{ai.headline}</p>}
-                {ai.content && <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink2">{ai.content}</p>}
-                {ai.keyPoints && ai.keyPoints.length > 0 && (
-                  <ul className="flex flex-col gap-1.5">
-                    {ai.keyPoints.map((p, i) => (
-                      <li key={i} className="flex gap-2 text-[12.5px] leading-snug text-ink2">
-                        <Icons.check weight="bold" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-p-own" />
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {ai.generatedAt && (
-                  <p className="num text-[11px] text-ink3">
-                    Generated {fmtDateTime(ai.generatedAt)}
-                    {ai.modelVersion ? ` · ${ai.modelVersion}` : ""}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-start gap-3">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border" style={tint("var(--p-own)")}>
-                  <Icons.spark weight="duotone" className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-[13px] font-medium text-ink">AI earnings analysis — coming soon</p>
-                  <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">
-                    A plain-English breakdown of this quarter (key positives, concerns and the bottom line) will
-                    appear here once generated. Not yet available for this result.
-                  </p>
-                </div>
-              </div>
-            )}
-          </Panel>
-        </section>
-      </Reveal>
-
       {/* ── Corporate actions ────────────────────────────────────────── */}
       <Reveal>
         <section>

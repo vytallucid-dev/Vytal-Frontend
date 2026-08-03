@@ -54,20 +54,23 @@ export function bestWorstPillar(pillars: Record<PillarKey, number>): {
   return { best: sorted[0], worst: sorted[sorted.length - 1] };
 }
 
-// ── member-level verdict sentence (templated from the real band) ──────────────
-export function memberVerdict(m: UniverseMemberView): string {
-  const band = compositeBand(m.composite);
-  const { best, worst } = bestWorstPillar(m.pillars);
-  const bestL = PILLAR_LABEL[best.key];
-  const worstL = PILLAR_LABEL[worst.key];
-  if (band === "pristine" || band === "healthy")
-    return `${m.name} sits in healthy condition — ${bestL} leads (${Math.round(best.v)}), with no pillar dragging the composite.`;
-  if (band === "steady")
-    return `${m.name} is fundamentally sound but uneven — ${worstL} (${Math.round(worst.v)}) is holding the composite below the upper bands.`;
-  if (band === "below_par")
-    return `${m.name} is below par — ${worstL} (${Math.round(worst.v)}) is the soft spot. Demand a specific reason before owning it.`;
-  return `${m.name} is fragile across the board — ${worstL} (${Math.round(worst.v)}) is failing. A clear, named thesis is the minimum bar here.`;
-}
+// ── ★ `memberVerdict()` IS DELETED — DO NOT REINTRODUCE IT, HERE OR IN A COMPONENT ────────────────
+//
+// It templated a per-stock verdict sentence client-side, e.g.
+//   "{name} sits in healthy condition — {best} leads ({v}), with no pillar dragging the composite."
+// Two defects, either one disqualifying:
+//
+//  1. COPY AUTHORED OUTSIDE THE CATALOGUE. The catalogue is the one home for finding copy and
+//     verdicts.ts renders the per-instance sentences; a template here is a second home that no gate
+//     covers and no catalogue edit can reach.
+//  2. IT WAS WRONG, NOT MERELY MISPLACED. The "no pillar dragging the composite" branch fired purely
+//     off `compositeBand ∈ {healthy, pristine}` with ZERO divergence awareness — so it printed
+//     beside a surfaced pillar spread and read as a flat contradiction. On the live universe that is
+//     37 of 94 scored names, not an edge case.
+//
+// What replaced it: the member's OWN fired findings, rendered from the catalogue via
+// `prepareMemberFindings` (lib/findings). A stock with nothing fired gets a null-state label and the
+// pillar facts it already carries — not a sentence invented to fill the space.
 
 export const PILLAR_LABEL: Record<PillarKey, string> = {
   foundation: "Foundation",
