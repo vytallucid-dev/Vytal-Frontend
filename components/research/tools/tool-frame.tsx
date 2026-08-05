@@ -8,6 +8,7 @@
  * verbatim — they differ only in the slots they pass.
  */
 
+import { RegimeBadge } from "./regime-badge";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
@@ -483,6 +484,9 @@ function SingleView({
         </div>
         {/* chips — identity, right-aligned (the timeframe control now lives by the chart) */}
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+          {/* ★ THE REGIME BADGE sits with the identity chips, not inside them: it is a fact about the
+              SECTOR rather than this stock, and clicking it opens an explainer rather than filtering. */}
+          <RegimeBadge regime={single.regime ?? null} />
           {single.chips.map((c, i) => (
             <span
               key={i}

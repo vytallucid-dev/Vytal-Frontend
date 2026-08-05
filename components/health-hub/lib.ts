@@ -90,8 +90,10 @@ export interface HubKpis {
   stable: number;
   redFlags: number;
   recovering: RecoveryMover[];
-  wideSpread: number; // members with divergence flag === "wide"
-  notable: number;
+  /** ★ Members with a divergence pattern firing (Ruling 3's `patterns_firing`) — was a "wide"/
+   *  "notable" split banded off the retired widest-pair gap at 15/25. The member-list payload
+   *  carries only the three-state headline, not a per-finding tier, so the split is gone with it. */
+  patternsFiring: number;
   trajectoryWord: string;
 }
 
@@ -106,8 +108,7 @@ export function computeKpis(view: UniverseHealthView): HubKpis {
     else if (m.trajectoryMarker === "improving") firmed++;
     else if (m.trajectoryMarker === "stable") stable++;
   }
-  const wideSpread = members.filter((m) => m.divergence.flag === "wide").length;
-  const notable = members.filter((m) => m.divergence.flag === "notable").length;
+  const patternsFiring = members.filter((m) => m.divergence.headline === "patterns_firing").length;
   const drift = agg.medianDrift;
   const trajectoryWord =
     drift == null
@@ -127,8 +128,7 @@ export function computeKpis(view: UniverseHealthView): HubKpis {
     stable,
     redFlags: agg.redFlagMemberCount,
     recovering: recoveryMovers(view),
-    wideSpread,
-    notable,
+    patternsFiring,
     trajectoryWord,
   };
 }
@@ -169,15 +169,27 @@ export interface PillarMixRow {
   value: number;
   isSoft: boolean;
 }
+/**
+ * ⚠ `firm` EXISTS BECAUSE THE COPY THAT USES IT WAS HARDCODED. The Briefing panel's closing line
+ * read "…while ownership floors hold highest" — a claim about which pillar tops the universe, typed
+ * into a string. It happens to be TRUE on the current snapshot (ownership 75.0 against foundation
+ * 66.4 / momentum 66.6 / market 64.8), which is exactly what makes it dangerous: nothing would fail
+ * on the day it stopped being true, and the panel would state the opposite of the bars printed
+ * directly above it. `soft` was already computed; its opposite costs one line.
+ */
 export function pillarMix(agg: UniverseAggregate): {
   rows: PillarMixRow[];
   soft: PillarKey;
+  firm: PillarKey;
 } {
   const entries = PILLAR_ORDER.map((key) => ({ key, value: agg.pillarMedians[key] }));
-  const soft = [...entries].sort((a, b) => a.value - b.value)[0].key;
+  const byValue = [...entries].sort((a, b) => a.value - b.value);
+  const soft = byValue[0].key;
+  const firm = byValue[byValue.length - 1].key;
   return {
     rows: entries.map((e) => ({ ...e, isSoft: e.key === soft })),
     soft,
+    firm,
   };
 }
 
@@ -283,9 +295,13 @@ export function attentionReads(view: UniverseHealthView): AttentionReads {
   const slipping = members
     .filter((m) => m.trajectoryMarker === "deteriorating" && m.composite >= 68)
     .sort((a, b) => (a.trajectoryDelta ?? 0) - (b.trajectoryDelta ?? 0));
+  // ★ Ranked by SPREAD, not by a re-banded severity — spread is the honest quantity the payload
+  //   carries at this level (S1's own max−min), and ranking by it is not a claim about which
+  //   pattern is more severe. Members with no spread (fewer than two scored pillars) sort last
+  //   rather than crashing the comparator on `null`.
   const wide = members
-    .filter((m) => m.divergence.flag === "wide")
-    .sort((a, b) => b.divergence.gap - a.divergence.gap);
+    .filter((m) => m.divergence.headline === "patterns_firing")
+    .sort((a, b) => (b.divergence.spread ?? -1) - (a.divergence.spread ?? -1));
   const rec = recoveryMovers(view);
   const week = view.sinceLastWeek;
   const up = week.bandCrossings.filter((c) => c.direction === "up").length;
@@ -326,12 +342,39 @@ export function weekRead(view: UniverseHealthView): WeekRead {
   };
 }
 
+/** Band keys low → high. Local because BAND_META lives in a .tsx and this module is JSX-free. */
+const BAND_ASC: LabelBand[] = ["fragile", "below_par", "steady", "healthy", "pristine"];
+
+/** A band's display label, resolved through the SAME cut table the classifier uses — never a second
+ *  copy of the five names. `fragile` has no cut of its own; it is everything under the first. */
+const bandLabelOf = (b: LabelBand): string =>
+  healthLabel(b === "fragile" ? BAND_CUTS[0].v - 1 : BAND_CUTS.find((c) => c.band === b)!.v);
+
+/**
+ * ⚠ THE UNIVERSE MEDIAN IS SHOWN TO ONE DECIMAL, AND THAT IS NOT A STYLE CHOICE.
+ * It read `Math.round(medianComposite)` beside a band label taken from the UNROUNDED value. On the
+ * live universe the median is 67.51 → label "Steady", rounded → "68". 68 is the HEALTHY floor, and
+ * the cuts are published to readers on the methodology page (lib/format HEALTH_BAND_CUTS), so the
+ * Hub printed "a steady median of 68" against a scale the reader can check saying otherwise. Both
+ * halves were individually right; together they contradicted.
+ * The decimal is the honest resolution — re-banding the ROUNDED score would have made the label
+ * agree by making it wrong. `roundScore` stays the rule for a stock's own headline figure; a median
+ * of 94 numbers shown beside its band is the case that convention does not cover.
+ */
+export const formatUniverseMedian = (median: number): string => median.toFixed(1);
+
 // ── universe character read (templated from real numbers) ─────────────────────
 export function universeCharacter(view: UniverseHealthView): string {
   const agg = view.aggregate!;
   const bd = agg.bandDistribution;
   const leaders = bd.healthy + bd.pristine;
   const weak = bd.fragile + bd.below_par;
+  // ⚠ "The middle is crowded, as always" was hardcoded — an assertion about the SHAPE of the
+  // distribution, and about its history, printed directly beside the bars that draw it. Steady is
+  // in fact the largest band today (27 of 94), which is exactly what made it survive: nothing would
+  // have failed on the quarter the mode moved to Healthy, and the sentence would have contradicted
+  // the chart under it. Ties resolve to the lower band, deterministically.
+  const modal = BAND_ASC.reduce((m, b) => (bd[b] > bd[m] ? b : m), BAND_ASC[0]);
   const driftWord =
     agg.medianDrift == null
       ? ""
@@ -340,7 +383,7 @@ export function universeCharacter(view: UniverseHealthView): string {
         : agg.medianDrift >= 2
           ? ` The quarter firmed — median up ${Math.round(agg.medianDrift)} from ${agg.priorPeriodKey}.`
           : ` The median barely moved from ${agg.priorPeriodKey}.`;
-  return `The middle is crowded, as always — ${bd.steady} sit Steady around a ${healthLabel(agg.medianComposite).toLowerCase()} median of ${Math.round(agg.medianComposite)}. ${leaders} hold healthy ground, ${weak} sit below par; the edges are where to look.${driftWord}`;
+  return `${bandLabelOf(modal)} is the largest single band — ${bd[modal]} of ${view.scoredUniverseSize} names, around a ${healthLabel(agg.medianComposite).toLowerCase()} median of ${formatUniverseMedian(agg.medianComposite)}. ${leaders} hold healthy ground, ${weak} sit below par; the edges are where to look.${driftWord}`;
 }
 
 // ── short helpers ──────────────────────────────────────────────────────────────

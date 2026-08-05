@@ -181,11 +181,12 @@ function buildConditionFilters(view: UniverseHealthView): {
     {
       id: "wide_divergence",
       label: "Divergence",
-      // ⚠ NO THRESHOLD IN COPY. This read "Two pillars ≥ 25 pts apart" and went stale the day
-      //   Phase 2 moved the material cut to 12 — a rule typed into prose cannot follow the engine.
-      //   The number a reader needs is the stock's OWN gap, which the row already prints.
-      note: "The widest pillar spread on this stock",
-      match: (m) => m.divergence.flag === "wide",
+      // ⚠ NO THRESHOLD IN COPY, STILL. This used to read "Two pillars ≥ 25 pts apart" (stale the
+      //   day Phase 2 moved the material cut to 12), then "The widest pillar spread on this stock"
+      //   (stale the day the widest-pair derivation itself was retired — Ruling 0). The match below
+      //   now reads Ruling 3's headline, decided once, backend-side.
+      note: "A divergence pattern is currently firing on this stock",
+      match: (m) => m.divergence.headline === "patterns_firing",
     },
     {
       id: "recovery",
@@ -593,12 +594,35 @@ function MemberDetail({ m }: { m: UniverseMemberView }) {
             gap on 94/94 members, so naming "Momentum vs Ownership" here as well would say the same
             two numbers twice. This line's only job left is the distance.
 
-            The gap and the flag are BOTH the backend's — nothing here re-derives either. The
-            `flag !== "none"` gate is the backend's §1.1 suppression of the 8–11 minor band ("a gap
-            exists but carries no demonstrated meaning — do not surface"), kept intact. */}
-        {m.divergence.flag !== "none" && (
+            ⚠ THE FIELDS MOVED, AND THE OLD NOTE HERE WAS WRONG ABOUT WHAT IT WAS READING. This
+            said the `flag !== "none"` gate was "the backend's §1.1 suppression of the 8–11 minor
+            band". It was not. `flag` was the LOCAL 15/25 banding that Ruling 3 deleted precisely
+            because it was a third severity scale competing with §1.2's 12/16/25 and S1's ≤7 — a
+            stock could read `flag: "none"` here while carrying a fired S2. The payload now serves
+            `{ headline, spread }` and this call site did not follow, so it read two properties that
+            no longer exist and the file did not compile.
+
+            `spread` IS the old `gap`, not a substitute for it: both are max − min over the SCORED
+            pillar subtotals (read/divergence-headline.ts `pillarSpreadOf`). Same arithmetic, one
+            home now.
+
+            The gate is `headline !== "aligned"`, which is the only honest suppression available and
+            a better one than what it replaces. `aligned` is defined as spread ≤ S1's own ceiling,
+            read off S1's record (`ALIGNED_MAX = gapFloor`) rather than typed anywhere — and it is a
+            statement about THE SPREAD ALONE, evaluated first, so using it here is not the
+            pattern-re-derivation this comment warns against three paragraphs up. It suppresses
+            exactly the case where saying "3 apart" would be noise, and nothing else.
+
+            ⚠ DENSITY, MEASURED, SO THE NEXT READER DOES NOT HAVE TO GUESS: this now renders on 93 of
+            94 members, because a >7 spread across four pillars is ordinary. The old gate hid more,
+            but only by accident — it was banding at a retired 15/25. If this should be rarer, the
+            fix is NOT a number typed here: §1.1's material floor lives in the backend
+            (findings/divergence/bands.ts `GAP_MATERIAL`), so the honest route is to SERVE that bit
+            beside `{ headline, spread }` and gate on it. Re-deriving the floor frontend-side would
+            rebuild the exact defect this file has already corrected twice. */}
+        {m.divergence.spread !== null && m.divergence.headline !== "aligned" && (
           <p className="text-[11.5px] text-ink2">
-            Pillar spread · <span className="num font-medium text-ink">{Math.round(m.divergence.gap)}</span> apart
+            Pillar spread · <span className="num font-medium text-ink">{Math.round(m.divergence.spread)}</span> apart
           </p>
         )}
 

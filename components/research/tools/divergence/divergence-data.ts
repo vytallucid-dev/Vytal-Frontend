@@ -28,6 +28,7 @@ import type {
   PatternView,
 } from "@/types/health";
 import type { DivergenceDirection } from "@/types/research-tools";
+import type { DivergenceView } from "@/types/health";
 import type { ChipSpec, PromotedRead } from "../tool-frame.types";
 import type { WindowPoint } from "../window-slice";
 
@@ -86,19 +87,10 @@ export function spreadSlope(gapStart: number, gapEnd: number): DivergenceDirecti
   return d > SLOPE_DEADBAND ? "widening" : d < -SLOPE_DEADBAND ? "narrowing" : "steady";
 }
 
-/** The two SCORED pillars currently furthest apart — the spread basis. Null when
- *  fewer than two pillars are scored (no spread can be read). */
-export function pickScoredPair(pillars: PillarView[]): { high: PillarKey; low: PillarKey } | null {
-  const scored = pillars.filter((p) => p.state === "scored");
-  if (scored.length < 2) return null;
-  let high = scored[0];
-  let low = scored[0];
-  for (const p of scored) {
-    if (p.subtotal > high.subtotal) high = p;
-    if (p.subtotal < low.subtotal) low = p;
-  }
-  return { high: high.pillar, low: low.pillar };
-}
+// ★ pickScoredPair IS DELETED. It returned the widest scored pair — the fourth copy of that
+// derivation, and the one that decided what the CHART drew. The chart, chips, readout and summary now
+// read `facts.pillarPair` off the fired finding (served high/low-resolved as `pair`), so the line on
+// screen and the sentence beneath it are about the same two pillars by construction.
 
 /** The fixed pair's two subtotals + gap over the SLICED window, oldest→newest. Runs over
  *  the shared WindowPoint series — so on a daily/custom window the gap is computed per
@@ -159,12 +151,22 @@ export function buildSpread(
 // stock page, the Hub, the chat and the relational card render.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
-export function buildDivergenceRead(findings: PatternView[]): PromotedRead {
+/**
+ * ★ RULING 3's THREE HEADLINE STATES — evaluated in the backend's order, rendered here.
+ *
+ * ⚠ THE `!lead ⟹ Aligned` FALLBACK IS DELETED. It was a two-way branch over a three-way fact: any
+ * stock with no C-family finding rendered the calm state, including stocks whose pillars are nowhere
+ * near agreeing. GLENMARK carries a 49-point spread and no live divergence — its rows are the retired
+ * C-family — and this branch called it "Aligned — No Tension".
+ *
+ * The headline now comes from the payload (`verdict.divergence.headline`), decided once, backend-side.
+ */
+export function buildDivergenceRead(
+  findings: PatternView[],
+  divergence: DivergenceView | null,
+): PromotedRead {
   const lead = findings[0];
-
-  // No divergence fired. S1 (Aligned) is the spec's CONTROL state and its copy is served with the
-  // finding catalogue — never re-typed here. buildAlignedRead below renders it.
-  if (!lead) return buildAlignedRead();
+  if (!lead) return buildHeadlineRead(divergence);
 
   const extra = findings.length - 1;
   // The gap tier (material/stretched/extreme) — read straight off evidence.tierWord, which the
@@ -190,24 +192,38 @@ export function buildDivergenceRead(findings: PatternView[]): PromotedRead {
 }
 
 /**
- * S1 · ALIGNED — NO TENSION. The tool's calm state.
+ * ★ THE NON-FIRING HEADLINE — `aligned` or `no_pattern`, from the payload.
  *
- * ⚠ NOT A FINDING, and NOT a seventh derivation. The BACKEND decides alignment (one place:
- * findings/divergence/aligned.ts, max−min ≤ the aligned ceiling) and ships the copy with the scan.
- * The single view reaches this branch only when the tool's family filter returned nothing, which is
- * the same condition — a stock with no C-family finding has no pillar pair ≥ the material cut, and a
- * pair's gap can never exceed the max−min spread.
+ * ⚠ THE TWO INLINE S1 SENTENCES ARE DELETED. This file carried the aligned copy verbatim, and
+ * `buildWhoseMove` carried a SECOND, DIFFERENTLY-WORDED one ("No tension to resolve — the scored
+ * pillars agree…"). Two hand-typed versions of one catalogue record, in one file, already disagreeing
+ * with each other. S1 is a real catalogue key now (`divergence_S1_aligned`), so its name, description
+ * and boundary are read like every other finding's.
  *
- * The copy is the spec's, verbatim, and carries NO threshold.
+ * `no_pattern` has NO catalogue entry, and it must not borrow S1's — the two states mean opposite
+ * things. It is the one place this file authors a sentence, and it says only what is true: the spread
+ * is past the aligned band, and nothing measured describes this shape.
  */
-export function buildAlignedRead(): PromotedRead {
+export function buildHeadlineRead(divergence: DivergenceView | null): PromotedRead {
+  const key = "divergence_S1_aligned";
+  if (divergence?.headline === "no_pattern") {
+    const spread = divergence.spread;
+    return {
+      tone: "neutral",
+      title: "No matching pattern",
+      body:
+        `The pillars are ${spread === null ? "apart" : `${Math.round(spread)} points apart`}, past the point where they` +
+        ` count as agreeing — but none of the measured patterns describes this shape.`,
+      note:
+        "This is not an all-clear and not a warning. It says the tension here is real and that we have" +
+        " no studied reading for it, which is a different thing from having looked and found nothing.",
+    };
+  }
   return {
-    tone: 'neutral',
-    title: 'Aligned — No Tension',
-    body:
-      "The pillars agree. What the market is paying and what the business shows are in line — no unresolved tension to read here.",
-    note:
-      "The market's view and the business's condition agree. Nothing is unresolved. This is a genuinely useful reading, not an empty one — most of a screening tool's value is telling you where you do not need to look.",
+    tone: "neutral",
+    title: findingName(key),
+    body: findingDescription(key) ?? "",
+    note: doesntMean(key),
   };
 }
 
@@ -222,18 +238,25 @@ export function buildAlignedRead(): PromotedRead {
  */
 export function buildDivergenceChips(
   verdict: VerdictSection,
-  gap: number,
+  gap: number | null,
   findings: PatternView[],
 ): ChipSpec[] {
   const band = BAND_META[verdict.label.band];
   const lead = findings[0];
-  return [
+  const chips: ChipSpec[] = [
     { label: `${band.label} · ${Math.round(verdict.composite)}`, dot: band.cssVar, color: "var(--ink2)" },
-    { label: `gap ${gap.toFixed(0)}`, color: "var(--ink2)" },
+  ];
+  // ⚠ THE GAP IS THE SELECTED READING'S OWN, straight off its served `pair`, and is OMITTED when the
+  //   selection names no pair. It is not re-derived from the drawn line and not back-filled from the
+  //   widest spread: a chip reading "gap 43" beside a card about a different pair is the same
+  //   chart-says-one-thing defect `pillarPair` exists to end.
+  if (gap !== null) chips.push({ label: `gap ${gap.toFixed(0)}`, color: "var(--ink2)" });
+  chips.push(
     lead
       ? { label: findingName(lead.patternKey), color: `var(--${toneOf(lead)})` }
       : { label: "Aligned", color: "var(--ink3)" },
-  ];
+  );
+  return chips;
 }
 
 // ── the static "whose move?" + asymmetric read ──────────────────────────────────
@@ -284,10 +307,12 @@ export function buildWhoseMove(
   // What a reader gets instead is the fired finding's own doesn't-mean line — the interpretive
   // boundary the catalogue guarantees every finding carries, written once and rendered everywhere.
   const lead = findings[0];
-  const means = lead
-    ? doesntMean(lead.patternKey)
-    : // No divergence fired: the S1 control state. Neutral by design, and stated as such.
-      "No tension to resolve — the scored pillars agree. Nothing here pulls against the whole.";
+  // ★ THE SECOND INLINE S1 SENTENCE IS DELETED. It read "No tension to resolve — the scored pillars
+  //   agree. Nothing here pulls against the whole." — a differently-worded copy of the one 150 lines
+  //   above it, in the same file, both hand-typed for a state that now has a catalogue record. It was
+  //   also unconditional on the headline, so it asserted agreement whenever nothing fired, including
+  //   on `no_pattern` stocks whose pillars plainly do not agree.
+  const means = lead ? doesntMean(lead.patternKey) : doesntMean("divergence_S1_aligned");
 
   return [
     { tone: lead ? "warn" : "good", title: "Whose move?", body: whose },

@@ -29,7 +29,20 @@ const X1 = 588;
 const Y0 = 18;
 const Y1 = 312;
 const BAND_CUTS = [55, 62, 68, 74];
-const THRESHOLDS = [15, 25]; // notable / wide — derived gap crossings
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// ⚠ `THRESHOLDS = [15, 25]` IS DELETED, AND NOT REPLACED. It drew a vertical gridline wherever the gap
+// crossed 15 or 25 — the RETIRED notable/wide cuts. divergence-data.ts's header records that those two
+// constants were deleted in Phase 4 because Phase 2 moved the material cut to 12; the chart kept its
+// own copy and went on drawing them. So the line on screen marked a boundary no rule has used since,
+// and it was a THIRD severity scale competing with §1.2's 12/16/25 tiers and S1's ≤7 ceiling.
+//
+// It is not re-pointed at the real tiers, because the real tiers are DELIBERATELY NOT ON THE WIRE:
+// `servedFacts` narrows a pattern's record to {pillarPair, basis, displayPrecision} and strips
+// gapFloor / evidencedTier as scoring bars. Drawing them would mean re-typing them here, which is the
+// defect this removes. The tier a reading actually landed in is already stated — in words, on the
+// card, from the rule's own `tierWord`. See the build report.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Honest empty state — the current window sliced to <2 comparable points. */
 export function DivergenceEmpty({
@@ -117,17 +130,6 @@ export function DivergenceChart({
   const loPts = spread.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.low).toFixed(1)}`);
   const gapPoly = hiPts.concat([...loPts].reverse()).join(" ");
 
-  // derived threshold crossings (gap crosses 15 / 25)
-  const crossings = useMemo(() => {
-    const out: number[] = [];
-    for (let i = 1; i < n; i++) {
-      for (const t of THRESHOLDS) {
-        if ((spread[i].gap - t) * (spread[i - 1].gap - t) < 0) out.push(i);
-      }
-    }
-    return out;
-  }, [spread, n]);
-
   const midI = Math.floor((n - 1) / 2);
 
   // result-day markers positioned onto the spread window (daily/custom only). Matched by
@@ -199,20 +201,6 @@ export function DivergenceChart({
           {/* band cut gridlines */}
           {bandCutsShown.map((v) => (
             <line key={v} x1={X0} y1={yOf(v)} x2={X1} y2={yOf(v)} stroke="var(--line)" strokeDasharray="2 5" />
-          ))}
-
-          {/* derived threshold crossings */}
-          {crossings.map((i, k) => (
-            <line
-              key={k}
-              x1={xOf(i)}
-              y1={Y0}
-              x2={xOf(i)}
-              y2={Y1}
-              stroke="var(--c-steady)"
-              strokeDasharray="2 3"
-              strokeOpacity={0.45}
-            />
           ))}
 
           {/* result-day markers (daily) — a rescore steps all four pillars and can snap the gap */}

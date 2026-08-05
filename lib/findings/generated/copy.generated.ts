@@ -17,13 +17,13 @@
 //   2. npx tsx src/scripts/gen-frontend-fallback.ts
 //   3. commit BOTH repos
 //
-// catalogue version at generation: 63125c0072c11bbe
+// catalogue version at generation: ae33035947b52266
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** The catalogue document version these constants were generated from. Compared against the SERVED
  *  version at runtime — a mismatch means a deploy shipped a frontend built against different copy,
  *  which the provider reports loudly rather than rendering two vocabularies at once. */
-export const GENERATED_FROM_VERSION = "63125c0072c11bbe";
+export const GENERATED_FROM_VERSION = "ae33035947b52266";
 
 /** key → display name. */
 export const GEN_FINDING_NAMES: Record<string, string> = {
@@ -36,6 +36,7 @@ export const GEN_FINDING_NAMES: Record<string, string> = {
   "divergence_D5_laggard_catching_up": "Laggard Catching Up",
   "divergence_D6_quality_rolling_over": "Quality Rolling Over",
   "divergence_D7_trajectory_breaking_base_holds": "Trajectory Breaking While the Base Holds",
+  "divergence_S1_aligned": "Aligned — No Tension",
   "divergence_S2_sticky_divergence": "Sticky Divergence",
   "foundation_N1_cash_backed_earnings": "Cash-backed earnings",
   "foundation_N2_working_capital": "Working-capital discipline",
@@ -129,6 +130,12 @@ export const GEN_FINDING_DESCRIPTIONS: Record<
   "divergence_D7_trajectory_breaking_base_holds": {
     "concern": "trajectory",
     "description": "The balance sheet is still intact but the operating trajectory has broken into weakness. This is early — the base has not deteriorated yet, but the direction has changed. The intact balance sheet does not cushion it.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_S1_aligned": {
+    "concern": "trajectory",
+    "description": "The market's view and the business's condition agree. Nothing is unresolved. This is a genuinely useful reading, not an empty one — most of a screening tool's value is telling you where you do not need to look.",
     "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
     "family": "C"
   },

@@ -24,6 +24,7 @@
  */
 
 import type { ReactNode } from "react";
+import type { RegimeBadgeView } from "@/types/health";
 import type { Icon } from "@/lib/icons";
 import type { ScoredStockLite } from "@/types/research-tools";
 
@@ -144,6 +145,9 @@ export interface SingleViewSlots {
   dailyBounds?: { first: string; last: string } | null;
   identity: { name: string; ticker: string; sub: string };
   chips: ChipSpec[];
+  /** ★ The live sector regime, rendered as a badge beside the chips. Null hides it entirely — an
+   *  absent badge and a "not established" badge are different states and both are honest. */
+  regime?: RegimeBadgeView | null;
   promotedRead: PromotedRead | null;
   /** funnel-back: /research/stock-screener/[symbol]?tab=health */
   funnelBackHref: string;

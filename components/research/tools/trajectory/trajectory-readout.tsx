@@ -9,7 +9,7 @@
 import { Panel, PILLAR_META } from "@/components/stock-detail/health/shared";
 import { healthLabel } from "@/lib/format";
 import type { ActiveDatapoint } from "../tool-frame.types";
-import type { WindowPoint } from "../window-slice";
+import type { LineKey, WindowPoint } from "../window-slice";
 
 const PILLARS: ("foundation" | "momentum" | "market" | "ownership")[] = [
   "foundation",
@@ -22,16 +22,28 @@ export function TrajectoryReadout({
   points,
   isDaily,
   active,
+  focus,
 }: {
   points: WindowPoint[];
   isDaily: boolean;
   active: ActiveDatapoint;
+  /** The selected reading's own subjects. When given, the headline number is the SUBJECT's value —
+   *  a T7 card is about Momentum, so the readout beside it must lead with Momentum, not the
+   *  composite — and the pillar rows narrow to the same subjects. Omit for the survey view. */
+  focus?: readonly LineKey[];
 }) {
   const n = points.length;
   const i = active.index ?? n - 1;
   const p = points[i];
-  const delta = p.composite - points[0].composite;
+  // The headline subject: the selection's first, else the composite. The band word below it is only
+  // shown for the composite — `healthLabel` bands the COMPOSITE scale and a pillar subtotal is not
+  // on it, so labelling a pillar with it would state a band the stock does not have.
+  const head = (focus?.[0] ?? "composite") as LineKey;
+  const headVal = p[head as keyof WindowPoint] as number;
+  const headMeta = head === "composite" ? null : PILLAR_META[head];
+  const delta = headVal - (points[0][head as keyof WindowPoint] as number);
   const deltaColor = delta < 0 ? "var(--high)" : delta > 0 ? "var(--rec)" : "var(--ink3)";
+  const rows = focus?.length ? PILLARS.filter((k) => (focus as readonly string[]).includes(k)) : PILLARS;
 
   return (
     <Panel className="px-4 py-4">
@@ -42,12 +54,18 @@ export function TrajectoryReadout({
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
         <div className="shrink-0">
-          <div className="num text-[12px] tracking-wide text-ink3">{p.x}</div>
+          <div className="num text-[12px] tracking-wide text-ink3">
+            {p.x}
+            {headMeta && <span className="ml-2 text-ink2">{headMeta.label}</span>}
+          </div>
           <div className="mt-1 flex items-baseline gap-2.5">
-            <span className="num text-[38px] font-medium leading-none text-ink">
-              {p.composite.toFixed(0)}
+            <span
+              className="num text-[38px] font-medium leading-none"
+              style={{ color: headMeta?.cssVar ?? "var(--ink)" }}
+            >
+              {headVal.toFixed(0)}
             </span>
-            <span className="hero-name text-[16px] text-ink2">{healthLabel(p.composite)}</span>
+            {!headMeta && <span className="hero-name text-[16px] text-ink2">{healthLabel(headVal)}</span>}
           </div>
           <div className="num mt-1.5 text-[11.5px]" style={{ color: deltaColor }}>
             {delta >= 0 ? "+" : ""}
@@ -56,7 +74,7 @@ export function TrajectoryReadout({
         </div>
 
         <div className="flex min-w-[220px] flex-1 flex-col gap-2.5">
-          {PILLARS.map((key) => {
+          {rows.map((key) => {
             const meta = PILLAR_META[key];
             const v = p[key] as number;
             return (

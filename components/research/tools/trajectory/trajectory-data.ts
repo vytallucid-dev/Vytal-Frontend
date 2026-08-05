@@ -122,11 +122,13 @@ export function buildTrajectoryChips(verdict: VerdictSection): ChipSpec[] {
     const m = MARKER_TONE[verdict.trajectoryMarker];
     chips.push({ label: m.word, color: m.color });
   }
-  if (verdict.divergence.flag !== "none") {
-    chips.push({
-      label: `${verdict.divergence.flag} divergence · ${verdict.divergence.gap.toFixed(0)}`,
-      color: verdict.divergence.flag === "wide" ? "var(--crit)" : "var(--high)",
-    });
+  // ★ RULING 3's state, and — when something is firing — that finding's OWN gap. The old chip read
+  //   `${flag} divergence · ${gap}` off the widest scored pair banded at 15/25, a third severity
+  //   scale that could disagree with the finding standing on the same stock.
+  if (verdict.divergence.headline === "patterns_firing" && verdict.divergence.pair) {
+    chips.push({ label: `divergence · ${verdict.divergence.pair.gap}`, color: "var(--high)" });
+  } else if (verdict.divergence.headline === "no_pattern" && verdict.divergence.spread !== null) {
+    chips.push({ label: `spread ${verdict.divergence.spread.toFixed(0)} · no pattern`, color: "var(--ink2)" });
   }
   return chips;
 }

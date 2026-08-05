@@ -39,11 +39,64 @@ export interface BandColour {
   range: [number | null, number | null] | null;
 }
 
-export interface DivergenceView {
-  flag: DivergenceFlag;
+/**
+ * ★ RULING 3's THREE HEADLINE STATES — decided BACKEND-SIDE, rendered here. Never inferred.
+ *
+ *   aligned          spread ≤ 7 (S1's ceiling). The pillars agree — the study's measured control.
+ *   no_pattern       spread past the ceiling but NOTHING matched: the 8–11 minor band, or a ≥12
+ *                    spread on a pair no rule names.
+ *   patterns_firing  one or more divergence findings are standing.
+ *
+ * ⚠ THE MIDDLE STATE IS WHY THIS TYPE EXISTS. Every surface ran `lead ? patterns : Aligned` — a
+ * two-way branch over a three-way fact — so a stock with a wide spread and no live finding rendered
+ * as "Aligned — no tension". GLENMARK carries a 49-point spread and reads `no_pattern`.
+ */
+export type DivergenceHeadline = "aligned" | "no_pattern" | "patterns_firing";
+
+export interface PillarReading {
+  pillar: PillarKey;
+  subtotal: number;
+}
+
+/** The pair a FIRED finding names, high/low resolved server-side from its record's `pillarPair`. */
+export interface DivergencePair {
+  patternKey: string;
+  high: PillarReading;
+  low: PillarReading;
+  /** |high − low| for THIS pair, at difference precision (a whole number). */
   gap: number;
-  high: { pillar: PillarKey; subtotal: number } | null;
-  low: { pillar: PillarKey; subtotal: number } | null;
+}
+
+/**
+ * ★ THE LIVE MARKET REGIME for this stock's SECTOR. Net-new on the wire.
+ *
+ * ⚠ `regime: null` IS A FIRST-CLASS ANSWER WITH NO NUMERIC FALLBACK — the window was too short, too
+ * stale, or the stock is in no peer group. `reason` says which. Never substitute a phase.
+ */
+export interface RegimeBadgeView {
+  regime: "HOT" | "NORMAL" | "STRESSED" | null;
+  /** Signed FRACTION (0.2215 = +22.15%). Null iff regime is null. */
+  trailing6mo: number | null;
+  source: "index" | "pg_pool" | null;
+  indexName: string | null;
+  /** Trading date the reading is AS OF (YYYY-MM-DD). */
+  asOf: string | null;
+  reason: string | null;
+}
+
+export interface DivergenceView {
+  headline: DivergenceHeadline;
+  /** max − min across scored pillars — S1's own input, not "the divergence". Null under two pillars. */
+  spread: number | null;
+  /** S1's ceiling (7), from S1's record. Carried so no surface types the number. */
+  alignedMax: number;
+  /**
+   * ★ THE LEAD FIRING FINDING'S OWN PAIR. Null when nothing is firing — absence, never a fallback to
+   * the widest scored pair. That fallback was the IOC bug: IOC's widest pair is Foundation↔Market
+   * while its finding (S2) is about Foundation↔Momentum, so the chart and the prose named different
+   * pillars on one card.
+   */
+  pair: DivergencePair | null;
   storedScalar: number;
 }
 
@@ -382,11 +435,202 @@ export interface PatternView {
   metricRefs: unknown | null;
   /** Server-rendered verdict sentence — see RedFlagView.verdict. Optional for the same reason. */
   verdict?: string;
+  /** How long this has been true and which way it is moving. Optional: surfaces that do not resolve
+   *  lifecycles (the watchlist list view) send `null`, and older payloads omit the key entirely. */
+  lifecycle?: FindingLifecycle | null;
+  /** The same verdict, decomposed. ⚠ The `boundary` clause is PRESENT here and ABSENT from `verdict` —
+   *  every card already renders `doesntMean` in its own slot, and joining it would print it twice. */
+  clauses?: VerdictClause[] | null;
+  /**
+   * ★ THE PATTERN'S OWN RECORD FACTS. `pillarPair` is the pair the chart, chips, readout and summary
+   * must draw — replacing `pickScoredPair`, which chose the widest pair independently of the finding.
+   * Null for a finding with no record (a red flag, an ownership event): those have no pillar pair,
+   * and inventing one is the defect this field ends.
+   *
+   * ⚠ DISPLAY GEOMETRY ONLY. Every threshold (gapFloor, movementFloor, evidencedTier, legs,
+   * regimeMap, evidenceStats) is a scoring bar and is stripped before serving.
+   */
+  facts?: ServedPatternFacts | null;
+  /** §1.2 tier word — `material` / `stretched` / `extreme`. Null for crossings and movements, which
+   *  have no severity gradient. Order cards by this, then severity. */
+  tier?: string | null;
+  /**
+   * ★ FORMED or BUILDING — the pattern state.
+   *
+   * A threshold grades intensity; it does not gate existence. `building` means the shape holds but at
+   * least one leg has not crossed its evidenced threshold, so the card carries NO claim, NO study
+   * figure and NO regime clause. Render it as visibly a DIFFERENT STATE, never as a weaker version of
+   * the same card — same pattern name, evidently not the same thing. Null for patterns that declare
+   * no state (D5–D7, S2, T1–T9 — crossings and measured discriminants with no "almost").
+   */
+  state?: "formed" | "building" | null;
+  /** This finding's own pair, high/low resolved. Null for composite (T1–T4) and single-pillar
+   *  (T5–T9) patterns, which genuinely name no pair. */
+  pair?: DivergencePair | null;
+}
+
+/** The three record facts that are safe to serve — mirrors ServedPatternFacts backend-side. */
+export interface ServedPatternFacts {
+  /** The subject(s) the pattern is ABOUT: two real pillars, one pillar, or `["composite"]`. */
+  pillarPair: readonly ("foundation" | "momentum" | "market" | "ownership" | "composite")[];
+  basis: "gap" | "movement" | "crossing" | "level";
+  /** THE only precision this pattern's readings are ever formatted at, on any surface. */
+  displayPrecision: number;
 }
 
 export interface FindingsSection {
   redFlags: RedFlagView[];
   patterns: PatternView[];
+  /** Findings that have CLOSED, in their own array so one can never render as current.
+   *  `null` ⇔ this surface did not resolve lifecycles — which is not the same claim as `[]`. */
+  recentlyEnded?: EndedFindingView[] | null;
+  /**
+   * ★ NOT-COVERED NOTES — configurations both specs tested and deliberately did NOT ship.
+   *
+   * ⚠ THEIR OWN ARRAY, AND THEY MUST STAY THERE. A note is the record of a decision NOT to make a
+   * claim — no severity, no lifecycle, no gap size, no ordering. Merging them into `patterns` would
+   * rebuild the generic-spread pattern both specs killed: the moment a 41-point version reads louder
+   * than a 15-point one, we are ranking configurations we explicitly refused to rank.
+   */
+  notCovered?: NotCoveredNote[];
+  /**
+   * ★ THE THIRD SILENT STATE. A scored stock can be quiet because nothing tested reliably here
+   * (`notCovered` has a note) or because truly nothing had anything to say (`patterns` AND
+   * `notCovered` both empty). This is the registry-level line for the second case only — `null`
+   * whenever there is a pattern firing or a not-covered note already saying something.
+   */
+  quietNote?: string | null;
+  /** A two-line digest of what the OTHER tool is showing. Never enough to render a second card. */
+  crossTool?: CrossToolSummary[];
+}
+
+// ── finding lifecycle (mirrors Vytal-Backend/src/scoring/read/finding-lifecycle.service.ts) ─────────
+
+export type LifecycleState = "firing" | "ended";
+export type LifecycleDirection = "widening" | "narrowing" | "steady";
+/** What the quantity is doing. Never a claim about an outcome — only about a number's path. */
+export type MovementPhase = "building" | "widening" | "narrowing" | "sticky" | "closed";
+export type LifecycleValueBasis = "gap" | "delta" | "distance_from_mark";
+export type LifecycleClock = "head_per_period" | "all_versions_in_current_period";
+
+/** The pattern's own quantity at one period head, recomputed from stored pillar subtotals.
+ *  ⚠ Arithmetic over stored values — NOT a replay of whether the pattern would have fired. */
+export interface ValuePoint {
+  periodKey: string;
+  value: number | null;
+  pastFloor: boolean | null;
+}
+
+/** One version inside the current quarter — populated only for Market-clock patterns, whose gap can
+ *  open and close entirely within one period. */
+export interface IntraPeriodPoint {
+  version: number;
+  asOfDate: string;
+  firing: boolean;
+  value: number | null;
+}
+
+export interface EndedResolution {
+  type: "converged" | "collapsed";
+  laggardMovePp: number;
+  leaderMovePp: number;
+  gapThen: number;
+  gapNow: number;
+  laggardShare: number | null;
+  /** Did the gap close back into the aligned band, or did the pattern merely stop firing?
+   *  A separate question from `type` — both are needed to say "this converged". */
+  resolved: boolean;
+  leadPillar: PillarKey;
+  lagPillar: PillarKey;
+}
+
+export interface FindingLifecycle {
+  patternKey: string;
+  state: LifecycleState;
+  firstSeen: string;
+  lastSeen: string;
+  /** Consecutive periods with a ROW. ⚠ Not the same question as `periodsPastFloor`. */
+  runLength: number;
+  valueThen: number | null;
+  valueNow: number | null;
+  valueBasis: LifecycleValueBasis | null;
+  /** The quantity at every period head — what makes "31 now, 14 last quarter" sayable. */
+  valueSeries: ValuePoint[];
+  /** Consecutive recent periods the QUANTITY has been past its floor. Can legitimately differ from
+   *  `runLength`: the row history and the value history answer different questions. */
+  periodsPastFloor: number;
+  floor: number | null;
+  direction: LifecycleDirection | null;
+  directionDeadband: number;
+  movementPhase: MovementPhase | null;
+  resolution: EndedResolution | null;
+  endedPeriodsAgo: number;
+  clock: LifecycleClock;
+  intraPeriod: IntraPeriodPoint[] | null;
+}
+
+// ── verdict clauses (mirrors Vytal-Backend/src/scoring/findings/verdicts.ts) ────────────────────────
+
+export type ClauseType = "observation" | "band_context" | "movement" | "size" | "phase" | "boundary";
+
+export interface VerdictClause {
+  type: ClauseType;
+  text: string;
+}
+
+/**
+ * A configuration that was TESTED AND NOT SHIPPED.
+ *
+ * ⚠ CARRIES NO MEASURED FIGURE AND NO DIRECTION WORD IN COPY, BY RULE. Every one of these has a
+ * number attached to it in the spec and every one of those numbers (and their sign, in words) reads
+ * backwards — "Foundation crossing down through 72" measured strongly POSITIVE, which is exactly why
+ * it is excluded. The figure is the reason for the exclusion, not a fact to show. A backend gate
+ * fails the build if either appears in `text`.
+ *
+ * ⚠ `pair` and `lifecycle` are DATA, not copy — chart-parity fields added so the same chart/readout a
+ * real finding uses can draw a not-covered configuration identically. Neither is ever stated in
+ * `text`. There is deliberately no `severity` field anywhere on this type — not even null.
+ */
+export interface NotCoveredNote {
+  id: string;
+  reason:
+    | "evidence_conflicted"
+    | "superseded_by_D6"
+    | "superseded_by_T7"
+    | "bull_masked"
+    | "regime_driven"
+    | "indistinguishable"
+    | "outlier_driven";
+  /** The pillars involved and their values. No gap, no magnitude, no ordering. */
+  readings: { subject: string; value: number }[];
+  /** The two-pillar spread a chart would draw, when the record names two real pillars (NC1/NC2 only).
+   *  Null for every composite or single-pillar record. */
+  pair: { high: PillarReading; low: PillarReading; gap: number } | null;
+  /** Continuity, read off the SAME resolver a real finding uses. Null until a second period exists
+   *  for this configuration to walk. */
+  lifecycle: FindingLifecycle | null;
+  text: string;
+  evidenceBasis: "tested_not_shipped";
+}
+
+/** A compact digest of the other tool's findings — a summary line and a link, nothing more. */
+export interface CrossToolSummary {
+  tool: "divergence" | "trajectory";
+  count: number;
+  names: string[];
+  /** The most severe one's OWN observation clause, verbatim — not a new sentence. */
+  leadFact: string | null;
+  leadPatternKey: string | null;
+}
+
+/** An ended finding — its own card: what it was, how long it stood, that it closed, and how.
+ *  ⚠ Carries no `size` or `phase` clause, ever: both qualify a claim about a condition that holds. */
+export interface EndedFindingView {
+  patternKey: string;
+  name: string;
+  lifecycle: FindingLifecycle;
+  clauses: VerdictClause[];
+  text: string;
 }
 
 export interface PeerRankView {
@@ -414,5 +658,7 @@ export interface HealthSnapshotView {
   pillars: PillarView[];
   trajectory: TrajectorySection | null;
   findings: FindingsSection | null;
+  /** ★ The live sector regime — see RegimeBadgeView. Null on the not-scored path. */
+  regime?: RegimeBadgeView | null;
   peerStanding: PeerStandingSection | null;
 }

@@ -1,13 +1,30 @@
 "use client";
 
 /**
- * Trajectory tool — the orchestrator. Reads dual-entry from the URL (`?symbol=`),
- * fetches the scored universe + the scan (cold) + the health snapshot (warm), and
- * fills the <ToolFrame> slots. All chrome / grid / scrub-state / switchers are the
- * frame's; this file only supplies trajectory's data + render slots.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════
+ * Trajectory — the orchestrator. THE PAGE IS ABOUT THE SELECTED READING. Same treatment as Divergence.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Selection drives the chart series, its heading, the readout, the promoted banner, the card and its
+ * clauses, and the boundary. `?pattern=` makes it linkable; an unknown key falls back silently.
+ *
+ * ── ★ WHAT THE CHART DRAWS IS THE PATTERN'S OWN `pillarPair` ─────────────────────────────────────
+ *   single-pillar (T5–T9)  → that pillar's line alone
+ *   composite (T1–T4)      → the composite line alone
+ *   a not-covered note     → whatever subjects it reports readings for
+ * The survey view (all five lines, pillars togglable) is what renders when there is nothing to select.
+ *
+ * ⚠ T1–T4's record carries `pillarPair: ["composite"]` precisely so a chart does not read a doubled
+ *   pillar name off the key and draw two unrelated lines. That is why the chart reads the record and
+ *   never the key.
+ *
+ * ── ★ R1 STILL HOLDS: THIS TOOL DOES NOT RANK BY SIZE ────────────────────────────────────────────
+ * The switcher shows no gap tier, because trajectory has none — the study found a bigger move is NOT
+ * a stronger signal (a 15+pt Momentum gain read NEGATIVELY). Divergence is deliberately the opposite.
+ * Do not harmonise the two.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
 import { useScoredStocks, useStockScan, useStockScanFacets } from "@/lib/api/hooks/use-stocks";
@@ -30,9 +47,12 @@ import {
   type ToolWindow,
 } from "../tool-frame.types";
 import { sliceWindow, dailyBoundsOf } from "../window-slice";
-import { TrajectoryChart } from "./trajectory-chart";
-import { TrajectoryReadout } from "./trajectory-readout";
 import { TrajectorySummary } from "./trajectory-summary";
+import { FindingCards } from "../finding-cards";
+import { PatternSwitcher } from "../pattern-switcher";
+import { SelectionChart, SelectionReadout } from "../selection-view";
+import { buildSelectables, notCoveredRead, resolveSelected } from "../selection";
+import { doesntMean } from "@/lib/findings/descriptions";
 import { TrajectoryScanCard } from "./trajectory-card";
 import { buildTrajectoryChips, buildTrajectoryRead } from "./trajectory-data";
 import { findingsForTool } from "@/lib/findings/tool-findings";
@@ -53,10 +73,10 @@ export function TrajectoryTool() {
   const router = useRouter();
   const params = useSearchParams();
   const symbol = params.get("symbol")?.toUpperCase() || null;
+  const requestedPattern = params.get("pattern");
 
   // The window carries the cadence (quarterly 1Y/2Y/3Y · daily 60/30/15D · custom).
   // Only the quarter count re-keys the fetch; daily/custom re-slice the same payload.
-  // Reset to the default (3Y quarterly) whenever the stock changes.
   const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
   const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
   if (lastSymbol !== symbol) {
@@ -93,6 +113,36 @@ export function TrajectoryTool() {
     () => findingsForTool(data?.findings?.patterns, "trajectory"),
     [data],
   );
+  const selectables = useMemo(
+    () => buildSelectables(data?.findings?.patterns, data?.findings?.notCovered, "trajectory"),
+    [data],
+  );
+  const selected = useMemo(
+    () => resolveSelected(selectables, requestedPattern),
+    [selectables, requestedPattern],
+  );
+  const onSelect = useCallback(
+    (id: string) => {
+      const next = new URLSearchParams(Array.from(params.entries()));
+      next.set("pattern", id);
+      // `replace`, not `push`: switching readings on one stock re-frames the same page rather than
+      // being a new destination, and should not stack back-button steps on the way out.
+      router.replace(`/research/trajectory?${next.toString()}`, { scroll: false });
+    },
+    [params, router],
+  );
+
+  const selectedPattern = selected?.kind === "pattern" ? selected.pattern : null;
+  const selectedNote = selected?.kind === "not_covered" ? selected.note : null;
+  // The selected reading first, the rest behind it — so the banner's "+N more" stays true while its
+  // title and body describe what is actually on screen.
+  const readOrder = useMemo(
+    () =>
+      selectedPattern
+        ? [selectedPattern, ...trajectoryFindings.filter((p) => p.patternKey !== selectedPattern.patternKey)]
+        : [],
+    [selectedPattern, trajectoryFindings],
+  );
 
   // The sliced window — quarterly series, daily series, or custom range (all client-side).
   const sliced = useMemo(
@@ -102,12 +152,12 @@ export function TrajectoryTool() {
         : null,
     [trajectory, window],
   );
-  const chartPoints = sliced?.points ?? [];
   const dailyBounds = dailyBoundsOf(trajectory?.dailySeries);
 
   const single: SingleViewSlots | null = symbol
     ? {
         isLoading: healthQ.isLoading,
+        regime: data?.regime ?? null,
         isError: healthQ.isError,
         onRetry: () => void healthQ.refetch(),
         notScored:
@@ -130,25 +180,43 @@ export function TrajectoryTool() {
             : symbol,
         },
         chips: verdict ? buildTrajectoryChips(verdict) : [],
-        promotedRead: verdict && trajectory ? buildTrajectoryRead(trajectoryFindings) : null,
+        promotedRead: selectedNote
+          ? notCoveredRead(selectedNote)
+          : verdict && trajectory
+            ? buildTrajectoryRead(readOrder)
+            : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
-        renderChart: (active, setActive) =>
-          trajectory && sliced ? (
-            <TrajectoryChart
-              points={chartPoints}
-              crossings={trajectory.crossings}
-              isDaily={sliced.isDaily}
-              resultMarks={sliced.resultMarks}
-              clampedEarlier={sliced.clampedEarlier}
-              active={active}
-              onActiveChange={setActive}
+        renderChart: (active, setActive) => (
+          <SelectionChart
+            selection={selected}
+            sliced={sliced}
+            crossings={trajectory?.crossings ?? []}
+            active={active}
+            onActiveChange={setActive}
+          />
+        ),
+        renderReadout: (active) => (
+          <SelectionReadout selection={selected} sliced={sliced} active={active} />
+        ),
+        renderSummary: () => (
+          <>
+            {/* The side panel, made clickable — every reading on this stock, the notes last. */}
+            <PatternSwitcher items={selectables} selectedId={selected?.id ?? null} onSelect={onSelect} />
+            {/* ★ THE SELECTED READING, COMPLETE — the others sit one click above, each of them
+                equally complete when selected. The boundary renders once, under the card. */}
+            <FindingCards
+              findings={selectedPattern ? [selectedPattern] : []}
+              notCovered={selectedNote ? [selectedNote] : []}
+              quietNote={data?.findings?.quietNote ?? undefined}
+              crossTool={data?.findings?.crossTool?.find((c) => c.tool === "divergence") ?? undefined}
+              ended={data?.findings?.recentlyEnded ?? undefined}
+              regime={data?.regime ?? null}
+              symbol={symbol}
+              boundary={selectedPattern ? doesntMean(selectedPattern.patternKey) : null}
             />
-          ) : null,
-        renderReadout: (active) =>
-          chartPoints.length ? (
-            <TrajectoryReadout points={chartPoints} isDaily={sliced?.isDaily ?? false} active={active} />
-          ) : null,
-        renderSummary: () => (trajectory ? <TrajectorySummary trajectory={trajectory} /> : null),
+            {trajectory ? <TrajectorySummary trajectory={trajectory} /> : null}
+          </>
+        ),
       }
     : null;
 
@@ -171,8 +239,8 @@ export function TrajectoryTool() {
         hasMore: scanQ.hasNextPage,
         isFetchingMore: scanQ.isFetchingNextPage,
         fetchMore: () => void scanQ.fetchNextPage(),
-        renderCard: (it, onSelect) => (
-          <TrajectoryScanCard item={it as ToolScanItem} onSelect={onSelect} />
+        renderCard: (it, onSelectSym) => (
+          <TrajectoryScanCard item={it as ToolScanItem} onSelect={onSelectSym} />
         ),
         keyOf: (it) => (it as ToolScanItem).symbol,
         isFiltered,
