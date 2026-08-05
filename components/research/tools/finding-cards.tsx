@@ -31,6 +31,7 @@ import { accentOf, accentVars, familyOf } from "@/lib/findings/classify";
 import { findingName } from "@/lib/findings/descriptions";
 import Link from "next/link";
 import { RegimeBadge } from "./regime-badge";
+import { configurationTitle } from "./selection";
 import type {
   CrossToolSummary,
   EndedFindingView,
@@ -286,41 +287,46 @@ export function FindingCards({
  * numbers a real finding's `PairLine` shows — never a size claim in `n.text` itself, which the backend
  * gate enforces. NC7 embeds the SAME `RegimeBadge` the page's identity row uses, so "sector phase" in
  * its copy is one click from the actual explainer rather than a second description of it.
+ *
+ * ⚠ NO SECTION KICKER. There was a "Tested, not shipped" heading over this list; it described our
+ * process, not the stock, and the mechanism copy in each note already does that work. What replaced
+ * it is PER-CARD and neutral: the configuration named by its pillars, from the same
+ * `configurationTitle` the switcher and the promoted banner use, so a note is identified the same way
+ * wherever it appears. The muted card treatment — no accent, no tier chip, no state chip — is what
+ * still separates these from findings, which is all it ever needed to be.
  */
 function NotCoveredSection({ notes, regime }: { notes: NotCoveredNote[]; regime?: RegimeBadgeView | null }) {
   return (
-    <>
-      <div className="kicker mb-3 mt-5">Tested, not shipped</div>
-      <div className="space-y-3">
-        {notes.map((n) => (
-          <div key={n.id} className="rounded-xl border border-line2 bg-surface-2/30 p-4">
-            <div className="num mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink3">
-              {n.readings.map((r) => (
-                <span key={r.subject}>
-                  <span className="text-ink2">{PILLAR_LABEL[r.subject] ?? r.subject}</span>{" "}
-                  <span className="text-ink">{r.value}</span>
-                </span>
-              ))}
-              {n.id === "NC7" && (
-                <span className="ml-1">
-                  <RegimeBadge regime={regime ?? null} />
-                </span>
-              )}
-            </div>
-            {n.pair && (
-              <div className="num mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink3/80">
-                <span>{PILLAR_LABEL[n.pair.high.pillar] ?? n.pair.high.pillar}</span>
-                <span>{n.pair.high.subtotal}</span>
-                <span>vs</span>
-                <span>{PILLAR_LABEL[n.pair.low.pillar] ?? n.pair.low.pillar}</span>
-                <span>{n.pair.low.subtotal}</span>
-              </div>
+    <div className="mt-5 space-y-3">
+      {notes.map((n) => (
+        <div key={n.id} className="rounded-xl border border-line2 bg-surface-2/30 p-4">
+          <div className="mb-1.5 text-[12.5px] font-medium text-ink2">{configurationTitle(n.readings)}</div>
+          <div className="num mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink3">
+            {n.readings.map((r) => (
+              <span key={r.subject}>
+                <span className="text-ink2">{PILLAR_LABEL[r.subject] ?? r.subject}</span>{" "}
+                <span className="text-ink">{r.value}</span>
+              </span>
+            ))}
+            {n.id === "NC7" && (
+              <span className="ml-1">
+                <RegimeBadge regime={regime ?? null} />
+              </span>
             )}
-            <p className="text-[12.5px] leading-relaxed text-ink2">{n.text}</p>
           </div>
-        ))}
-      </div>
-    </>
+          {n.pair && (
+            <div className="num mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink3/80">
+              <span>{PILLAR_LABEL[n.pair.high.pillar] ?? n.pair.high.pillar}</span>
+              <span>{n.pair.high.subtotal}</span>
+              <span>vs</span>
+              <span>{PILLAR_LABEL[n.pair.low.pillar] ?? n.pair.low.pillar}</span>
+              <span>{n.pair.low.subtotal}</span>
+            </div>
+          )}
+          <p className="text-[12.5px] leading-relaxed text-ink2">{n.text}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 

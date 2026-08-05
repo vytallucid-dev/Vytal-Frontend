@@ -138,15 +138,43 @@ export function pairOf(s: Selectable): { high: PillarKey; low: PillarKey; gap: n
 }
 
 /**
- * The state chip: Formed · Building · Not covered.
+ * The state chip: Formed · Building.
  *
  * `null` for a pattern that declares no state (D5–D7, S2, T1–T9 — crossings and measured
  * discriminants with no "almost"). An absent chip is the honest render for those; a "Formed" chip on
  * a pattern whose record has no formed/building axis would be inventing a state.
+ *
+ * ⚠ ALSO `null` FOR A NOT-COVERED NOTE, AND THAT IS THE POINT. It used to return "Not covered",
+ * which put a label on the one thing the surrounding language already says outright — the copy, the
+ * neutral tone and the muted rail all establish that a note is not a reading. The badge only repeated
+ * it, and a chip in the position where patterns carry a lifecycle state reads as a third state
+ * alongside Formed and Building. It is not one. The muted treatment carries the distinction.
  */
-export function stateLabelOf(s: Selectable): "Formed" | "Building" | "Not covered" | null {
-  if (s.kind === "not_covered") return "Not covered";
+export function stateLabelOf(s: Selectable): "Formed" | "Building" | null {
+  if (s.kind === "not_covered") return null;
   return s.pattern.state === "formed" ? "Formed" : s.pattern.state === "building" ? "Building" : null;
+}
+
+/**
+ * ★ THE ONE DERIVATION OF A NOT-COVERED CONFIGURATION'S NAME — its pillars, in the order the record
+ * reports them: "Foundation vs Market", "Momentum vs Foundation", or the single subject where the
+ * record names no pair ("Health score").
+ *
+ * ⚠ NOT A NAME FIELD, AND DELIBERATELY NOT ONE. A note carries no display name on the wire, and its
+ * `reason` is a machine token for WHY it was withheld ("bull_masked") — promoting that to a title
+ * would label the configuration with its own verdict. The subjects ARE its identity, so they are the
+ * name, and this is the single place that is computed. `titleOf`, the promoted banner and the card
+ * list all route through here, so the switcher and the card can never drift apart.
+ *
+ * TOTAL: NotCoveredRecord subjects are `Pillar | "composite"` backend-side, every one of which is in
+ * SUBJECT_META, so the filter drops nothing and the result is never empty.
+ */
+export function configurationTitle(readings: readonly { subject: string }[]): string {
+  return readings
+    .map((r) => r.subject)
+    .filter(isSubject)
+    .map((k) => SUBJECT_META[k].label)
+    .join(" vs ");
 }
 
 /**
@@ -159,9 +187,7 @@ export function stateLabelOf(s: Selectable): "Formed" | "Building" | "Not covere
  */
 export function titleOf(s: Selectable): string {
   if (s.kind === "pattern") return findingName(s.pattern.patternKey);
-  return readingsOf(s)
-    .map((r) => SUBJECT_META[r.subject].label)
-    .join(" vs ");
+  return configurationTitle(readingsOf(s));
 }
 
 /** The lifecycle behind a selection — the same resolver output for a note as for a finding. */
@@ -175,10 +201,11 @@ export const lifecycleOf = (s: Selectable) =>
  * (rec/high/ctx/crit) paints a severity accent, and a note has no severity — it is the record of a
  * decision NOT to give a read. Painting one would present the withheld thing as the finding.
  *
- * The title says what it is rather than naming the configuration, and the body is the backend's copy
- * verbatim — including its closing line, which a gate already checks for measured figures and
- * direction words.
+ * ⚠ THE TITLE NAMES THE CONFIGURATION, NOT OUR PROCESS. It used to read "Tested, not shipped", which
+ * described how we work rather than anything about this stock — the same reason the closing lines
+ * came out. The body already explains the mechanism, so the heading's only remaining job is to say
+ * WHICH configuration this is, and its pillars are that. The body stays the backend's copy verbatim.
  */
 export function notCoveredRead(n: NotCoveredNote): PromotedRead {
-  return { tone: "neutral", title: "Tested, not shipped", body: n.text, note: null };
+  return { tone: "neutral", title: configurationTitle(n.readings), body: n.text, note: null };
 }

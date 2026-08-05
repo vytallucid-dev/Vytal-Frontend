@@ -29,17 +29,25 @@ import { buildSpread, spreadSlope } from "./divergence/divergence-data";
 import { TrajectoryChart } from "./trajectory/trajectory-chart";
 import { TrajectoryReadout } from "./trajectory/trajectory-readout";
 import { findingName } from "@/lib/findings/descriptions";
-import { SUBJECT_META, pairOf, subjectsOf, type Selectable } from "./selection";
+import { SUBJECT_META, configurationTitle, pairOf, subjectsOf, type Selectable } from "./selection";
 import type { SlicedWindow } from "./window-slice";
 import type { ActiveDatapoint } from "./tool-frame.types";
 import type { CrossingEvent } from "@/types/health";
 
-/** The chart heading, re-framed onto the selection. Names the reading, then its subjects. */
+/**
+ * The chart heading, re-framed onto the selection. Names the reading, then its subjects.
+ *
+ * ⚠ A NOT-COVERED NOTE GETS ITS SUBJECTS AND NOTHING ELSE. It used to be named "Tested, not shipped"
+ * here, which described our process rather than the stock. Its name is now its pillars — which the
+ * `· subjects` suffix would then repeat verbatim ("Foundation vs Market · Foundation · Market"), so
+ * the suffix is skipped rather than the name being padded out to earn it.
+ */
 function headingOf(s: Selectable): string {
+  if (s.kind === "not_covered") return configurationTitle(s.note.readings);
   const subjects = subjectsOf(s)
     .map((k) => SUBJECT_META[k].label)
     .join(" · ");
-  const name = s.kind === "pattern" ? findingName(s.pattern.patternKey) : "Tested, not shipped";
+  const name = findingName(s.pattern.patternKey);
   return subjects ? `${name} · ${subjects}` : name;
 }
 
