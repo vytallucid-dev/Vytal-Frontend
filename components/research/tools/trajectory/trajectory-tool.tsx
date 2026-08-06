@@ -135,6 +135,28 @@ export function TrajectoryTool() {
     [params, router],
   );
 
+  // ── ★ THE VIEW MODE — pattern, or full trajectory. See trajectory-mode.tsx's header. ──────────
+  // ⚠ THE DEFAULT KEYS ON trajectoryFindings.length — REAL B/D PATTERNS ONLY — NEVER ON
+  //   selectables.length. selectables also counts not-covered notes, and a stock whose only
+  //   selectable thing is an NC note (HDFCBANK: NC3, nothing firing) is NOT a stock with something
+  //   to focus a pattern chart on. Keying the default on selectables.length was the original
+  //   defect: it opened pattern mode with a note selected, which rendered a chart about a
+  //   configuration we declined to read, on a page that should open onto the pillar history
+  //   every scored stock actually has.
+  const requestedView = params.get("view");
+  const defaultMode: TrajectoryMode = trajectoryFindings.length > 0 ? "pattern" : "full";
+  const mode: TrajectoryMode =
+    requestedView === "pattern" || requestedView === "full" ? requestedView : defaultMode;
+  const patternMode = mode === "pattern";
+  const onModeChange = useCallback(
+    (m: TrajectoryMode) => {
+      const next = new URLSearchParams(Array.from(params.entries()));
+      next.set("view", m);
+      router.replace(`/research/trajectory?${next.toString()}`, { scroll: false });
+    },
+    [params, router],
+  );
+
   const selectedPattern = selected?.kind === "pattern" ? selected.pattern : null;
   const selectedNote = selected?.kind === "not_covered" ? selected.note : null;
   // The selected reading first, the rest behind it — so the banner's "+N more" stays true while its
@@ -189,33 +211,74 @@ export function TrajectoryTool() {
             ? buildTrajectoryRead(readOrder)
             : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
-        renderChart: (active, setActive) => (
-          <SelectionChart
-            selection={selected}
-            sliced={sliced}
-            crossings={trajectory?.crossings ?? []}
-            active={active}
-            onActiveChange={setActive}
-          />
+        // ★ THE MODE SWITCH — always present, next to the window switcher (frame-owned slot; see
+        //   SingleViewSlots.renderModeSwitch). `hasReadings` is selectables.length, not
+        //   trajectoryFindings.length: an NC-only stock has nothing to FOCUS a pattern chart on by
+        //   default, but pattern mode can still show that note if a reader deliberately opens it —
+        //   see TrajectoryModeSwitch's own note on why that button is disabled, never hidden.
+        renderModeSwitch: () => (
+          <TrajectoryModeSwitch mode={mode} onChange={onModeChange} hasReadings={selectables.length > 0} />
         ),
-        renderReadout: (active) => (
-          <SelectionReadout selection={selected} sliced={sliced} active={active} />
-        ),
+        // ★ PATTERN MODE → the selection dispatcher (shared with Divergence). On trajectory this
+        //   never reaches SelectionChart's spread branch — no trajectory-family pattern or note
+        //   carries two real pillars — so it always resolves to TrajectoryChart with the
+        //   selection's own subjects focused (the P9 lock).
+        // ★ FULL TRAJECTORY → TrajectoryChart called directly, with NO `focus` — every pillar plus
+        //   the composite, individually togglable, no lock. This is the path that used to be
+        //   unreachable: SelectionChart returned null with nothing selected, or drew a divergence
+        //   spread when the only selectable thing was NC1 (before NC1 was filtered off this tool).
+        //   There is no longer a state on which this tool declines to open.
+        renderChart: (active, setActive) =>
+          patternMode ? (
+            <SelectionChart
+              selection={selected}
+              sliced={sliced}
+              crossings={trajectory?.crossings ?? []}
+              active={active}
+              onActiveChange={setActive}
+            />
+          ) : sliced ? (
+            <TrajectoryChart
+              points={sliced.points}
+              crossings={trajectory?.crossings ?? []}
+              isDaily={sliced.isDaily}
+              resultMarks={sliced.resultMarks}
+              clampedEarlier={sliced.clampedEarlier}
+              active={active}
+              onActiveChange={setActive}
+            />
+          ) : null,
+        renderReadout: (active) =>
+          patternMode ? (
+            <SelectionReadout selection={selected} sliced={sliced} active={active} />
+          ) : sliced ? (
+            <TrajectoryReadout points={sliced.points} isDaily={sliced.isDaily} active={active} />
+          ) : null,
         renderSummary: () => (
           <>
-            {/* The side panel, made clickable — every reading on this stock, the notes last. */}
-            <PatternSwitcher items={selectables} selectedId={selected?.id ?? null} onSelect={onSelect} />
-            {/* ★ THE SELECTED READING, COMPLETE — the others sit one click above, each of them
-                equally complete when selected. The boundary renders once, under the card. */}
+            {/* ★ PATTERN-MODE ONLY. Full trajectory has no focused selection to switch between —
+                the chart already shows everything at once. */}
+            {patternMode && (
+              <PatternSwitcher items={selectables} selectedId={selected?.id ?? null} onSelect={onSelect} />
+            )}
+            {/* ★ PATTERN MODE — THE SELECTED READING, COMPLETE, the others one click above in the
+                switcher, and the boundary once beneath it.
+                ★ FULL TRAJECTORY — the whole standing set at once, and NO boundary: that line is the
+                interpretive limit of ONE reading, and printing it under a stack of them would attach
+                one pattern's caveat to all of them. */}
             <FindingCards
-              findings={selectedPattern ? [selectedPattern] : []}
-              notCovered={selectedNote ? [selectedNote] : []}
+              findings={patternMode ? (selectedPattern ? [selectedPattern] : []) : trajectoryFindings}
+              notCovered={
+                patternMode
+                  ? (selectedNote ? [selectedNote] : [])
+                  : (data?.findings?.notCovered?.filter((n) => n.tool === "trajectory") ?? [])
+              }
               quietNote={data?.findings?.quietNote ?? undefined}
               crossTool={data?.findings?.crossTool?.find((c) => c.tool === "divergence") ?? undefined}
               ended={data?.findings?.recentlyEnded ?? undefined}
               regime={data?.regime ?? null}
               symbol={symbol}
-              boundary={selectedPattern ? doesntMean(selectedPattern.patternKey) : null}
+              boundary={patternMode && selectedPattern ? doesntMean(selectedPattern.patternKey) : null}
             />
             {trajectory ? <TrajectorySummary trajectory={trajectory} /> : null}
           </>

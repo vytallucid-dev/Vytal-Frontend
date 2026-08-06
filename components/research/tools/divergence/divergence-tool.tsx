@@ -23,28 +23,6 @@
  * it through the identical path (selection-view.tsx branches on `pair`, never on `kind`). Only the
  * words and the weight differ — and the banner's tone is pinned neutral, because a note is the record
  * of a decision NOT to make a claim and must never wear a severity accent.
- * ═══════════════════════════════════════════════════════════════════════════════════════════════════
- * Divergence & Convergence — the orchestrator. THE PAGE IS ABOUT THE SELECTED READING.
- * ═══════════════════════════════════════════════════════════════════════════════════════════════════
- *
- * ── ★ WHAT CHANGED: ONE CHART, THREE READINGS ────────────────────────────────────────────────────
- * GLENMARK fires D2 (Market 69 vs Momentum 26), D1 (Market 69 vs Foundation 35) and D5 (Foundation 35
- * vs Momentum 26). This tool charted the lead one and listed the other two in a panel you could not
- * click — it named readings it then refused to show.
- *
- * Selection now drives EVERY slot: chart series, chart heading, readout, chips, the promoted banner,
- * the card and its clauses, and the boundary. Switching from D2 to D5 does not filter a static view —
- * it re-frames the page onto a different pair of pillars with a different gap and a different
- * sentence. Three patterns means three independently complete analyses, not one merged one.
- *
- * ⚠ THE SELECTION IS URL STATE (`?pattern=`), so a specific reading is linkable and survives refresh.
- *   An unknown or no-longer-firing key falls back to the default silently — see resolveSelected.
- *
- * ── ★ NOT-COVERED NOTES ARE SELECTABLE HERE TOO, WITH FULL CHART PARITY ──────────────────────────
- * A note carries the same `pair` and `lifecycle` shapes a finding does, so the chart and readout draw
- * it through the identical path (selection-view.tsx branches on `pair`, never on `kind`). Only the
- * words and the weight differ — and the banner's tone is pinned neutral, because a note is the record
- * of a decision NOT to make a claim and must never wear a severity accent.
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -194,6 +172,13 @@ export function DivergenceTool() {
   //     3 scored, nothing firing, a not-covered note present   — the note, selectable like any read
   const noSpread = !!data && !!verdict && verdict.divergence.spread === null;
 
+  // ★ GENUINELY EMPTY — state 2 above, and ONLY state 2. Scored, a readable spread, and nothing on it:
+  //   no Formed pattern, no Building one, and no not-covered note either (`selectables` is exactly
+  //   that union). ⚠ NOT the same as `noSpread`, which is a COVERAGE fact and already renders its own
+  //   panel — conflating the two would offer "go read the trajectory" to a stock whose pillars are the
+  //   very thing that isn't scored. See FindingCards.pointWhenEmpty.
+  const nothingFiring = !!data && !!verdict && !noSpread && selectables.length === 0;
+
   const single: SingleViewSlots | null = symbol
     ? {
         isLoading: healthQ.isLoading,
@@ -258,6 +243,9 @@ export function DivergenceTool() {
               regime={data?.regime ?? null}
               symbol={symbol}
               boundary={selectedPattern ? doesntMean(selectedPattern.patternKey) : null}
+              // ★ A DEAD END GETS A DOOR. Nothing firing here → say so plainly and point at
+              //   Trajectory, which always has the stock's pillar history. See `nothingFiring`.
+              pointWhenEmpty={nothingFiring}
             />
             {selectedPair && summarySpread.length >= 2 ? (
               <DivergenceSummary

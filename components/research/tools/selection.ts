@@ -67,9 +67,11 @@ export interface SelectionReading {
  * them by anything — most of all by their gap — would rebuild the ranked generic-spread read both
  * specs excluded.
  *
- * ⚠ NOTES ARE OFFERED ON BOTH TOOLS. Whether a given note came from the Divergence spec's exclusion
- * table or the Trajectory spec's is NOT on the wire, and splitting them by reading their id would be
- * a family classification invented on the frontend. See the build report.
+ * ⚠ NOTES ARE FILTERED TO THIS TOOL, ON THE WIRE FIELD. `NotCoveredNote.tool` says which spec's
+ * exclusion table a configuration came from (NC1/NC2 divergence, NC3–NC10 trajectory) — HDFCBANK's
+ * NC1 is a Foundation-vs-Market divergence configuration, and showing it in the Trajectory switcher
+ * put a divergence reading on a tool with no divergence axis to place it on. This filters on that
+ * served field; it never reads the id to guess which family a note belongs to.
  */
 export function buildSelectables(
   patterns: readonly PatternView[] | undefined,
@@ -81,7 +83,9 @@ export function buildSelectables(
     id: pattern.patternKey,
     pattern,
   }));
-  const n: Selectable[] = (notCovered ?? []).map((note) => ({ kind: "not_covered", id: note.id, note }));
+  const n: Selectable[] = (notCovered ?? [])
+    .filter((note) => note.tool === tool)
+    .map((note) => ({ kind: "not_covered", id: note.id, note }));
   return [...p, ...n];
 }
 

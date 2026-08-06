@@ -93,7 +93,9 @@ export function TrajectoryChart({
         .map((k) => TRAJECTORY_LINES.find((l) => l.key === k))
         .filter((l): l is (typeof TRAJECTORY_LINES)[number] => !!l && want.has(l.key));
     }
-    return TRAJECTORY_LINES.filter((l) => l.key === "composite" || enabled[l.key]);
+    // ⚠ NO SPECIAL CASE FOR COMPOSITE HERE — see TRAJECTORY_LINES' header. It is on by default
+    //   (the initial `enabled` state), but a reader who turns it off gets exactly that.
+    return TRAJECTORY_LINES.filter((l) => enabled[l.key]);
   }, [focus, enabled]);
   const focused = !!focus?.length;
   const markerKey = (drawn[0]?.key ?? "composite") as LineKey;
@@ -375,39 +377,49 @@ export function TrajectoryChart({
         )}
       </div>
 
-      {/* legend — toggles + latest value. ⚠ IN FOCUS MODE THE LINES ARE NOT TOGGLABLE: the selection
-          decides what is drawn, and letting the legend switch off the pattern's own subject would put
-          the chart back out of step with the card beneath it. */}
+      {/* legend — toggles + latest value.
+          ⚠ FOCUS MODE LOCKS EVERYTHING: the selection decides what is drawn, and letting the legend
+          switch off the pattern's own subject would put the chart back out of step with the card
+          beneath it (see TrajectoryChart's `focus` doc).
+          ⚠ FULL TRAJECTORY UNLOCKS EVERYTHING BUT THE LAST LINE STANDING: composite is toggleable
+          like any other line (TRAJECTORY_LINES carries no per-line flag any more — see its header),
+          but turning off the one remaining enabled line would leave nothing to look at, so that one
+          click is refused rather than silently producing an empty chart. */}
       <div className="mt-3 flex flex-wrap gap-2">
-        {(focused ? drawn : TRAJECTORY_LINES).map((l) => {
-          const togglable = l.togglable && !focused;
-          const isOff = togglable && !enabled[l.key];
-          return (
-            <button
-              key={l.key}
-              disabled={!togglable}
-              onClick={() => togglable && setEnabled((e) => ({ ...e, [l.key]: !e[l.key] }))}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-[9px] border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink2 transition-opacity",
-                togglable && "hover:border-line3",
-                isOff && "opacity-40",
-              )}
-            >
-              <span
-                className={cn("h-[3px] w-3.5 rounded", isHeld(l.key, isDaily) && "opacity-60")}
-                style={{
-                  background: isHeld(l.key, isDaily)
-                    ? `repeating-linear-gradient(90deg, ${l.color} 0 4px, transparent 4px 7px)`
-                    : l.color,
-                }}
-              />
-              {l.label}
-              <span className="num font-medium text-ink">
-                {(points[n - 1][l.key as keyof WindowPoint] as number).toFixed(0)}
-              </span>
-            </button>
-          );
-        })}
+        {(() => {
+          const enabledCount = TRAJECTORY_LINES.filter((x) => enabled[x.key]).length;
+          return (focused ? drawn : TRAJECTORY_LINES).map((l) => {
+            const isLastStanding = !focused && enabled[l.key] && enabledCount <= 1;
+            const togglable = !focused && !isLastStanding;
+            const isOff = !focused && !enabled[l.key];
+            return (
+              <button
+                key={l.key}
+                disabled={!togglable}
+                title={isLastStanding ? "At least one line must stay on" : undefined}
+                onClick={() => togglable && setEnabled((e) => ({ ...e, [l.key]: !e[l.key] }))}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-[9px] border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink2 transition-opacity",
+                  togglable && "hover:border-line3",
+                  isOff && "opacity-40",
+                )}
+              >
+                <span
+                  className={cn("h-[3px] w-3.5 rounded", isHeld(l.key, isDaily) && "opacity-60")}
+                  style={{
+                    background: isHeld(l.key, isDaily)
+                      ? `repeating-linear-gradient(90deg, ${l.color} 0 4px, transparent 4px 7px)`
+                      : l.color,
+                  }}
+                />
+                {l.label}
+                <span className="num font-medium text-ink">
+                  {(points[n - 1][l.key as keyof WindowPoint] as number).toFixed(0)}
+                </span>
+              </button>
+            );
+          });
+        })()}
         {/* held key — shown only when a coarser pillar (F/M on a daily window) is held */}
         {anyHeld && (
           <span className="inline-flex items-center gap-1.5 self-center text-[11px] text-ink3">

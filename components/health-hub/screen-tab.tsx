@@ -187,12 +187,6 @@ function buildConditionFilters(view: UniverseHealthView): {
       //   now reads Ruling 3's headline, decided once, backend-side.
       note: "A divergence pattern is currently firing on this stock",
       match: (m) => m.divergence.headline === "patterns_firing",
-      // ⚠ NO THRESHOLD IN COPY, STILL. This used to read "Two pillars ≥ 25 pts apart" (stale the
-      //   day Phase 2 moved the material cut to 12), then "The widest pillar spread on this stock"
-      //   (stale the day the widest-pair derivation itself was retired — Ruling 0). The match below
-      //   now reads Ruling 3's headline, decided once, backend-side.
-      note: "A divergence pattern is currently firing on this stock",
-      match: (m) => m.divergence.headline === "patterns_firing",
     },
     {
       id: "recovery",
