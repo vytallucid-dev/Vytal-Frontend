@@ -206,7 +206,10 @@ function KpiRail({ view }: { view: UniverseHealthView }) {
           label={k.redFlags === 1 ? "red flag · watch with care" : "red flags · watch with care"}
         />
         <Kpi value={k.recovering.length} tone="rec" label="recovering from weakness" />
-        <Kpi value={k.wideSpread} tone="ctx" label="wide pillar spread (≥25)" />
+        {/* ⚠ "wide pillar spread (≥25)" was stale on two counts: Phase 2 moved the material cut
+            to 12, and the widest-pair derivation the ≥25 banding ran on is retired (Ruling 0).
+            Ruling 3's headline carries no size band at this level — just firing or not. */}
+        <Kpi value={k.patternsFiring} tone="ctx" label="divergence patterns firing" />
       </div>
     </div>
   );
@@ -531,11 +534,12 @@ function Attention({ view }: { view: UniverseHealthView }) {
           tone="ctx"
           icon={<Icons.compare className="size-4" />}
           count={a.wideDivergence.count}
-          title="carry a wide pillar spread"
+          title="have a divergence pattern firing"
           tag="Context"
-          // ⚠ The per-name note read "≥25 gap" — a THRESHOLD in copy, and the wrong one after Phase 2
-          //   moved the material cut to 12. This aggregate carries no per-symbol gap, so the note is
-          //   dropped rather than replaced with a number that isn't here. The stock's own row shows it.
+          // ⚠ This note used to read "≥25 gap" (stale after Phase 2 moved the material cut to 12),
+          //   then dropped the number entirely once that comment was written. It now names the fact
+          //   the payload actually carries — that something is firing — rather than a gap size this
+          //   aggregate never had. The stock's own row shows the pair and the number.
           names={a.wideDivergence.names.map((s) => ({ label: s }))}
         />
       )}

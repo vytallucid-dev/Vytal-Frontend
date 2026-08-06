@@ -317,7 +317,6 @@ const CONCERN_ACCENT: Record<Concern, string> = {
   fundamentals: "var(--p-found)",
   momentum: "var(--p-mom)",
   trajectory: "var(--p-mkt)",
-  other: "var(--ink3)",
 };
 
 // The three concern tiers displayed under Patterns, plus the new "trajectory" bucket that
@@ -326,10 +325,9 @@ const CONCERN_ACCENT: Record<Concern, string> = {
 const PATTERN_CONCERNS: Concern[] = ["ownership", "fundamentals", "momentum", "trajectory"];
 const CONCERN_GROUP_LABEL: Record<Concern, string> = {
   ownership: "Ownership patterns",
-  fundamentals: "Fundamentals patterns",
+  fundamentals: "Foundation patterns",
   momentum: "Momentum patterns",
   trajectory: "Trajectory & divergence",
-  other: "Other",
 };
 
 function FeedStatusCard({
@@ -580,7 +578,6 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
     fundamentals: [],
     momentum: [],
     trajectory: [],
-    other: [],
   };
   for (const p of patterns.filter(matches)) patternsByConcern[p.concern].push(p);
   // Count every displayed concern tier — now INCLUDING trajectory (the structural
@@ -596,7 +593,7 @@ export function FlagsTab({ view }: { view: UniverseHealthView }) {
   }
   const sevMax = Math.max(sevCounts.critical, sevCounts.high, sevCounts.other, 1);
 
-  const concernCounts: Record<Concern, number> = { ownership: 0, fundamentals: 0, momentum: 0, trajectory: 0, other: 0 };
+  const concernCounts: Record<Concern, number> = { ownership: 0, fundamentals: 0, momentum: 0, trajectory: 0 };
   for (const p of prepared) concernCounts[p.concern] += p.memberCount;
   const concernMax = Math.max(...Object.values(concernCounts), 1);
 

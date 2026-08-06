@@ -8,7 +8,7 @@ import type {
   LabelBand,
   PillarKey,
   TrajectoryMarker,
-  DivergenceFlag,
+  DivergenceHeadline,
   FlowCategoryState,
 } from "./health";
 import type {
@@ -31,7 +31,16 @@ export interface UniverseMemberView {
   pillars: Record<PillarKey, number>;
   trajectoryMarker: TrajectoryMarker | null;
   trajectoryDelta: number | null;
-  divergence: { flag: DivergenceFlag; gap: number };
+  /**
+   * ★ RULING 3's headline state + S1's spread — NOT a per-member pair. This mirror had drifted:
+   * it still declared `{flag, gap}` off the retired widest-pair banding while the backend has
+   * served `{headline, spread}` since the Part-1 migration, so every read of `.flag`/`.gap` here
+   * was silently reading `undefined`. See divergence-headline.ts (backend) for why the widest pair
+   * is gone — the member-list level carries no per-finding pair (that's a per-stock-card fact);
+   * a filtered/ranked list only needs to know THAT something is firing and how far apart the
+   * pillars sit, both of which this shape gives honestly.
+   */
+  divergence: { headline: DivergenceHeadline; spread: number | null };
   firedFlags: FiredFlag[];
   firedPatterns: FiredPattern[];
   /** Sector for Hub Overview table grouping/filter. null if unlinked. */

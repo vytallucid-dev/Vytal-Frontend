@@ -469,12 +469,15 @@ function ExampleScored({ view }: { view: HealthSnapshotView }) {
             : PILLAR_ORDER_NOTE}
         </p>
 
-        {v.divergence.flag !== "none" && v.divergence.high && v.divergence.low && (
+        {/* ★ The FIRED finding's own pair. This paragraph used to name the widest scored pair, which
+            is a true statement about the four pillars but the wrong caption beside a finding about a
+            different pair. */}
+        {v.divergence.pair && (
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink3">
-            The four don&apos;t agree here — {PILLAR_META[v.divergence.high.pillar].label} reads{" "}
-            {Math.round(v.divergence.high.subtotal)} while{" "}
-            {PILLAR_META[v.divergence.low.pillar].label} reads{" "}
-            {Math.round(v.divergence.low.subtotal)}. One number can be reached from very different
+            The four don&apos;t agree here — {PILLAR_META[v.divergence.pair.high.pillar].label} reads{" "}
+            {Math.round(v.divergence.pair.high.subtotal)} while{" "}
+            {PILLAR_META[v.divergence.pair.low.pillar].label} reads{" "}
+            {Math.round(v.divergence.pair.low.subtotal)}. One number can be reached from very different
             mixes, which is why the pillars are shown and not just the total.
           </p>
         )}

@@ -25,7 +25,7 @@
  *   tool landing card will disagree — the exact class of bug this phase removes.
  */
 
-import { familyOf, type Family } from "./classify";
+import { familyOf, severityWeight, type Family } from "./classify";
 import type { PatternView } from "@/types/health";
 
 export type ToolId = "divergence" | "trajectory";
@@ -48,15 +48,39 @@ export function belongsToTool(key: string, tool: ToolId): boolean {
  */
 export function findingsForTool(patterns: readonly PatternView[] | undefined, tool: ToolId): PatternView[] {
   if (!patterns?.length) return [];
-  return patterns.filter((p) => belongsToTool(p.patternKey, tool)).slice().sort(bySeverity);
+  return patterns.filter((p) => belongsToTool(p.patternKey, tool)).slice().sort(byTierThenSeverity);
 }
 
-const SEVERITY_RANK: Readonly<Record<string, number>> = {
-  critical: 0, red: 1, high: 2, amber: 3, recovery: 4, green: 5, medium: 6, low: 7,
-};
-const rank = (s: string | null | undefined): number => SEVERITY_RANK[(s ?? "").toLowerCase()] ?? 9;
-const bySeverity = (a: PatternView, b: PatternView): number =>
-  rank(a.severity) - rank(b.severity) || a.patternKey.localeCompare(b.patternKey);
+// ★ SEVERITY_RANK IS GONE — it was the FOURTH transcription of one ordering (the backend catalogue,
+//   tool-scan.service.ts, health-view.service.ts, and here). `severityWeight` is classify.ts’s, which
+//   is the catalogue’s own eight-token order; a local copy stays correct only until someone adds a
+//   ninth token to one of them.
+
+/**
+ * ★ CARD ORDER: TIER, THEN SEVERITY, THEN KEY.
+ *
+ * §1.2 grades divergence tension by TIER (material → stretched → extreme) and the RULE stamps it, so
+ * tier leads. Severity breaks ties; the key terminates the order so two equally-ranked cards cannot
+ * swap places between renders. Untiered patterns — every crossing and every movement — sort AFTER
+ * tiered ones rather than at zero: "no tier" is a real position in the order, not a missing number.
+ */
+const TIER_ORDER: Readonly<Record<string, number>> = { extreme: 0, stretched: 1, material: 2 };
+const tierRank = (p: PatternView): number => TIER_ORDER[(p.tier ?? "").toLowerCase()] ?? 8;
+/**
+ * ★ FORMED BEFORE BUILDING, ahead of every other key.
+ *
+ * A completed shape and a forming one are not two intensities of one card — one carries a measured
+ * claim, the other carries none at all. Ordering by tier first would interleave them, putting an
+ * EXTREME-gap Building card above a MATERIAL-gap Formed one and burying the only card on the stock
+ * that is entitled to say anything.
+ */
+const stateRank = (p: PatternView): number => (p.state === "building" ? 1 : 0);
+
+const byTierThenSeverity = (a: PatternView, b: PatternView): number =>
+  stateRank(a) - stateRank(b) ||
+  tierRank(a) - tierRank(b) ||
+  severityWeight(a.severity) - severityWeight(b.severity) ||
+  a.patternKey.localeCompare(b.patternKey);
 
 /** Read a number out of a finding's evidence. Numbers come from EVIDENCE, never from prose — that
  *  separation is what stops a threshold going stale inside a copy string. */

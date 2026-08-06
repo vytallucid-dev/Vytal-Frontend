@@ -2,7 +2,7 @@
  * Read-model contracts for the Research TOOLS (Trajectory / Divergence / Ownership).
  * Mirrors the backend `stocks-list.types.ts` verbatim:
  *   • GET /api/stocks            → ScoredStockLite[]
- *   • GET /api/stocks/scan?tool= → ToolScanItem[]  (trajectory + divergence, Phase 4)
+ *   • GET /api/stocks/scan?tool= → ToolScanPage<ToolScanItem>  (cursor-paged; see ToolScanPage)
  */
 
 import type { LabelBand, FlowCategoryView } from "@/types/health";
@@ -207,3 +207,17 @@ export interface OwnershipScanItem {
 
 /** Tool ids — the seam for `divergence | ownership` reusing the same frame. */
 export type ToolId = "trajectory" | "divergence" | "ownership";
+
+/**
+ * ONE PAGE of a tool's ranked landing scan — mirrors backend ToolScanPage
+ * (tool-scan.page.ts). GET /api/stocks/scan?tool=… returns this wrapper, not a
+ * bare array: `total` is the size of the whole (possibly filtered) ranking,
+ * not the page, and `cursor`/`hasMore` are what a caller pages through it with.
+ */
+export interface ToolScanPage<T> {
+  tool: ToolId;
+  items: T[];
+  total: number;
+  cursor: string | null;
+  hasMore: boolean;
+}

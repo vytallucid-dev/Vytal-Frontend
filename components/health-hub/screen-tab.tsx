@@ -175,11 +175,12 @@ function buildConditionFilters(view: UniverseHealthView): {
     {
       id: "wide_divergence",
       label: "Divergence",
-      // ⚠ NO THRESHOLD IN COPY. This read "Two pillars ≥ 25 pts apart" and went stale the day
-      //   Phase 2 moved the material cut to 12 — a rule typed into prose cannot follow the engine.
-      //   The number a reader needs is the stock's OWN gap, which the row already prints.
-      note: "The widest pillar spread on this stock",
-      match: (m) => m.divergence.flag === "wide",
+      // ⚠ NO THRESHOLD IN COPY, STILL. This used to read "Two pillars ≥ 25 pts apart" (stale the
+      //   day Phase 2 moved the material cut to 12), then "The widest pillar spread on this stock"
+      //   (stale the day the widest-pair derivation itself was retired — Ruling 0). The match below
+      //   now reads Ruling 3's headline, decided once, backend-side.
+      note: "A divergence pattern is currently firing on this stock",
+      match: (m) => m.divergence.headline === "patterns_firing",
     },
     {
       id: "recovery",
@@ -400,9 +401,19 @@ function MemberDetail({ m }: { m: UniverseMemberView }) {
             <span className="size-2 rounded-full" style={{ background: PILLAR_META[worst.key].cssVar }} />
             Watch: {PILLAR_LABEL[worst.key]} ({Math.round(worst.v)})
           </span>
-          {m.divergence.flag !== "none" && (
+          {/* ★ Ruling 3's headline, not the retired "wide"/"notable" band — see the note on the
+              filter preset above. The per-finding pair and tier live on the stock's own page; this
+              row states only what the member-list payload carries: that something is firing, and
+              (when it isn't, but the pillars still disagree) the raw spread. */}
+          {m.divergence.headline === "patterns_firing" && (
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-3 px-2.5 py-1 text-xs text-ink2">
-              {m.divergence.flag === "wide" ? "Wide" : "Notable"} pillar spread · {Math.round(m.divergence.gap)}
+              Divergence firing
+              {m.divergence.spread !== null && <> · {Math.round(m.divergence.spread)}</>}
+            </span>
+          )}
+          {m.divergence.headline === "no_pattern" && m.divergence.spread !== null && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-3 px-2.5 py-1 text-xs text-ink3">
+              Spread {Math.round(m.divergence.spread)} · no matching pattern
             </span>
           )}
         </div>

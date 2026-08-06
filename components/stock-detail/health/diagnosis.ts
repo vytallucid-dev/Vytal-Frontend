@@ -55,30 +55,39 @@ export function buildDiagnosis(
   const word = BAND_WORD[band];
   const segs: Segment[] = [];
 
-  const hasDiv = div.flag !== "none" && !!div.high && !!div.low;
-  const priceAhead =
-    hasDiv &&
-    div.high!.pillar === "market" &&
-    (div.low!.pillar === "foundation" || div.low!.pillar === "momentum");
+  // ★ THE HERO READS THE FIRED FINDING'S OWN PAIR, AND RULING 3's THREE STATES.
+  //
+  // ⚠ IT WAS THE FIFTH CONSUMER OF THE WRONG PAIR. `div.high`/`div.low` were the widest scored pair,
+  // so the hero could announce "Market leads while Momentum lags" on a stock whose standing finding
+  // was about a different pair entirely — and its `else` branch said "the parts agree with the whole"
+  // for BOTH aligned and no-pattern, which is true of one and false of the other. GLENMARK's 49-point
+  // spread rendered as agreement.
+  const pair = div.pair;
 
-  if (priceAhead) {
+  if (pair && pair.high.pillar === "market" && (pair.low.pillar === "foundation" || pair.low.pillar === "momentum")) {
     segs.push({ text: `${word} on the surface — but ` });
     segs.push({ text: "price has run ahead", bold: true });
-    segs.push({
-      text: ` of ${div.low!.pillar === "foundation" ? "the balance sheet" : "cooling momentum"}`,
-    });
-  } else if (hasDiv) {
+    // ⚠ CANONICAL PILLAR NAME beside the reading, not a stand-in. "the balance sheet" and "cooling
+    // momentum" described the pillar without naming it, directly next to its number.
+    segs.push({ text: ` of ${PILLAR_TITLE[pair.low.pillar]}` });
+  } else if (pair) {
     segs.push({ text: `${word} overall — ` });
-    segs.push({ text: `${PILLAR_TITLE[div.high!.pillar]} leads`, bold: true });
-    segs.push({ text: ` while ${PILLAR_NOUN[div.low!.pillar]} lags` });
-  } else {
+    segs.push({ text: `${PILLAR_TITLE[pair.high.pillar]} leads`, bold: true });
+    segs.push({ text: ` while ${PILLAR_TITLE[pair.low.pillar]} lags` });
+  } else if (div.headline === "aligned") {
     segs.push({ text: `${word} — ` });
     segs.push({ text: "the parts agree with the whole", bold: true });
+  } else {
+    // no_pattern: the pillars do NOT agree, and nothing measured describes this shape. Saying so is
+    // the honest reading; the old branch said the opposite.
+    segs.push({ text: `${word} — ` });
+    segs.push({ text: "the pillars disagree", bold: true });
+    segs.push({ text: `, but no measured pattern describes this shape` });
   }
 
   // Ownership pull-back, only if real and not already the named laggard.
   const own = pillars.find((p) => p.pillar === "ownership");
-  const ownAlreadyNamed = hasDiv && div.low!.pillar === "ownership";
+  const ownAlreadyNamed = pair?.low.pillar === "ownership";
   if (own && own.state === "scored" && own.subtotal < 60 && !ownAlreadyNamed) {
     segs.push({ text: ", and " });
     segs.push({ text: "owners are stepping back", bold: true });
@@ -90,7 +99,8 @@ export function buildDiagnosis(
   segs.push({ text: "." });
 
   let sub: string;
-  if (div.flag === "wide") sub = `The number says ${word.toLowerCase()}. The story says look closer.`;
+  if (div.headline === "patterns_firing") sub = `The number says ${word.toLowerCase()}. The story says look closer.`;
+  else if (div.headline === "no_pattern") sub = `The pillars are ${div.spread === null ? "apart" : `${Math.round(div.spread)} points apart`}, and nothing we have measured describes this shape.`;
   else if (traj === "improving") sub = "Quietly getting better, quarter on quarter.";
   else if (traj === "deteriorating") sub = "Losing a little altitude — watch the trend.";
   else sub = "An aligned read — no single pillar is carrying the rest.";

@@ -6,6 +6,7 @@ import type {
   ScoredStockLite,
   UniverseStockLite,
   ToolScanItem,
+  ToolScanPage,
   ToolId,
 } from "@/types/research-tools";
 
@@ -42,14 +43,21 @@ export function useUniverseStocks(enabled = true) {
   });
 }
 
-/** Per-tool landing scan → GET /api/stocks/scan?tool=…  Each tool ranks the same
- *  scored universe differently and returns its own item shape, so the row type is a
- *  type param (defaults to the trajectory item). `trajectory` + `divergence` are
- *  backed today; others 400 until implemented. */
+/**
+ * Per-tool landing scan → GET /api/stocks/scan?tool=…  Each tool ranks the same
+ * scored universe differently and returns its own item shape, so the row type is a
+ * type param (defaults to the trajectory item). `trajectory` + `divergence` are
+ * backed today; others 400 until implemented.
+ *
+ * ⚠ THE ENDPOINT IS CURSOR-PAGED (tool-scan.page.ts on the backend) — it returns a
+ * ToolScanPage<T>, not a bare T[]. A caller wants `.data?.items` for the rows; `.data`
+ * itself also carries `total` / `cursor` / `hasMore` for anyone that pages further.
+ * This hook always requests page one — see the callers for whether that's enough.
+ */
 export function useStockScan<T = ToolScanItem>(tool: ToolId, enabled = true) {
-  return useQuery<T[]>({
+  return useQuery<ToolScanPage<T>>({
     queryKey: ["stocks", "scan", tool],
-    queryFn: () => apiFetch<T[]>(`/api/stocks/scan?tool=${tool}`),
+    queryFn: () => apiFetch<ToolScanPage<T>>(`/api/stocks/scan?tool=${tool}`),
     enabled,
     staleTime: 5 * 60 * 1000,
   });

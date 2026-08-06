@@ -25,19 +25,27 @@ import type { ChipSpec, PromotedRead } from "../tool-frame.types";
 import { findingName, findingDescription, doesntMean } from "@/lib/findings/descriptions";
 import { toneOf, stampedRegime } from "@/lib/findings/tool-findings";
 
-/** The chart's plotted lines — composite + the four pillars. */
+/**
+ * The chart's plotted lines — composite + the four pillars.
+ *
+ * ⚠ THERE IS NO `togglable` FIELD, AND ITS REMOVAL WAS THE POINT. It used to pin the composite as an
+ * untogglable backdrop, which is wrong for FULL TRAJECTORY (the tool is a pillar explorer — dropping
+ * the composite to compare two pillars on their own is a thing a reader legitimately wants). What may
+ * be switched is now decided by the CHART'S MODE, in one place: focus mode locks everything, full
+ * trajectory unlocks everything but the last line standing. A per-line flag beside that rule could
+ * only ever contradict it.
+ */
 export const TRAJECTORY_LINES: {
   key: "composite" | PillarKey;
   label: string;
   color: string;
   width: number;
-  togglable: boolean;
 }[] = [
-  { key: "composite", label: "Composite", color: "var(--ink)", width: 3, togglable: false },
-  { key: "foundation", label: "Foundation", color: PILLAR_META.foundation.cssVar, width: 2, togglable: true },
-  { key: "momentum", label: "Momentum", color: PILLAR_META.momentum.cssVar, width: 2, togglable: true },
-  { key: "market", label: "Market", color: PILLAR_META.market.cssVar, width: 2, togglable: true },
-  { key: "ownership", label: "Ownership", color: PILLAR_META.ownership.cssVar, width: 2, togglable: true },
+  { key: "composite", label: "Composite", color: "var(--ink)", width: 3 },
+  { key: "foundation", label: "Foundation", color: PILLAR_META.foundation.cssVar, width: 2 },
+  { key: "momentum", label: "Momentum", color: PILLAR_META.momentum.cssVar, width: 2 },
+  { key: "market", label: "Market", color: PILLAR_META.market.cssVar, width: 2 },
+  { key: "ownership", label: "Ownership", color: PILLAR_META.ownership.cssVar, width: 2 },
 ];
 
 export const MARKER_TONE: Record<
@@ -122,11 +130,13 @@ export function buildTrajectoryChips(verdict: VerdictSection): ChipSpec[] {
     const m = MARKER_TONE[verdict.trajectoryMarker];
     chips.push({ label: m.word, color: m.color });
   }
-  if (verdict.divergence.flag !== "none") {
-    chips.push({
-      label: `${verdict.divergence.flag} divergence · ${verdict.divergence.gap.toFixed(0)}`,
-      color: verdict.divergence.flag === "wide" ? "var(--crit)" : "var(--high)",
-    });
+  // ★ RULING 3's state, and — when something is firing — that finding's OWN gap. The old chip read
+  //   `${flag} divergence · ${gap}` off the widest scored pair banded at 15/25, a third severity
+  //   scale that could disagree with the finding standing on the same stock.
+  if (verdict.divergence.headline === "patterns_firing" && verdict.divergence.pair) {
+    chips.push({ label: `divergence · ${verdict.divergence.pair.gap}`, color: "var(--high)" });
+  } else if (verdict.divergence.headline === "no_pattern" && verdict.divergence.spread !== null) {
+    chips.push({ label: `spread ${verdict.divergence.spread.toFixed(0)} · no pattern`, color: "var(--ink2)" });
   }
   return chips;
 }

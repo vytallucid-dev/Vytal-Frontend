@@ -1,14 +1,31 @@
 "use client";
 
 /**
- * Divergence & Convergence tool — the orchestrator. Fills the SAME five <ToolFrame>
- * slots Trajectory does (meta, renderChart, renderReadout, renderSummary,
- * promotedRead, landing). Zero frame edits. The spread series is pure arithmetic
- * over the health endpoint's trajectory block (no new DB read); the landing uses the
- * new `?tool=divergence` scan.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════
+ * Divergence & Convergence — the orchestrator. THE PAGE IS ABOUT THE SELECTED READING.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ── ★ WHAT CHANGED: ONE CHART, THREE READINGS ────────────────────────────────────────────────────
+ * GLENMARK fires D2 (Market 69 vs Momentum 26), D1 (Market 69 vs Foundation 35) and D5 (Foundation 35
+ * vs Momentum 26). This tool charted the lead one and listed the other two in a panel you could not
+ * click — it named readings it then refused to show.
+ *
+ * Selection now drives EVERY slot: chart series, chart heading, readout, chips, the promoted banner,
+ * the card and its clauses, and the boundary. Switching from D2 to D5 does not filter a static view —
+ * it re-frames the page onto a different pair of pillars with a different gap and a different
+ * sentence. Three patterns means three independently complete analyses, not one merged one.
+ *
+ * ⚠ THE SELECTION IS URL STATE (`?pattern=`), so a specific reading is linkable and survives refresh.
+ *   An unknown or no-longer-firing key falls back to the default silently — see resolveSelected.
+ *
+ * ── ★ NOT-COVERED NOTES ARE SELECTABLE HERE TOO, WITH FULL CHART PARITY ──────────────────────────
+ * A note carries the same `pair` and `lifecycle` shapes a finding does, so the chart and readout draw
+ * it through the identical path (selection-view.tsx branches on `pair`, never on `kind`). Only the
+ * words and the weight differ — and the banner's tone is pinned neutral, because a note is the record
+ * of a decision NOT to make a claim and must never wear a severity accent.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
 import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
@@ -23,17 +40,14 @@ import {
   type ToolWindow,
 } from "../tool-frame.types";
 import { sliceWindow, dailyBoundsOf } from "../window-slice";
-import { DivergenceChart, DivergenceEmpty } from "./divergence-chart";
-import { DivergenceReadout } from "./divergence-readout";
 import { DivergenceSummary } from "./divergence-summary";
+import { FindingCards } from "../finding-cards";
+import { PatternSwitcher } from "../pattern-switcher";
+import { SelectionChart, SelectionReadout } from "../selection-view";
+import { buildSelectables, notCoveredRead, pairOf, resolveSelected } from "../selection";
+import { doesntMean } from "@/lib/findings/descriptions";
 import { DivergenceScanCard } from "./divergence-card";
-import {
-  pickScoredPair,
-  buildSpread,
-  buildDivergenceRead,
-  spreadSlope,
-  buildDivergenceChips,
-} from "./divergence-data";
+import { buildSpread, buildDivergenceRead, buildDivergenceChips, buildHeadlineRead } from "./divergence-data";
 import { findingsForTool } from "@/lib/findings/tool-findings";
 
 const DIVERGENCE_META: ToolMeta = {
@@ -53,6 +67,7 @@ export function DivergenceTool() {
   const router = useRouter();
   const params = useSearchParams();
   const symbol = params.get("symbol")?.toUpperCase() || null;
+  const requestedPattern = params.get("pattern");
 
   const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
   const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
@@ -68,10 +83,7 @@ export function DivergenceTool() {
   const data = healthQ.data;
   const verdict = data?.verdict ?? null;
   const trajectory = data?.trajectory ?? null;
-  const pillars = useMemo(() => data?.pillars ?? [], [data]);
 
-  // The window sliced to the selected cadence (quarterly / daily / custom) — the daily
-  // block is already on the payload, so a short window is a pure client-side re-slice.
   const sliced = useMemo(
     () =>
       trajectory
@@ -81,79 +93,89 @@ export function DivergenceTool() {
   );
   const dailyBounds = dailyBoundsOf(trajectory?.dailySeries);
 
-  // The spread is the SAME pillar-spread arithmetic — now over the sliced window's points,
-  // so on a daily window the gap moves day by day. No new read; no lens primitive.
-  const pair = useMemo(() => (pillars.length ? pickScoredPair(pillars) : null), [pillars]);
-  const spread = useMemo(
-    () => (sliced && pair ? buildSpread(sliced.points, pair.high, pair.low) : []),
-    [sliced, pair],
-  );
-  // The full-quarterly spread — a window-INDEPENDENT basis. Gates building-history and
-  // backs the promoted read / chips when the current window is too thin to read (so an
-  // empty custom range never fabricates an "aligned" read from zero points).
-  const quarterlySpread = useMemo(
-    () =>
-      trajectory && pair
-        ? buildSpread(
-            trajectory.series.map((pt) => ({
-              x: "", asOfDate: null, periodKey: null,
-              composite: pt.composite, foundation: pt.foundation, momentum: pt.momentum,
-              market: pt.market, ownership: pt.ownership,
-            })),
-            pair.high,
-            pair.low,
-          )
-        : [],
-    [trajectory, pair],
-  );
-  const hasQuarterlySpread = quarterlySpread.length >= 2;
-
-  // Read basis: the current window when it has ≥2 points (so the read describes what's on
-  // screen), else the full quarterly spread (stable + honest on an empty/thin window).
-  const readSpread = spread.length >= 2 ? spread : quarterlySpread;
-  const gap = readSpread.length ? readSpread[readSpread.length - 1].gap : 0;
-
-  // ★ THE READ COMES FROM THE FIRED FINDINGS, NOT FROM THIS COMPONENT.
-  //   The tool no longer decides whether a divergence exists — it renders the C-family findings the
-  //   engine persisted, the same rows the stock page and the Hub show. `gap` survives only as CHART
-  //   GEOMETRY (the spread line's latest value) and as a chip; it is never classified here.
-  //   Separation is by FAMILY (lib/findings/tool-findings.ts), so a T pattern cannot appear here.
+  // ── THE SELECTION ────────────────────────────────────────────────────────────────────────────
+  // Patterns in findingsForTool's order (state → tier → severity → key — the SAME order the cards
+  // already used, so the default selection is the card that already led), then the not-covered notes
+  // in registry order, always last.
   const divergenceFindings = useMemo(
     () => findingsForTool(data?.findings?.patterns, "divergence"),
     [data],
   );
-
-  // Chart geometry only — which way the drawn line goes, for shading the gap band. Not a
-  // classification: see spreadSlope's note on why widening/narrowing is not a pattern here.
-  const slope = useMemo(
-    () =>
-      readSpread.length >= 2
-        ? spreadSlope(readSpread[0].gap, readSpread[readSpread.length - 1].gap)
-        : ("steady" as const),
-    [readSpread],
+  const selectables = useMemo(
+    () => buildSelectables(data?.findings?.patterns, data?.findings?.notCovered, "divergence"),
+    [data],
+  );
+  const selected = useMemo(
+    () => resolveSelected(selectables, requestedPattern),
+    [selectables, requestedPattern],
+  );
+  const onSelect = useCallback(
+    (id: string) => {
+      const next = new URLSearchParams(Array.from(params.entries()));
+      next.set("pattern", id);
+      // `replace`, not `push`: switching readings on one stock is re-framing the same page, not a new
+      // destination — it should not stack ten back-button steps on the way out of the tool.
+      router.replace(`/research/divergence?${next.toString()}`, { scroll: false });
+    },
+    [params, router],
   );
 
-  const noPair = !!data && !!trajectory && pair === null;
+  const selectedPattern = selected?.kind === "pattern" ? selected.pattern : null;
+  const selectedNote = selected?.kind === "not_covered" ? selected.note : null;
+  const selectedPair = selected ? pairOf(selected) : null;
+
+  // The selected reading first, the rest behind it — so the banner's "+N more" count stays true while
+  // its title, body and tier badge describe what is actually on screen.
+  const readOrder = useMemo(
+    () =>
+      selectedPattern
+        ? [selectedPattern, ...divergenceFindings.filter((p) => p.patternKey !== selectedPattern.patternKey)]
+        : [],
+    [selectedPattern, divergenceFindings],
+  );
+
+  // The spread for the SUMMARY panel — the selected pair only. Null-pair selections (a composite or
+  // single-subject note) have no spread to narrate, and the panel simply does not render.
+  const summarySpread = useMemo(
+    () => (sliced && selectedPair ? buildSpread(sliced.points, selectedPair.high, selectedPair.low) : []),
+    [sliced, selectedPair],
+  );
+
+  // ★ THE EMPTY-STATE BUG. `spread === null` is the coverage fact — fewer than two scored pillars.
+  //   It is NOT "nothing is firing": HDFCBANK is scored on four pillars with a 41-point spread and
+  //   used to read "isn't scored yet". Three states, and only the first is a not-scored screen:
+  //     1 genuinely unscored                                   — spread is null
+  //     2 scored, nothing firing, nothing to note              — the honest headline
+  //     3 scored, nothing firing, a not-covered note present   — the note, selectable like any read
+  const noSpread = !!data && !!verdict && verdict.divergence.spread === null;
+
+  // ★ GENUINELY EMPTY — state 2 above, and ONLY state 2. Scored, a readable spread, and nothing on it:
+  //   no Formed pattern, no Building one, and no not-covered note either (`selectables` is exactly
+  //   that union). ⚠ NOT the same as `noSpread`, which is a COVERAGE fact and already renders its own
+  //   panel; conflating them would offer "go read the trajectory" to a stock whose pillars are the
+  //   very thing that isn't scored. This state keeps its existing headline read — see `promotedRead`,
+  //   which still resolves through buildHeadlineRead — and only gains a way onward.
+  const nothingFiring = !!data && !!verdict && !noSpread && selectables.length === 0;
 
   const single: SingleViewSlots | null = symbol
     ? {
         isLoading: healthQ.isLoading,
+        regime: data?.regime ?? null,
         isError: healthQ.isError,
         onRetry: () => void healthQ.refetch(),
         notScored:
-          data && (!data.scored || !verdict || !trajectory || noPair)
+          data && (!data.scored || !verdict || !trajectory || noSpread)
             ? {
-                reason: noPair
+                reason: noSpread
                   ? "Fewer than two scored pillars — there's no spread to read yet."
                   : (data.identity?.coverageReason ??
                     `Coverage state: ${data.identity?.coverageState ?? "not yet scored"}`),
               }
             : null,
-        // Window-independent building-history: no readable quarterly spread AND no usable
-        // daily history. An empty CURRENT window (e.g. a custom range with no points) is
-        // handled by the chart's own empty state, not by blanking the whole grid.
-        buildingHistory:
-          !!trajectory && !!pair && !hasQuarterlySpread && !dailyBounds,
+        // ⚠ BUILDING-HISTORY NOW ASKS THE HISTORY QUESTION, not the pair question. It used to key on
+        //   whether a quarterly SPREAD could be built, which is a fact about the selected pair — so a
+        //   scored stock with a full series but no firing pattern could read "building history".
+        buildingHistory: !!trajectory && !noSpread && trajectory.series.length <= 1 && !dailyBounds,
         dailyBounds,
         identity: {
           name: data?.identity?.name ?? symbol,
@@ -162,46 +184,57 @@ export function DivergenceTool() {
             ? `${symbol} · ${data.identity.sector?.displayName ?? data.identity.industryPath}`
             : symbol,
         },
-        chips: verdict ? buildDivergenceChips(verdict, gap, divergenceFindings) : [],
-        promotedRead: verdict && trajectory ? buildDivergenceRead(divergenceFindings) : null,
+        chips: verdict ? buildDivergenceChips(verdict, selectedPair?.gap ?? null, readOrder) : [],
+        promotedRead: selectedNote
+          ? notCoveredRead(selectedNote)
+          : verdict && trajectory
+            ? readOrder.length
+              ? buildDivergenceRead(readOrder, verdict.divergence)
+              : buildHeadlineRead(verdict.divergence)
+            : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
-        renderChart: (active, setActive) =>
-          pair && spread.length >= 2 ? (
-            <DivergenceChart
-              spread={spread}
-              highPillar={pair.high}
-              lowPillar={pair.low}
-              direction={slope}
-              isDaily={sliced?.isDaily ?? false}
-              resultMarks={sliced?.resultMarks ?? []}
-              clampedEarlier={sliced?.clampedEarlier ?? false}
-              active={active}
-              onActiveChange={setActive}
+        renderChart: (active, setActive) => (
+          <SelectionChart
+            selection={selected}
+            sliced={sliced}
+            crossings={trajectory?.crossings ?? []}
+            active={active}
+            onActiveChange={setActive}
+          />
+        ),
+        renderReadout: (active) => (
+          <SelectionReadout selection={selected} sliced={sliced} active={active} />
+        ),
+        renderSummary: () => (
+          <>
+            {/* The side panel, made clickable — every reading on this stock, the notes last. */}
+            <PatternSwitcher items={selectables} selectedId={selected?.id ?? null} onSelect={onSelect} />
+            {/* ★ THE SELECTED READING, COMPLETE — every clause the backend composed, in its order.
+                Not a truncated card with a "see more": the other readings are one click away in the
+                switcher above, each of them equally complete when selected. */}
+            <FindingCards
+              findings={selectedPattern ? [selectedPattern] : []}
+              notCovered={selectedNote ? [selectedNote] : []}
+              quietNote={data?.findings?.quietNote ?? undefined}
+              crossTool={data?.findings?.crossTool?.find((c) => c.tool === "trajectory") ?? undefined}
+              ended={data?.findings?.recentlyEnded ?? undefined}
+              regime={data?.regime ?? null}
+              symbol={symbol}
+              boundary={selectedPattern ? doesntMean(selectedPattern.patternKey) : null}
+              // ★ A DEAD END GETS A DOOR. Nothing firing here → say so plainly and point at
+              //   Trajectory, which always has the stock's pillar history. See `nothingFiring`.
+              pointWhenEmpty={nothingFiring}
             />
-          ) : pair ? (
-            // honest empty state — the current window sliced to <2 comparable points
-            // (empty custom range, or sparse daily history after the ≤0-pillar guard).
-            <DivergenceEmpty isDaily={sliced?.isDaily ?? false} highPillar={pair.high} lowPillar={pair.low} />
-          ) : null,
-        renderReadout: (active) =>
-          pair && spread.length ? (
-            <DivergenceReadout
-              spread={spread}
-              highPillar={pair.high}
-              lowPillar={pair.low}
-              direction={slope}
-              active={active}
-            />
-          ) : null,
-        renderSummary: () =>
-          pair && spread.length >= 2 ? (
-            <DivergenceSummary
-              spread={spread}
-              highPillar={pair.high}
-              lowPillar={pair.low}
-              findings={divergenceFindings}
-            />
-          ) : null,
+            {selectedPair && summarySpread.length >= 2 ? (
+              <DivergenceSummary
+                spread={summarySpread}
+                highPillar={selectedPair.high}
+                lowPillar={selectedPair.low}
+                findings={readOrder}
+              />
+            ) : null}
+          </>
+        ),
       }
     : null;
 
@@ -216,12 +249,12 @@ export function DivergenceTool() {
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}
       landing={{
-        items: scanQ.data,
+        items: scanQ.data?.items,
         isLoading: scanQ.isLoading,
         isError: scanQ.isError,
         onRetry: () => void scanQ.refetch(),
-        renderCard: (it, onSelect) => (
-          <DivergenceScanCard item={it as ToolScanItem} onSelect={onSelect} />
+        renderCard: (it, onSelect2) => (
+          <DivergenceScanCard item={it as ToolScanItem} onSelect={onSelect2} />
         ),
         keyOf: (it) => (it as ToolScanItem).symbol,
       }}

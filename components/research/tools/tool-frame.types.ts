@@ -24,6 +24,7 @@
  */
 
 import type { ReactNode } from "react";
+import type { RegimeBadgeView } from "@/types/health";
 import type { Icon } from "@/lib/icons";
 import type { ScoredStockLite } from "@/types/research-tools";
 
@@ -144,9 +145,25 @@ export interface SingleViewSlots {
   dailyBounds?: { first: string; last: string } | null;
   identity: { name: string; ticker: string; sub: string };
   chips: ChipSpec[];
+  /** ★ The live sector regime, rendered as a badge beside the chips. Null hides it entirely — an
+   *  absent badge and a "not established" badge are different states and both are honest. */
+  regime?: RegimeBadgeView | null;
   promotedRead: PromotedRead | null;
   /** funnel-back: /research/stock-screener/[symbol]?tab=health */
   funnelBackHref: string;
+  /**
+   * ★ A TOOL-OWNED VIEW MODE, RENDERED IN THE CHART TOOLBAR beside the window switcher.
+   *
+   * Trajectory has two primary modes — pattern and full trajectory — and the switch between them is
+   * not a setting tucked into a menu: it sits on the toolbar, always rendered, so the mode the reader
+   * is in and the one they are not are both visible without hunting. Divergence and Ownership have no
+   * second mode and simply omit this.
+   *
+   * ⚠ THE FRAME OWNS ONLY THE SLOT, NOT THE MODE. Which modes exist, which is current and what
+   * switching means are the tool's; hoisting any of that here would make the frame the second place
+   * that knows about trajectory's pattern framing.
+   */
+  renderModeSwitch?: () => ReactNode;
   /** left column — the centerpiece chart, sized to its column. Receives the shared
    *  active datapoint + setter so the chart drives the readout. */
   renderChart: (active: ActiveDatapoint, setActive: (a: ActiveDatapoint) => void) => ReactNode;

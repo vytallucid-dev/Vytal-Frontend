@@ -13,7 +13,7 @@ import type {
   BarDirection,
   SectorClass,
   TrajectoryMarker,
-  DivergenceFlag,
+  DivergenceHeadline,
   FlowCategoryState,
   LensRead,
 } from "./health";
@@ -136,7 +136,9 @@ export interface PeerGroupMemberView {
   pillars: Record<PillarKey, number>;
   trajectoryMarker: TrajectoryMarker | null;
   trajectoryDelta: number | null;
-  divergence: { flag: DivergenceFlag; gap: number };
+  /** ★ Ruling 3's headline state + S1's spread — see the identical note on UniverseMemberView
+   *  (types/universe-view.ts). This mirror had the same drift; nothing here currently reads it. */
+  divergence: { headline: DivergenceHeadline; spread: number | null };
   firedFlags: FiredFlag[];
   firedPatterns: FiredPattern[];
   /** C/D ownership flow-category state — read-projection of score_ownership_flows.category_state.

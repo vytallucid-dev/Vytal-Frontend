@@ -18,7 +18,7 @@ import { Panel, shortPeriod } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
 import type { ActiveDatapoint } from "../tool-frame.types";
 import type { CrossingEvent } from "@/types/health";
-import { isHeld, type WindowPoint, type ResultMark } from "../window-slice";
+import { isHeld, type LineKey, type WindowPoint, type ResultMark } from "../window-slice";
 import { TRAJECTORY_LINES } from "./trajectory-data";
 
 const VBW = 640;
@@ -44,6 +44,8 @@ export function TrajectoryChart({
   clampedEarlier,
   active,
   onActiveChange,
+  focus,
+  title,
 }: {
   points: WindowPoint[];
   crossings: CrossingEvent[];
@@ -52,9 +54,32 @@ export function TrajectoryChart({
   clampedEarlier: boolean;
   active: ActiveDatapoint;
   onActiveChange: (a: ActiveDatapoint) => void;
+  /**
+   * ★ THE SELECTED READING'S OWN SUBJECTS — draw exactly these lines and no others.
+   *
+   * Supplied from the finding's `facts.pillarPair` (or a not-covered note's readings), so a
+   * single-pillar pattern draws that pillar and a composite pattern (T1–T4) draws the composite.
+   *
+   * ★ OMITTED IS FULL TRAJECTORY — the tool's general mode. All five lines draw, every one of them
+   * (the composite included) is the reader's to switch off, and no selection frames the chart. This
+   * is not a fallback for "nothing to select": it is a mode the reader picks, and PATTERN MODE IS THE
+   * ONE THAT NARROWS. Passing `focus` is what buys the lock, so the lock cannot leak into full mode.
+   *
+   * ⚠ IN FOCUS MODE THE COMPOSITE IS NOT DRAWN UNLESS THE SELECTION NAMES IT. Keeping it as a
+   * permanent backdrop would put a line on screen that the card beneath is not about — the same
+   * chart-says-one-thing-prose-says-another defect that `pillarPair` exists to end.
+   */
+  focus?: readonly LineKey[];
+  /** Chart heading. Defaults to the survey title; a selection re-frames it. */
+  title?: string;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  // ★ THE COMPOSITE IS IN HERE TOO. In FULL TRAJECTORY the tool is a pillar explorer and the reader
+  //   picks any combination of the five — including turning the composite off to compare two pillars
+  //   without the blended line dominating the domain. (It is still pinned on in FOCUS mode, where the
+  //   selection decides the series outright; see `drawn`.)
   const [enabled, setEnabled] = useState<Record<string, boolean>>({
+    composite: true,
     foundation: true,
     momentum: true,
     market: true,
@@ -63,16 +88,32 @@ export function TrajectoryChart({
 
   const n = points.length;
 
+  // The lines actually on screen. Focused → the selection's subjects, in the record's own order, so
+  // the first one is the pattern's SUBJECT (the pillar it is about) and drives the marker/tooltip.
+  const drawn = useMemo(() => {
+    if (focus?.length) {
+      const want = new Set<string>(focus);
+      return focus
+        .map((k) => TRAJECTORY_LINES.find((l) => l.key === k))
+        .filter((l): l is (typeof TRAJECTORY_LINES)[number] => !!l && want.has(l.key));
+    }
+    return TRAJECTORY_LINES.filter((l) => enabled[l.key]);
+  }, [focus, enabled]);
+  const focused = !!focus?.length;
+  // ⚠ NEVER LET THE READER EMPTY THE CHART. With every line off there is no domain, no marker and no
+  //   tooltip — a blank panel that looks broken rather than chosen. The last enabled line is locked
+  //   on (its button renders disabled), so "turn things off" always terminates at one line, not zero.
+  const lastLineOn = drawn.length === 1 ? drawn[0].key : null;
+  const markerKey = (drawn[0]?.key ?? "composite") as LineKey;
+  const valueAt = (i: number) => points[i][markerKey as keyof WindowPoint] as number;
+
   // ── domain: fit the visible data, padded, clamped to [0,100] ──
   const { lo, hi } = useMemo(() => {
     const vals: number[] = [];
     for (const p of points) {
-      vals.push(p.composite);
-      for (const l of TRAJECTORY_LINES) {
-        if (l.key === "composite") continue;
-        if (enabled[l.key]) vals.push(p[l.key as keyof WindowPoint] as number);
-      }
+      for (const l of drawn) vals.push(p[l.key as keyof WindowPoint] as number);
     }
+    if (!vals.length) return { lo: 0, hi: 100 };
     const min = Math.min(...vals);
     const max = Math.max(...vals);
     // On a daily/custom window fit tightly to the real spread (no 55/74 pull) so daily
@@ -93,7 +134,7 @@ export function TrajectoryChart({
       lo: Math.max(0, Math.min(min - 5, 55)),
       hi: Math.min(100, Math.max(max + 5, 74)),
     };
-  }, [points, enabled, isDaily]);
+  }, [points, drawn, isDaily]);
 
   const xOf = (i: number) => (n <= 1 ? (X0 + X1) / 2 : X0 + (i * (X1 - X0)) / (n - 1));
   const yOf = (v: number) => Y0 + ((hi - v) / (hi - lo)) * (Y1 - Y0);
@@ -141,8 +182,9 @@ export function TrajectoryChart({
     onActiveChange({ index: best });
   };
 
-  const anyHeld = TRAJECTORY_LINES.some((l) => isHeld(l.key, isDaily));
+  const anyHeld = drawn.some((l) => isHeld(l.key, isDaily));
   const bandCutsShown = BAND_CUTS.filter((v) => v > lo && v < hi);
+  const heading = title ?? "The recording · composite & pillars over time";
 
   // x labels — denser stepping on a daily window (more points)
   const xStep = n > 16 ? Math.ceil(n / 8) : n > 6 ? 2 : 1;
@@ -154,7 +196,7 @@ export function TrajectoryChart({
     return (
       <Panel className="px-2.5 py-3 sm:px-4 sm:py-4">
         <div className="mb-1 flex items-center justify-between gap-2">
-          <span className="kicker">The recording · composite &amp; pillars over time</span>
+          <span className="kicker">{heading}</span>
         </div>
         <p className="py-14 text-center text-[12px] text-ink3">
           {isDaily
@@ -168,7 +210,7 @@ export function TrajectoryChart({
   return (
     <Panel className="px-2.5 py-3 sm:px-4 sm:py-4">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="kicker">The recording · composite &amp; pillars over time</span>
+        <span className="kicker">{heading}</span>
       </div>
 
       {/* cadence note — on short/custom windows, explain the flat-honest F/M lines */}
@@ -246,8 +288,7 @@ export function TrajectoryChart({
           ))}
 
           {/* lines — held-aware: F/M dashed on a daily window (flat between quarters, honest) */}
-          {TRAJECTORY_LINES.map((l) => {
-            if (l.key !== "composite" && !enabled[l.key]) return null;
+          {drawn.map((l) => {
             const d = points
               .map((p, i) => `${xOf(i).toFixed(1)},${yOf(p[l.key as keyof WindowPoint] as number).toFixed(1)}`)
               .join(" ");
@@ -265,8 +306,8 @@ export function TrajectoryChart({
             );
           })}
 
-          {/* resting marker on latest composite */}
-          <circle cx={xOf(n - 1)} cy={yOf(points[n - 1].composite)} r={3} fill="var(--ink)" />
+          {/* resting marker — on the SELECTED subject's line, which is the composite in survey mode */}
+          <circle cx={xOf(n - 1)} cy={yOf(valueAt(n - 1))} r={3} fill={drawn[0]?.color ?? "var(--ink)"} />
 
           {/* scrub marker */}
           {scrubbing && (
@@ -282,10 +323,10 @@ export function TrajectoryChart({
               />
               <circle
                 cx={xOf(idx)}
-                cy={yOf(points[idx].composite)}
+                cy={yOf(valueAt(idx))}
                 r={4.5}
                 fill="var(--surface-1)"
-                stroke="var(--ink)"
+                stroke={drawn[0]?.color ?? "var(--ink)"}
                 strokeWidth={2}
               />
             </g>
@@ -337,25 +378,32 @@ export function TrajectoryChart({
             }}
           >
             <span className="num text-ink2">{points[idx].x}</span>
-            <span className="num font-semibold text-ink">{points[idx].composite.toFixed(0)}</span>
+            <span className="num font-semibold text-ink">{valueAt(idx).toFixed(0)}</span>
           </div>
         )}
       </div>
 
-      {/* legend — toggles + latest value */}
+      {/* legend — toggles + latest value.
+          ⚠ IN FOCUS MODE THE LINES ARE NOT TOGGLABLE: the selection decides what is drawn, and letting
+          the legend switch off the pattern's own subject would put the chart back out of step with the
+          card beneath it. That lock belongs to focus mode ALONE — in full trajectory every line here,
+          composite included, is the reader's to switch (bar the last one standing). */}
       <div className="mt-3 flex flex-wrap gap-2">
-        {TRAJECTORY_LINES.map((l) => {
-          const isOff = l.togglable && !enabled[l.key];
+        {(focused ? drawn : TRAJECTORY_LINES).map((l) => {
+          // ONE rule decides this, and it is the MODE — not a per-line flag (see TRAJECTORY_LINES).
+          const togglable = !focused && l.key !== lastLineOn;
+          const isOff = togglable && !enabled[l.key];
           return (
             <button
               key={l.key}
-              disabled={!l.togglable}
-              onClick={() =>
-                l.togglable && setEnabled((e) => ({ ...e, [l.key]: !e[l.key] }))
-              }
+              disabled={!togglable}
+              // ⚠ Only in full mode. A single-subject FOCUS also leaves one line in `drawn`, and
+              //   "at least one line stays on" would misdescribe why that one is locked.
+              title={!focused && l.key === lastLineOn ? "At least one line stays on" : undefined}
+              onClick={() => togglable && setEnabled((e) => ({ ...e, [l.key]: !e[l.key] }))}
               className={cn(
                 "inline-flex items-center gap-2 rounded-[9px] border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink2 transition-opacity",
-                l.togglable && "hover:border-line3",
+                togglable && "hover:border-line3",
                 isOff && "opacity-40",
               )}
             >

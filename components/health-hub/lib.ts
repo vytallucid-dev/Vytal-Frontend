@@ -87,8 +87,10 @@ export interface HubKpis {
   stable: number;
   redFlags: number;
   recovering: RecoveryMover[];
-  wideSpread: number; // members with divergence flag === "wide"
-  notable: number;
+  /** ★ Members with a divergence pattern firing (Ruling 3's `patterns_firing`) — was a "wide"/
+   *  "notable" split banded off the retired widest-pair gap at 15/25. The member-list payload
+   *  carries only the three-state headline, not a per-finding tier, so the split is gone with it. */
+  patternsFiring: number;
   trajectoryWord: string;
 }
 
@@ -103,8 +105,7 @@ export function computeKpis(view: UniverseHealthView): HubKpis {
     else if (m.trajectoryMarker === "improving") firmed++;
     else if (m.trajectoryMarker === "stable") stable++;
   }
-  const wideSpread = members.filter((m) => m.divergence.flag === "wide").length;
-  const notable = members.filter((m) => m.divergence.flag === "notable").length;
+  const patternsFiring = members.filter((m) => m.divergence.headline === "patterns_firing").length;
   const drift = agg.medianDrift;
   const trajectoryWord =
     drift == null
@@ -124,8 +125,7 @@ export function computeKpis(view: UniverseHealthView): HubKpis {
     stable,
     redFlags: agg.redFlagMemberCount,
     recovering: recoveryMovers(view),
-    wideSpread,
-    notable,
+    patternsFiring,
     trajectoryWord,
   };
 }
@@ -280,9 +280,13 @@ export function attentionReads(view: UniverseHealthView): AttentionReads {
   const slipping = members
     .filter((m) => m.trajectoryMarker === "deteriorating" && m.composite >= 68)
     .sort((a, b) => (a.trajectoryDelta ?? 0) - (b.trajectoryDelta ?? 0));
+  // ★ Ranked by SPREAD, not by a re-banded severity — spread is the honest quantity the payload
+  //   carries at this level (S1's own max−min), and ranking by it is not a claim about which
+  //   pattern is more severe. Members with no spread (fewer than two scored pillars) sort last
+  //   rather than crashing the comparator on `null`.
   const wide = members
-    .filter((m) => m.divergence.flag === "wide")
-    .sort((a, b) => b.divergence.gap - a.divergence.gap);
+    .filter((m) => m.divergence.headline === "patterns_firing")
+    .sort((a, b) => (b.divergence.spread ?? -1) - (a.divergence.spread ?? -1));
   const rec = recoveryMovers(view);
   const week = view.sinceLastWeek;
   const up = week.bandCrossings.filter((c) => c.direction === "up").length;

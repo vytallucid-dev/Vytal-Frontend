@@ -33,11 +33,14 @@ export function VerdictHero({
           ? { Icon: Icons.pulse, text: "Stable", cls: "text-ink2 bg-surface-2 border-line2" }
           : null;
 
+  // ★ RULING 3's THREE STATES — the chip used to have two, banded off the widest scored pair at
+  //   15/25. Anything not "wide"/"notable" fell through to "Tight alignment", so a stock with a
+  //   49-point spread and no live finding was labelled tightly aligned.
   const divChip =
-    verdict.divergence.flag === "wide"
-      ? { text: "Wide divergence", cls: "text-fragile bg-crit/12 border-crit/40" }
-      : verdict.divergence.flag === "notable"
-        ? { text: "Notable divergence", cls: "text-high bg-high/10 border-high/40" }
+    verdict.divergence.headline === "patterns_firing"
+      ? { text: "Divergence", cls: "text-high bg-high/10 border-high/40" }
+      : verdict.divergence.headline === "no_pattern"
+        ? { text: "No matching pattern", cls: "text-ink2 bg-surface-2 border-line2" }
         : { text: "Tight alignment", cls: "text-healthy bg-healthy/10 border-healthy/30" };
 
   return (
@@ -104,9 +107,13 @@ export function VerdictHero({
             >
               <Icons.compare className="h-3.5 w-3.5" />
               {divChip.text}
-              {verdict.divergence.flag !== "none" && (
-                <span className="num">({verdict.divergence.gap.toFixed(0)})</span>
-              )}
+              {/* The FIRED finding's own gap when one is firing; S1's spread when nothing is. Two
+                  different quantities, so they are never printed under one label. */}
+              {verdict.divergence.pair ? (
+                <span className="num">({verdict.divergence.pair.gap})</span>
+              ) : verdict.divergence.headline === "no_pattern" && verdict.divergence.spread !== null ? (
+                <span className="num">(spread {verdict.divergence.spread.toFixed(0)})</span>
+              ) : null}
               <Icons.arrowUpRight className="h-3 w-3 opacity-50 transition-opacity group-hover/div:opacity-100" />
             </Link>
           </div>

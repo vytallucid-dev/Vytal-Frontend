@@ -17,13 +17,13 @@
 //   2. npx tsx src/scripts/gen-frontend-fallback.ts
 //   3. commit BOTH repos
 //
-// catalogue version at generation: 63125c0072c11bbe
+// catalogue version at generation: 32af7faa0c143eae
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** The catalogue document version these constants were generated from. Compared against the SERVED
  *  version at runtime — a mismatch means a deploy shipped a frontend built against different copy,
  *  which the provider reports loudly rather than rendering two vocabularies at once. */
-export const GENERATED_FROM_VERSION = "63125c0072c11bbe";
+export const GENERATED_FROM_VERSION = "32af7faa0c143eae";
 
 /** key → display name. */
 export const GEN_FINDING_NAMES: Record<string, string> = {
@@ -36,6 +36,7 @@ export const GEN_FINDING_NAMES: Record<string, string> = {
   "divergence_D5_laggard_catching_up": "Laggard Catching Up",
   "divergence_D6_quality_rolling_over": "Quality Rolling Over",
   "divergence_D7_trajectory_breaking_base_holds": "Trajectory Breaking While the Base Holds",
+  "divergence_S1_aligned": "Aligned — No Tension",
   "divergence_S2_sticky_divergence": "Sticky Divergence",
   "foundation_N1_cash_backed_earnings": "Cash-backed earnings",
   "foundation_N2_working_capital": "Working-capital discipline",
@@ -129,6 +130,12 @@ export const GEN_FINDING_DESCRIPTIONS: Record<
   "divergence_D7_trajectory_breaking_base_holds": {
     "concern": "trajectory",
     "description": "The balance sheet is still intact but the operating trajectory has broken into weakness. This is early — the base has not deteriorated yet, but the direction has changed. The intact balance sheet does not cushion it.",
+    "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
+    "family": "C"
+  },
+  "divergence_S1_aligned": {
+    "concern": "trajectory",
+    "description": "The market's view and the business's condition agree. Nothing is unresolved. This is a genuinely useful reading, not an empty one — most of a screening tool's value is telling you where you do not need to look.",
     "doesntMean": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
     "family": "C"
   },
@@ -309,31 +316,31 @@ export const GEN_FINDING_DESCRIPTIONS: Record<
   "trajectory_D_T1_recovery_low_zone": {
     "concern": "trajectory",
     "description": "A struggling business is genuinely turning — the overall score has risen materially from a weak starting point. This is a real improvement in the underlying fundamentals rather than a price move: on shifts of this size the non-price pillars contribute most of the change. The market has typically already begun repricing it by the time this shows.",
-    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "doesntMean": "a coincident health inflection — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
     "family": "D"
   },
   "trajectory_D_T4_recovering_out_of_below_par": {
     "concern": "trajectory",
     "description": "This business has moved out of below-par territory into steady — a recovery that has held long enough to cross a band. Directional only: the sample behind this reading was not preserved, so it has not been established with the confidence of the other trajectory patterns.",
-    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "doesntMean": "a coincident health inflection — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
     "family": "D"
   },
   "trajectory_D_T5_foundation_out_of_weak": {
     "concern": "trajectory",
     "description": "The latest results moved the balance-sheet reading out of weak territory — a real improvement from a low base, and the most consistent of the single-pillar improvements observed. Notably it is the small gains that carried this: large jumps in the same reading did not.",
-    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "doesntMean": "a coincident health inflection — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
     "family": "D"
   },
   "trajectory_D_T7_momentum_improving_while_weak": {
     "concern": "trajectory",
     "description": "Still weak, but improving — the trajectory has turned up from a low base, the earliest point at which a recovery becomes visible in the numbers. On the larger improvements the price has usually already moved by the time the reading catches up.",
-    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "doesntMean": "a coincident health inflection — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
     "family": "D"
   },
   "trajectory_D_T8_foundation_strong_improving": {
     "concern": "trajectory",
     "description": "An already-strong business that is still strengthening — the balance-sheet reading sits above its strong mark and has risen again. Uncommon, and one of the more consistent positive readings on the strong side of the range.",
-    "doesntMean": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+    "doesntMean": "a coincident health inflection — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
     "family": "D"
   },
   "trajectory_F2_composition_shift": {
@@ -349,7 +356,7 @@ export const GEN_FAMILY_DOESNT_MEAN: Record<string, string> = {
   "A": "a hard risk/quality warning to investigate — not a prediction the stock will fall.",
   "B": "review your thesis, not sell — an early risk read, not a price call.",
   "C": "you read the state, you can't time the resolution — divergences are sticky; the bill is due, never that it's due today.",
-  "D": "a coincident health inflection worth investigating — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
+  "D": "a coincident health inflection — not a buy, not a guaranteed continuation; strongest read against a calm pond.",
   "E": "a condition to look at — not a trade signal.",
   "F": "a place to investigate, not a re-rate signal.",
   "G": "the move isn't over, and which way it resolved depends on which pillar moved — not buy/sell.",

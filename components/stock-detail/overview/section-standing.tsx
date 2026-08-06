@@ -26,7 +26,7 @@ import { Icons } from "@/lib/icons";
 import { BoundaryLine } from "@/components/ui/boundary-line";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
 import type { HealthSnapshotView, PillarKey, PillarView, MetricView, SectorClass } from "@/types/health";
-import { prepareStockFindings, accentVars } from "@/lib/findings";
+import { prepareStockFindings, accentVars, familyOf } from "@/lib/findings";
 import { getMetricLabel } from "@/lib/health/metric-labels";
 import { Panel, PILLAR_META } from "../health/shared";
 import { Section, Chip, HonestEmpty, LoadingBlock, Funnel } from "./shared";
@@ -151,7 +151,11 @@ function buildSynthesis(health: HealthSnapshotView, strengths: Strength[]): Synt
   const topThree = !!ps && ps.rank <= 3;
   const anyStrong = isStrong("foundation") || isStrong("momentum") || isStrong("ownership");
   const foundationAtLeastMid = zone("foundation") === "in_native" || zone("foundation") === "above_native";
-  const recoveryFiring = (health.findings?.patterns ?? []).some((p) => p.patternKey.startsWith("trajectory_D"));
+  // ★ FAMILY via the CATALOGUE, not a key-shape guess. This read "trajectory_D" off the key —
+  //   correct today (every recovery trajectory pattern happens to be family D), but a string
+  //   prefix is not a served fact, and `familyOf` already resolves the same answer from the
+  //   catalogue (falling back to key-shape only for the un-catalogued composed lens keys).
+  const recoveryFiring = (health.findings?.patterns ?? []).some((p) => familyOf(p.patternKey) === "D");
   const pondHot = health.verdict?.pondMask?.isHot ?? false;
 
   // Priority table §3 — first that qualifies wins. Solo → Priority 6.

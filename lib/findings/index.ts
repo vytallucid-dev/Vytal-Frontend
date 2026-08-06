@@ -41,8 +41,27 @@ export * from "./catalogue-store";
  *  B/C/D/F/G/I cards belong to "trajectory" and rehomes ownership_H to "ownership"); classify's
  *  key-shape concernOf is only the fallback for keys the catalog doesn't carry (→ "other"), so a
  *  known finding is never orphaned. */
+/**
+ * ★ THE CATALOGUE DECIDES, AND AN UNKNOWN KEY THROWS.
+ *
+ * ⚠ THIS USED TO FALL THROUGH TO `"other"`. The Hub renders four concern groups and has no row for a
+ * fifth, so a finding landing in `other` was counted in the census header and then appeared under no
+ * group at all — present in a number, absent from every list. Nothing errored.
+ *
+ * The only route here is a key the catalogue does not carry, which means this mirror has drifted from
+ * the backend. That is a build-time defect. It should fail the first time it renders rather than file
+ * a real finding nowhere and let the counts quietly disagree with the lists.
+ */
 function concernFor(key: string): Concern {
-  return findingConcern(key) ?? concernOf(key);
+  const c = findingConcern(key) ?? concernOf(key);
+  if (!c) {
+    throw new Error(
+      `concernFor: "${key}" resolves to no concern. The catalogue serves four (ownership, foundation, ` +
+        `momentum, trajectory) and this key matched none — the frontend catalogue mirror has drifted ` +
+        `from the backend. Re-run the copy generator; do not add a fallback bucket.`,
+    );
+  }
+  return c;
 }
 
 // ── §5 stock surface ───────────────────────────────────────────────────────────

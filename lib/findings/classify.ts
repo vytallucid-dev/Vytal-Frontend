@@ -15,6 +15,8 @@
 // A red flags · B deterioration · C divergence · D recovery · E patterns ·
 // F composition · G convergence · H ownership events · I band transition ·
 // N notable (constructive mirrors — DISPLAY-ONLY; never touches scoring/persistence).
+import { findingFamily, type FindingConcern } from "./descriptions";
+
 export type Family = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "N";
 
 // The four design-token accents (globals.css --crit / --high / --rec / --ctx).
@@ -28,7 +30,17 @@ export type DisplayState = "active" | "pending_data_integration" | "dampened";
 // instead of being orphaned. concernOf() below is the LEGACY key-shape fallback and never
 // returns "trajectory"; the authoritative concern is the catalog's (findingConcern), applied
 // in index.ts's census mapping — see `concernFor()`. "other" remains for truly-unknown keys.
-export type Concern = "ownership" | "fundamentals" | "momentum" | "trajectory" | "other";
+/**
+ * ★ THE CATALOGUE'S FOUR VALUES, RE-EXPORTED — NOT A FIFTH LOCAL COPY.
+ *
+ * ⚠ `other` IS REMOVED, AND THAT IS A DELIBERATE BEHAVIOUR CHANGE. It was the bucket for "the
+ * key-shape fallback did not recognise this", and the Hub has no row for it — so a finding landing
+ * there was counted in the census and rendered under no concern at all. Silent miscategorisation.
+ *
+ * The only way a key resolves outside the four is that this mirror has drifted from the backend
+ * catalogue, which is a build defect, not a runtime state worth rendering. `concernFor` throws.
+ */
+export type Concern = FindingConcern;
 
 /**
  * Map a canonical finding key to its File-1 §5 family. The engine writes every
@@ -36,6 +48,14 @@ export type Concern = "ownership" | "fundamentals" | "momentum" | "trajectory" |
  * the read layer recovers the family from the key shape. Order of tests matters.
  */
 export function familyOf(key: string): Family {
+  // ★ THE CATALOGUE FIRST. `findingFamily` reads the served entry — the same byte the backend's own
+  //   `familyOf` returns — so the two cannot disagree about any key the catalogue carries.
+  const served = findingFamily(key);
+  if (served) return served as Family;
+  // ⚠ THE KEY-SHAPE TESTS SURVIVE FOR ONE REASON, AND IT IS NOT "just in case": composed lens keys
+  //   (`lens_lm3_<metric>` — one key per metric that has ever fired) are deliberately NOT catalogued,
+  //   so nothing can serve their family. They run only when the catalogue has no answer, which makes
+  //   them a last resort rather than a second authority.
   if (/_R\d+_/.test(key)) return "A"; // ownership_R1_pledge … foundation_R5_interest_coverage
   if (key.startsWith("divergence_")) return "C"; // C1 / C2 / C3 / C-over-time
   if (key.startsWith("trajectory_B_")) return "B";
@@ -160,17 +180,17 @@ export function isPriceLinked(key: string): boolean {
 }
 
 // ── concern tier (File 2 §5 Hub Flags — Ownership / Fundamentals / Momentum) ───
-export function concernOf(key: string): Concern {
+export function concernOf(key: string): Concern | null {
   const fam = familyOf(key);
   // A / E, and now N (constructive mirrors), resolve to a real concern via the key prefix; structural
   // cards aren't a File-2 pattern concern. N MUST be admitted here — before it became a real family it
   // resolved only by accident (landing in E); creating the family would otherwise orphan it to "other".
-  if (fam !== "A" && fam !== "E" && fam !== "N") return "other";
+  if (fam !== "A" && fam !== "E" && fam !== "N") return null;
   const k = key.toLowerCase();
   if (k.startsWith("ownership")) return "ownership";
   if (k.startsWith("momentum")) return "momentum";
   if (k.startsWith("foundation") || k.startsWith("fundamentals")) return "fundamentals";
-  return "other";
+  return null;
 }
 
 // ── trajectory / historical caveats (File 1 documented limitations) ────────────

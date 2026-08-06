@@ -158,7 +158,7 @@ export function OwnershipTool() {
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}
       landing={{
-        items: scanQ.data,
+        items: scanQ.data?.items,
         isLoading: scanQ.isLoading,
         isError: scanQ.isError,
         onRetry: () => void scanQ.refetch(),
