@@ -7,7 +7,7 @@
  */
 
 import { Card } from "@/components/ui/card";
-import { BAND_META } from "@/components/stock-detail/health/shared";
+import { bandMeta } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
 import type { OwnershipScanItem, OwnershipTell } from "@/types/research-tools";
 
@@ -62,7 +62,9 @@ export function OwnershipScanCard({
   onSelect: (symbol: string) => void;
 }) {
   const tell = TELL_META[item.tell];
-  const band = BAND_META[item.band];
+  // item.band arrives off the wire, so an unrecognised value is possible. bandMeta() is the one
+  // place that rule lives — neutral styling, raw value as the label, never a throw.
+  const band = bandMeta(item.band);
 
   return (
     <button onClick={() => onSelect(item.symbol)} className="block w-full text-left">

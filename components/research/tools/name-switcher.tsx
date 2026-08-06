@@ -7,11 +7,11 @@
  * stock" entry (opens focused) and the "Across your scope" list.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Icons } from "@/lib/icons";
 import { healthColorVar } from "@/lib/format";
-import { BAND_META } from "@/components/stock-detail/health/shared";
+import { bandMeta } from "@/components/stock-detail/health/shared";
 import type { ScoredStockLite } from "@/types/research-tools";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,38 @@ export function NameSwitcher({
 }) {
   const [q, setQ] = useState("");
 
+  // ★ THE UNMOUNT BACKSTOP FOR RADIX'S BODY LOCK.
+  //   In modal mode Radix sets `pointer-events: none` on document.body while the dialog is open
+  //   and removes it during exit cleanup. Selecting a stock fires onSelect (→ router.push) and
+  //   onOpenChange(false) in the SAME tick; when the route change unmounts this tree before that
+  //   cleanup runs, the style is never removed and the whole page goes dead to clicks — back
+  //   button included — until a refresh.
+  //
+  //   This runs on unmount however the tree comes down. If Radix's own cleanup already ran, it is
+  //   a no-op; if the route change won the race, it is the thing that unsticks the page. The race
+  //   stops having a losing branch.
+  //
+  //   ⚠ It REMOVES the inline declaration rather than setting a value, so any stylesheet rule on
+  //     body still governs. It touches nothing else on body and sets nothing on mount — this is a
+  //     release valve for one specific leaked style, not a second owner of body styling.
+  useEffect(() => {
+    return () => {
+      document.body.style.removeProperty("pointer-events");
+    };
+  }, []);
+
+  // ★ THE RELEASE THAT ACTUALLY COVERS THE REPORTED PATH. The cleanup above only fires if this
+  //   component unmounts, and on the path that produces the freeze it does not: NameSwitcher is
+  //   rendered outside ToolFrame's landing/single ternary, and picking a stock is a same-route
+  //   search-param change (`/research/x` → `/research/x?symbol=Y`), which re-renders rather than
+  //   tears down. So the unmount cleanup guarded every path except the broken one.
+  //   This one runs whenever the sheet reaches closed, mounted or not.
+  //   ⚠ Removes only — it never sets `pointer-events`, on mount or otherwise, so it cannot itself
+  //     become the thing that makes the page clickable when Radix means it not to be.
+  useEffect(() => {
+    if (!open) document.body.style.removeProperty("pointer-events");
+  }, [open]);
+
   const list = useMemo(() => {
     const items = stocks ?? [];
     const needle = q.trim().toLowerCase();
@@ -48,6 +80,18 @@ export function NameSwitcher({
   }, [stocks, q]);
 
   return (
+    // ⚠ MODAL ON PURPOSE — the backdrop, focus trap and scroll lock are all wanted here. The
+    //   `pointer-events: none` leak that modal mode brings with it is handled by the unmount
+    //   cleanup above, NOT by weakening the dialog. Two rejected fixes, both recorded so they
+    //   don't get re-proposed:
+    //
+    //   ✗ Deferring the navigation (setTimeout / onCloseAutoFocus / awaiting the exit animation)
+    //     trades a rare hard failure for input lag on EVERY selection. This is a search panel,
+    //     not a confirmation — it should not make the common path wait on the rare one.
+    //   ✗ `modal={false}` does stop the leak at its source, but it pays for that by removing the
+    //     backdrop entirely (Radix renders NO overlay off-modal), along with the focus trap and
+    //     the scroll lock. That was the mispriced trade: it fixed a rare race by permanently
+    //     degrading every open of the panel.
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -86,7 +130,7 @@ export function NameSwitcher({
             </div>
           ) : (
             list.map((s) => {
-              const band = BAND_META[s.band];
+              const band = bandMeta(s.band);
               const isCur = s.symbol === current;
               return (
                 <button

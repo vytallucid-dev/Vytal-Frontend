@@ -40,13 +40,13 @@ import type { LabelBand } from "@/types/health";
 import { ToolFrame } from "../tool-frame";
 import { ScanFilterBar, relabel } from "../scan-filters";
 import {
-  DEFAULT_WINDOW,
   windowQuarters,
   type SingleViewSlots,
   type ToolMeta,
   type ToolWindow,
 } from "../tool-frame.types";
 import { sliceWindow, dailyBoundsOf } from "../window-slice";
+import { WINDOW_PARAM, paramsForStockSwitch, parseWindow, writeWindowParam } from "../tool-url-state";
 import { TrajectorySummary } from "./trajectory-summary";
 import { FindingCards } from "../finding-cards";
 import { PatternSwitcher } from "../pattern-switcher";
@@ -80,12 +80,42 @@ export function TrajectoryTool() {
 
   // The window carries the cadence (quarterly 1Y/2Y/3Y · daily 60/30/15D · custom).
   // Only the quarter count re-keys the fetch; daily/custom re-slice the same payload.
-  const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
-  const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
-  if (lastSymbol !== symbol) {
-    setLastSymbol(symbol);
-    setWindow(DEFAULT_WINDOW);
-  }
+  //
+  // ★ IT IS URL STATE (`?window=`), READ NOT HELD — the same contract as `?pattern=` and `?view=`,
+  //   replacing a useState window plus a render-body reset block that existed only to clear it on
+  //   stock switch. Held in state it reset on stock switch, tool switch AND back navigation, and
+  //   could not be linked; read from the URL it survives all three.
+  //   ⚠ Memoised on the RAW STRING, not on `params`: `sliced` below is a useMemo over `[trajectory,
+  //     window]`, so a fresh object per render would re-slice the whole daily series every render.
+  const windowParam = params.get(WINDOW_PARAM);
+  const window = useMemo(() => parseWindow(windowParam), [windowParam]);
+
+  const onWindowChange = useCallback(
+    (w: ToolWindow) => {
+      const next = new URLSearchParams(Array.from(params.entries()));
+      writeWindowParam(next, w);
+      // `replace` + no scroll — re-framing the chart in place, exactly like the pattern and mode
+      // switches beside it. Not a destination, so it stacks no back step.
+      router.replace(`/research/trajectory?${next.toString()}`, { scroll: false });
+    },
+    [params, router],
+  );
+
+  // ★ STOCK SWITCHING — `replace` once a stock is open, `push` from the landing. Landing → stock is
+  //   a real destination; stock → stock re-frames the same page and must not stack (five stocks used
+  //   to leave five back steps before the landing).
+  //   ⚠ THE `symbol` TEST IS LOAD-BEARING — replacing unconditionally would consume the LANDING's own
+  //     entry on the first pick, leaving no way back to it.
+  //   Which params survive is the one scope rule's call (see tool-url-state.ts), never a fresh
+  //   `?symbol=` string — that is what used to drop `view` and `window` silently.
+  const onSelectSymbol = useCallback(
+    (s: string) => {
+      const url = `/research/trajectory?${paramsForStockSwitch(params, s).toString()}`;
+      if (symbol) router.replace(url);
+      else router.push(url);
+    },
+    [params, router, symbol],
+  );
 
   const stocksQ = useScoredStocks();
 
@@ -195,7 +225,15 @@ export function TrajectoryTool() {
             : null,
         // building-history only when there's neither a multi-point quarterly series
         // NOR usable daily history (a daily-only stock can still draw a short window).
-        buildingHistory: !!trajectory && trajectory.series.length <= 1 && !dailyBounds,
+        // The copy is the TOOL's — this tool's points genuinely ARE scored quarters, which is
+        // exactly the assumption the frame used to make on every tool's behalf.
+        buildingHistory:
+          !!trajectory && trajectory.series.length <= 1 && !dailyBounds
+            ? {
+                title: "Only one scored quarter so far",
+                body: `A journey needs at least two in-force snapshots. As ${symbol} accrues more scored quarters, the recording will fill in here.`,
+              }
+            : null,
         dailyBounds,
         identity: {
           name: data?.identity?.name ?? symbol,
@@ -291,8 +329,12 @@ export function TrajectoryTool() {
       meta={TRAJECTORY_META}
       symbol={symbol}
       window={window}
-      onWindowChange={setWindow}
-      onSelectSymbol={(s) => router.push(`/research/trajectory?symbol=${encodeURIComponent(s)}`)}
+      onWindowChange={onWindowChange}
+      onSelectSymbol={onSelectSymbol}
+      // ★ ALWAYS `push` — the rule, not an oversight. This button must work when the reader arrived
+      //   at `?symbol=` DIRECTLY (health-page link, shared URL) with no landing entry behind them:
+      //   `router.back()` would leave the tool entirely, and `replace` would swap the current entry
+      //   for the landing so Back lands on the landing again — a button that appears to do nothing.
       onHome={() => router.push("/research/trajectory")}
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}

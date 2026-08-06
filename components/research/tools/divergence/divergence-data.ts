@@ -18,7 +18,7 @@
  * a read assembled from each finding's own catalogue copy.
  */
 
-import { PILLAR_META, BAND_META } from "@/components/stock-detail/health/shared";
+import { PILLAR_META, bandMeta } from "@/components/stock-detail/health/shared";
 import { findingName, findingDescription, doesntMean } from "@/lib/findings/descriptions";
 import { toneOf, evidenceString, stampedRegime } from "@/lib/findings/tool-findings";
 import type {
@@ -241,7 +241,7 @@ export function buildDivergenceChips(
   gap: number | null,
   findings: PatternView[],
 ): ChipSpec[] {
-  const band = BAND_META[verdict.label.band];
+  const band = bandMeta(verdict.label.band);
   const lead = findings[0];
   const chips: ChipSpec[] = [
     { label: `${band.label} · ${Math.round(verdict.composite)}`, dot: band.cssVar, color: "var(--ink2)" },

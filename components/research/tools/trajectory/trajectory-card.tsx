@@ -22,7 +22,7 @@
  */
 
 import { Card } from "@/components/ui/card";
-import { BAND_META } from "@/components/stock-detail/health/shared";
+import { bandMeta } from "@/components/stock-detail/health/shared";
 import { HEALTH_BAND_CUTS, healthColorVar } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toneOf } from "@/lib/findings/tool-findings";
@@ -61,7 +61,9 @@ export function TrajectoryScanCard({
   item: ToolScanItem;
   onSelect: (symbol: string) => void;
 }) {
-  const band = BAND_META[item.band];
+  // item.band arrives off the wire, so an unrecognised value is possible. bandMeta() is the one
+  // place that rule lives — neutral styling, raw value as the label, never a throw.
+  const band = bandMeta(item.band);
   const lead = item.findings[0] ?? null;
   const badge = lead ? { label: lead.name, color: `var(--${toneOf(lead)})` } : { label: "Stable", color: "var(--ink3)" };
   const extra = Math.max(0, item.findings.length - 1);

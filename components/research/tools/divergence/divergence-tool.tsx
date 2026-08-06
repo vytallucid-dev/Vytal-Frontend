@@ -41,13 +41,13 @@ import type { LabelBand } from "@/types/health";
 import { ToolFrame } from "../tool-frame";
 import { ScanFilterBar, relabel } from "../scan-filters";
 import {
-  DEFAULT_WINDOW,
   windowQuarters,
   type SingleViewSlots,
   type ToolMeta,
   type ToolWindow,
 } from "../tool-frame.types";
 import { sliceWindow, dailyBoundsOf } from "../window-slice";
+import { WINDOW_PARAM, paramsForStockSwitch, parseWindow, writeWindowParam } from "../tool-url-state";
 import { DivergenceSummary } from "./divergence-summary";
 import { FindingCards } from "../finding-cards";
 import { PatternSwitcher } from "../pattern-switcher";
@@ -77,12 +77,43 @@ export function DivergenceTool() {
   const symbol = params.get("symbol")?.toUpperCase() || null;
   const requestedPattern = params.get("pattern");
 
-  const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
-  const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
-  if (lastSymbol !== symbol) {
-    setLastSymbol(symbol);
-    setWindow(DEFAULT_WINDOW);
-  }
+  // ★ THE WINDOW IS URL STATE (`?window=`), READ NOT HELD — the same contract as `?pattern=`.
+  //   It replaces a useState window plus a render-body reset block that existed only to clear that
+  //   state on stock switch. Held in state it reset on stock switch, tool switch AND back
+  //   navigation, and could not be linked at all; read from the URL it survives all three and the
+  //   first health fetch is keyed to the right quarter count instead of always fetching 12 first.
+  //   ⚠ Memoised on the RAW STRING, not on `params`: `sliced` below is a useMemo over `[trajectory,
+  //     window]`, so a fresh object per render would re-slice the whole daily series every render.
+  const windowParam = params.get(WINDOW_PARAM);
+  const window = useMemo(() => parseWindow(windowParam), [windowParam]);
+
+  const onWindowChange = useCallback(
+    (w: ToolWindow) => {
+      const next = new URLSearchParams(Array.from(params.entries()));
+      writeWindowParam(next, w);
+      // `replace` + no scroll: changing timeframe re-frames the chart in place, exactly like
+      // switching pattern. It is not a destination and must not stack a back step.
+      router.replace(`/research/divergence?${next.toString()}`, { scroll: false });
+    },
+    [params, router],
+  );
+
+  // ★ STOCK SWITCHING — `replace` once a stock is already open, `push` from the landing.
+  //   Landing → a stock is a real destination and keeps its back step. Stock → stock is re-framing
+  //   the same page (the reasoning already written on the pattern switch, one level up), so it must
+  //   not stack: five stocks used to leave five back steps between the reader and the landing.
+  //   ⚠ THE `symbol` TEST IS LOAD-BEARING. Replacing unconditionally would consume the LANDING's own
+  //     history entry on the first selection, leaving no way back to it at all.
+  //   Params are decided by the one scope rule — never by a fresh `?symbol=` string, which is what
+  //   silently dropped every sibling param before.
+  const onSelectSymbol = useCallback(
+    (s: string) => {
+      const url = `/research/divergence?${paramsForStockSwitch(params, s).toString()}`;
+      if (symbol) router.replace(url);
+      else router.push(url);
+    },
+    [params, router, symbol],
+  );
 
   const stocksQ = useScoredStocks();
 
@@ -197,7 +228,17 @@ export function DivergenceTool() {
         // ⚠ BUILDING-HISTORY NOW ASKS THE HISTORY QUESTION, not the pair question. It used to key on
         //   whether a quarterly SPREAD could be built, which is a fact about the selected pair — so a
         //   scored stock with a full series but no firing pattern could read "building history".
-        buildingHistory: !!trajectory && !noSpread && trajectory.series.length <= 1 && !dailyBounds,
+        // The copy is the TOOL's, not the frame's — only this tool knows that its points are scored
+        // quarters (Ownership's are shareholding filings, and the frame used to say "scored" for
+        // both). `!noSpread` is redundant — noSpread already forces notScored, which early-returns
+        // ahead of this — but it is kept as a local guard rather than a dependency on gate order.
+        buildingHistory:
+          !!trajectory && !noSpread && trajectory.series.length <= 1 && !dailyBounds
+            ? {
+                title: "Only one scored quarter so far",
+                body: `A journey needs at least two in-force snapshots. As ${symbol} accrues more scored quarters, the recording will fill in here.`,
+              }
+            : null,
         dailyBounds,
         identity: {
           name: data?.identity?.name ?? symbol,
@@ -265,8 +306,15 @@ export function DivergenceTool() {
       meta={DIVERGENCE_META}
       symbol={symbol}
       window={window}
-      onWindowChange={setWindow}
-      onSelectSymbol={(s) => router.push(`/research/divergence?symbol=${encodeURIComponent(s)}`)}
+      onWindowChange={onWindowChange}
+      onSelectSymbol={onSelectSymbol}
+      // ★ ALWAYS `push`, and that is the rule rather than an oversight. The landing is a genuinely
+      //   different view from a stock page, so it earns a back step — but more importantly this
+      //   button must work when the reader arrived at `?symbol=` DIRECTLY (a health-page link, a
+      //   shared URL) with no landing entry behind them. `router.back()` would leave the tool
+      //   entirely there, and `replace` would swap the current entry for the landing so Back
+      //   returns to the landing again — a button that appears to do nothing, which is the exact
+      //   complaint this work started from. `push` is the only option with no dead path.
       onHome={() => router.push("/research/divergence")}
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}

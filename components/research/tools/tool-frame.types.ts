@@ -137,8 +137,22 @@ export interface SingleViewSlots {
    *  "{name} isn't scored yet"; pass `title` to override (e.g. "No data for …" when a
    *  tool blanks on data-absence rather than score-absence). */
   notScored?: { reason: string; title?: string } | null;
-  /** honest single-period "building history" state (frame renders a panel). */
-  buildingHistory?: boolean;
+  /**
+   * Honest single-period "building history" state — the frame renders a calm panel in place of
+   * the chart grid, and this supplies its words.
+   *
+   * ★ THE OBJECT IS THE GATE, exactly as it is for `notScored` above. It used to be a bare
+   *   `boolean` with the copy hard-coded in the frame, and that copy was written in TRAJECTORY's
+   *   vocabulary — "scored quarters", "in-force snapshots", "the recording". Ownership's points are
+   *   shareholding FILINGS and have nothing to do with scoring, so the frame was putting a sentence
+   *   in Ownership's mouth that was simply untrue of it.
+   *
+   * ⚠ A FLAG PLUS FRAME-SIDE COPY IS TWO THINGS THAT CAN DISAGREE; one nullable object is one thing
+   *   that cannot. A tool cannot now raise this state without saying what it means, and cannot write
+   *   copy that never renders. Same reason `notScored` carries its own reason, and the same reason
+   *   BandMeta aliases BAND_META's value type — make the wrong shape fail to compile.
+   */
+  buildingHistory?: { title: string; body: string } | null;
   /** Available daily-history bounds (raw ISO, oldest→newest) — the retention envelope the
    *  custom-range picker clamps to. null when the stock has no daily score history yet
    *  (the switcher then disables the daily/custom options). */

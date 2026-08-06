@@ -49,6 +49,46 @@ export const BAND_META: Record<
   pristine:  { label: "Pristine",  text: "text-pristine", bg: "bg-pristine/10", border: "border-pristine/40", cssVar: "var(--c-pristine)", cap: "bg-pristine" },
 };
 
+/** BAND_META's value type — named so the neutral fallback below is checked against the SAME
+ *  contract the real records satisfy. Add a field to BAND_META and the fallback stops
+ *  compiling until it carries one too, which is the point. */
+export type BandMeta = (typeof BAND_META)[LabelBand];
+
+/**
+ * ★ THE ONE BAND LOOKUP. Use this, not `BAND_META[x]`.
+ *
+ * `BAND_META[x]` is an unguarded index. Any band this build doesn't know — a band the backend
+ * added, a rename, a null on a partially-scored row — returns undefined, and the very next
+ * `.text` throws. That throw is not local: it takes down the whole grid the cell sits in, so
+ * one unfamiliar string costs a reader the entire scan.
+ *
+ * This returns a COMPLETE record for any input, so no caller branches and no caller can see
+ * undefined. Unknown → neutral on every styling field, with the raw value printed as the label:
+ * honest-empty. It never invents a band name (that would be a fabricated reading) and never
+ * silently drops the row (that would hide one). "—" appears only when there was no value at
+ * all — a blank label would read as a rendering bug rather than as an absent band.
+ *
+ * ⚠ hasOwnProperty, not `in`: `in` walks the prototype chain, so a band literally named
+ *   "toString" or "constructor" would return an inherited function and crash exactly the way
+ *   this function exists to prevent.
+ *
+ * ⚠ BAND_META stays exported and unrestricted — other surfaces still read it directly and are
+ *   converted as those surfaces are worked on, not in a sweep.
+ */
+export function bandMeta(band: LabelBand | string | null | undefined): BandMeta {
+  if (band && Object.prototype.hasOwnProperty.call(BAND_META, band)) {
+    return BAND_META[band as LabelBand];
+  }
+  return {
+    label: String(band ?? "").trim() || "—",
+    text: "text-ink3",
+    bg: "bg-ink3/10",
+    border: "border-ink3/40",
+    cssVar: "var(--ink3)",
+    cap: "bg-ink3",
+  };
+}
+
 // ── pillar identity (fixed everywhere) ────────────────────────────────────────
 export const PILLAR_META: Record<
   PillarKey,

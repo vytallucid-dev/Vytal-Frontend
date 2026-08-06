@@ -7,7 +7,7 @@
 
 import { healthLabel } from "@/lib/format";
 import {
-  BAND_META,
+  bandMeta,
   LABEL_BAND_ORDER,
   PILLAR_META,
   shortPeriod,
@@ -122,7 +122,7 @@ export function buildTrajectoryRead(findings: PatternView[]): PromotedRead {
 
 /** Header chips — band · composite, marker, and divergence when it's firing. */
 export function buildTrajectoryChips(verdict: VerdictSection): ChipSpec[] {
-  const band = BAND_META[verdict.label.band];
+  const band = bandMeta(verdict.label.band);
   const chips: ChipSpec[] = [
     { label: `${band.label} · ${Math.round(verdict.composite)}`, dot: band.cssVar, color: "var(--ink2)" },
   ];
@@ -198,7 +198,7 @@ export function buildTimeline(trajectory: TrajectorySection): TimelineItem[] {
       items.push({
         when: shortPeriod(c.toPeriod),
         at: whenKey(c.toPeriod, byPeriod),
-        text: `Crossed ${BAND_META[c.from as LabelBand].label} → ${BAND_META[c.to as LabelBand].label}`,
+        text: `Crossed ${bandMeta(c.from).label} → ${bandMeta(c.to).label}`,
         tag: "band",
         dotColor: up ? "var(--rec)" : "var(--high)",
       });

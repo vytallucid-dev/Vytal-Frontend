@@ -23,8 +23,7 @@
 import { useMemo, useState } from "react";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-import { BAND_META } from "@/components/stock-detail/health/shared";
-import type { LabelBand } from "@/types/health";
+import { bandMeta } from "@/components/stock-detail/health/shared";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -49,8 +48,17 @@ import {
  * (BAND_META) or an ownership tell (TELL_META) — and there the served label is either wrong for
  * the surface ("Pristine — fully priced" beside a card that says "Pristine") or a raw enum. So
  * the tool passes the map its own CARDS render from, guaranteeing the dropdown and the grid
- * agree. A value the map doesn't know keeps the served label, so a newly-added key shows up
- * named rather than blank.
+ * agree. A mapper that returns undefined for a value it doesn't know keeps the served label, so
+ * a newly-added key shows up named rather than blank.
+ *
+ * ⚠ THIS IS WHY THE `bandOptions` CALLERS STAY ON `BAND_META[v]?.label`, NOT `bandMeta(v).label`.
+ *   bandMeta() resolves every input, which would make `?? o.label` unreachable here and replace
+ *   an unrecognised band's SERVER label with its raw key — discarding real information the
+ *   server already had for a locally-derived fallback that has nothing behind it. A server label
+ *   beats a raw key; `bandMeta` belongs where nothing better exists, not where this map's own
+ *   optional-chained miss already does the better thing. (Other call sites with no server label
+ *   behind them — e.g. this file's band CHIP colour, `divergence-data.ts`, `trajectory-data.ts` —
+ *   correctly use `bandMeta()`, since there `?.` had nothing to fall back to but neutral-or-throw.)
  */
 export const relabel = (
   options: ScanFacetOption[],
@@ -203,7 +211,7 @@ export function ScanFilterBar({
       key: `band:${v}`,
       label: labelOf(v),
       // the band chip wears its own condition colour — the same token the cards use
-      color: BAND_META[v as LabelBand]?.cssVar,
+      color: bandMeta(v).cssVar,
       remove: () => onChange({ ...filters, bands: drop(filters.bands, v) }),
     })),
     ...filters.peerGroups.map((v) => ({

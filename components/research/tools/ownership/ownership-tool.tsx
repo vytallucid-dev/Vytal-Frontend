@@ -8,7 +8,7 @@
  * holding-split deltas; pledge from share counts.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
 import { useScoredStocks, useStockScan, useStockScanFacets } from "@/lib/api/hooks/use-stocks";
@@ -26,12 +26,12 @@ import type { LabelBand } from "@/types/health";
 import { ToolFrame } from "../tool-frame";
 import { ScanFilterBar, relabel } from "../scan-filters";
 import {
-  DEFAULT_WINDOW,
   windowQuarters,
   type SingleViewSlots,
   type ToolMeta,
   type ToolWindow,
 } from "../tool-frame.types";
+import { WINDOW_PARAM, paramsForStockSwitch, parseWindow, writeWindowParam } from "../tool-url-state";
 import { OwnershipChart } from "./ownership-chart";
 import { OwnershipReadout } from "./ownership-readout";
 import { OwnershipSummary } from "./ownership-summary";
@@ -64,15 +64,44 @@ export function OwnershipTool() {
   const symbol = params.get("symbol")?.toUpperCase() || null;
 
   // Ownership stays quarterly — it reads the ownership ledger (per-filing), not the daily
-  // score series. It rides the shared window contract via the quarter count; the switcher's
-  // daily/custom options render disabled (no daily bounds passed) — an honest dormant state.
-  const [window, setWindow] = useState<ToolWindow>(DEFAULT_WINDOW);
-  const [lastSymbol, setLastSymbol] = useState<string | null>(symbol);
-  if (lastSymbol !== symbol) {
-    setLastSymbol(symbol);
-    setWindow(DEFAULT_WINDOW);
-  }
+  // score series. It rides the shared window contract via the quarter count, and passes NO
+  // `dailyBounds` key at all, so the switcher's daily/custom group is not rendered.
+  // ⚠ NOT "rendered disabled" — that is the `dailyBounds: null` case, which means "this tool does
+  //   daily, but this stock has none yet". Omitting the key entirely means "this tool does not do
+  //   daily", and the group is absent. See SingleViewSlots.dailyBounds for the three-way contract.
+  // ★ URL STATE (`?window=`), READ NOT HELD — replacing a useState window plus a render-body reset
+  //   block that existed only to clear it on stock switch. See tool-url-state.ts.
+  //   ⚠ ON THIS TOOL THE WINDOW IS A SERVER-SIDE SLICE, not a client re-slice: `quarters` is a fetch
+  //     argument to BOTH queries below, and nothing here calls sliceWindow. That is also why no
+  //     `dailyBounds` is passed to the frame — the daily/custom options stay dormant, so a URL
+  //     carrying `window=d60` would leave every quarterly button unselected. It cannot arrive from a
+  //     stock switch (the scope rule drops daily/custom), only from a hand-edited or cross-tool URL,
+  //     and it degrades to a 12-quarter fetch rather than breaking.
+  const windowParam = params.get(WINDOW_PARAM);
+  const window = useMemo(() => parseWindow(windowParam), [windowParam]);
   const quarters = windowQuarters(window);
+
+  const onWindowChange = useCallback(
+    (w: ToolWindow) => {
+      const next = new URLSearchParams(Array.from(params.entries()));
+      writeWindowParam(next, w);
+      router.replace(`/research/ownership?${next.toString()}`, { scroll: false });
+    },
+    [params, router],
+  );
+
+  // ★ STOCK SWITCHING — `replace` once a stock is open, `push` from the landing. Landing → stock is
+  //   a real destination; stock → stock re-frames the same page and must not stack.
+  //   ⚠ THE `symbol` TEST IS LOAD-BEARING — replacing unconditionally would consume the LANDING's own
+  //     entry on the first pick, leaving no way back to it.
+  const onSelectSymbol = useCallback(
+    (s: string) => {
+      const url = `/research/ownership?${paramsForStockSwitch(params, s).toString()}`;
+      if (symbol) router.replace(url);
+      else router.push(url);
+    },
+    [params, router, symbol],
+  );
 
   const stocksQ = useScoredStocks();
 
@@ -155,7 +184,25 @@ export function OwnershipTool() {
           void ownQ.refetch();
         },
         notScored,
-        buildingHistory: loaded && !notScored && holdingPoints.length <= 1,
+        // ★ `=== 1`, NOT `<= 1` — AND THAT IS THE BUG FIX. `hasLedgerData` (above) declares this
+        //   stock worth rendering when it has ANY of holding-split / pledging / insider / block
+        //   rows. A stock with pledging or deal records but NO holding series has zero
+        //   holdingPoints, so `<= 1` raised building-history — and the frame's building-history
+        //   branch replaces the WHOLE grid, `renderSummary` included, which is where
+        //   OwnershipSummary renders the very ledger `hasLedgerData` just confirmed exists. The
+        //   tool proved it had data and then hid it behind "only one quarter so far".
+        //   Zero holding points now falls through to the grid: the chart and readout return null
+        //   (they already guard on length) and the ledger renders. Exactly one point is the real
+        //   building-history case — a series that has started and cannot be drawn yet.
+        // The copy is the TOOL's: these are shareholding FILINGS, not scored quarters. The frame
+        // used to assert "scored" here on every tool's behalf, which was untrue of this one.
+        buildingHistory:
+          loaded && !notScored && holdingPoints.length === 1
+            ? {
+                title: "Only one filed quarter so far",
+                body: `A holding journey needs at least two filings to draw. As ${symbol} files further shareholding patterns, the split will fill in here.`,
+              }
+            : null,
         identity: {
           name: ownView?.name ?? health?.identity?.name ?? symbol,
           ticker: symbol,
@@ -184,8 +231,11 @@ export function OwnershipTool() {
       meta={OWNERSHIP_META}
       symbol={symbol}
       window={window}
-      onWindowChange={setWindow}
-      onSelectSymbol={(s) => router.push(`/research/ownership?symbol=${encodeURIComponent(s)}`)}
+      onWindowChange={onWindowChange}
+      onSelectSymbol={onSelectSymbol}
+      // ★ ALWAYS `push` — must work when the reader arrived at `?symbol=` DIRECTLY (the health
+      //   page's ownership link, a shared URL) with no landing entry behind them. `router.back()`
+      //   would leave the tool; `replace` would make Back land on the landing again.
       onHome={() => router.push("/research/ownership")}
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}

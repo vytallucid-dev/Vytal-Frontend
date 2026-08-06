@@ -33,7 +33,7 @@
  */
 
 import { Card } from "@/components/ui/card";
-import { BAND_META, PILLAR_META } from "@/components/stock-detail/health/shared";
+import { bandMeta, PILLAR_META } from "@/components/stock-detail/health/shared";
 import { healthColorVar } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toneOf } from "@/lib/findings/tool-findings";
@@ -51,7 +51,9 @@ export function DivergenceScanCard({
   onSelect: (symbol: string) => void;
 }) {
   const lead = item.findings[0] ?? null;
-  const band = BAND_META[item.band];
+  // item.band arrives off the wire, so an unrecognised value is possible. bandMeta() is the one
+  // place that rule lives — neutral styling, raw value as the label, never a throw.
+  const band = bandMeta(item.band);
   const extra = Math.max(0, item.findings.length - 1);
 
   // ⚠ THREE STATES, NOT FOUR. A fired finding, or the S1 aligned reading, or NOTHING — a stock

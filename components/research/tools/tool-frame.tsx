@@ -420,6 +420,7 @@ export function ToolFrame({
         // ===== WARM: single view =====
         <SingleView
           single={single}
+          symbol={symbol}
           window={window}
           onWindowChange={onWindowChange}
           active={active}
@@ -432,12 +433,16 @@ export function ToolFrame({
 
 function SingleView({
   single,
+  symbol,
   window,
   onWindowChange,
   active,
   setActive,
 }: {
   single: ToolFrameProps["single"];
+  /** The ticker off the URL — known before the fetch resolves, which is what lets the
+   *  loading state keep its identity instead of skeletoning a fact we already have. */
+  symbol: string;
   window: ToolWindow;
   onWindowChange: (w: ToolWindow) => void;
   active: ActiveDatapoint;
@@ -448,17 +453,63 @@ function SingleView({
   if (single.isError) {
     return <QueryError message="Couldn't load this stock's history." onRetry={single.onRetry} />;
   }
+  // ⚠ THE LOADING BRANCH IS NARROW ON PURPOSE. It used to replace the ENTIRE single view with
+  //   skeleton blocks, so a cache miss on a stock switch strobed the identity header too — and
+  //   the ticker is the one thing on this page that never needed the fetch, because it came in
+  //   on the URL. Skeleton ONLY what is genuinely waiting on data; the strip lives up in
+  //   ToolFrame and stays mounted through this branch. The isError / notScored gates keep their
+  //   full-panel behaviour.
+  //
+  //   ★ THE GOVERNING RULE, region by region: a skeleton may only reserve space for content whose
+  //   PRESENCE — not exact height, presence — is already known before the fetch resolves. Where
+  //   presence is unknown, reserve nothing: a region that appears is a smaller disruption than one
+  //   that vanishes or swaps shape under the reader.
+  //
+  //   • Header (name/sub/regime/chips) — ALWAYS renders in this exact shape once we're past this
+  //     branch, for all three tools. Reserved.
+  //   • Promoted-read banner — NOT "frequently null" the way it first looked. Every tool's
+  //     `buildXRead`/`buildHeadlineRead` helper is typed to return a `PromotedRead`, never
+  //     null/undefined, and every orchestrator only lets `promotedRead` itself go null exactly
+  //     when `notScored` would ALSO be true (both key off the same `verdict && trajectory` /
+  //     `ownView` guard) — so by the time this branch's result lands anywhere but the `notScored`
+  //     panel, the banner is guaranteed present. Reserved.
+  //   • Chart toolbar + chart/readout/summary grid — genuinely NOT knowable pre-fetch. Whether the
+  //     eventual render is this grid or `buildingHistory`'s single centered Panel depends on data
+  //     that hasn't arrived yet (series length, daily bounds, `holdingPoints.length`), on all three
+  //     tools. Reserving either shape guarantees a wrong-shaped jump on whichever outcome doesn't
+  //     happen. Per the rule, this region reserves NOTHING — the tradeoff is an accepted one: on
+  //     the (much more common) non-building-history outcome, the grid grows in below the banner
+  //     rather than the skeleton guessing its shape and being wrong.
   if (single.isLoading) {
     return (
-      <div className="space-y-3">
-        <div className="h-24 animate-pulse rounded-xl border border-line bg-surface-1" />
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="h-[420px] animate-pulse rounded-xl border border-line bg-surface-1" />
-          <div className="grid gap-3">
-            <div className="h-48 animate-pulse rounded-xl border border-line bg-surface-1" />
-            <div className="h-48 animate-pulse rounded-xl border border-line bg-surface-1" />
+      <div>
+        {/* header — the SAME row the loaded state renders, so it does not move. The name slot
+            carries the symbol until identity arrives: a company name is never guessed here, and
+            a skeleton over a fact we already hold would be a lie in the other direction. */}
+        <div className="mb-3.5 flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="hero-name wrap-break-word text-[20px] mb-3 sm:mb-0 sm:text-[27px] text-ink">
+              {symbol}
+            </div>
+            {/* the sub-line IS fetched (sector / industry path) — an inline bar inside the real
+                line box, so the header keeps its exact loaded height */}
+            <div className="num mt-1 text-[12.5px] text-ink2">
+              <span className="inline-block h-[1em] w-48 max-w-full animate-pulse rounded-md bg-surface-2 align-middle" />
+            </div>
+          </div>
+          {/* regime badge + chips */}
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            <div className="h-[31px] w-28 animate-pulse rounded-lg bg-surface-2" />
+            <div className="h-[31px] w-24 animate-pulse rounded-lg bg-surface-2" />
           </div>
         </div>
+
+        {/* promoted read — reserved: see the rule above, this region's presence is guaranteed. */}
+        <div className="h-24 animate-pulse rounded-xl border border-line bg-surface-1" />
+
+        {/* Nothing reserved below. The chart toolbar + chart/readout/summary grid vs. the single
+            buildingHistory Panel is an unknowable-until-data-lands shape choice — see the rule
+            above. The real content mounts here once loading resolves. */}
       </div>
     );
   }
@@ -510,14 +561,16 @@ function SingleView({
         <PromotedReadBanner read={single.promotedRead} funnelBackHref={single.funnelBackHref} />
       )}
 
+      {/* ★ THE FRAME OWNS WHERE THIS GOES AND WHAT IT LOOKS LIKE. THE TOOL OWNS WHAT IT SAYS.
+          The copy used to live here as a literal, in trajectory's vocabulary ("scored quarters",
+          "in-force snapshots"), which was untrue of Ownership — its points are shareholding
+          FILINGS, unrelated to scoring. Only the tool knows which noun is honest, so only the tool
+          writes the sentence. See SingleViewSlots.buildingHistory. */}
       {single.buildingHistory ? (
         <Panel className="flex flex-col items-center gap-2 py-14 text-center">
           <Icons.clock weight="duotone" className="size-9 text-ink3" />
-          <p className="text-[13px] font-medium text-ink">Only one scored quarter so far</p>
-          <p className="max-w-sm text-[12px] text-ink3">
-            A journey needs at least two in-force snapshots. As {single.identity.ticker} accrues
-            more scored quarters, the recording will fill in here.
-          </p>
+          <p className="text-[13px] font-medium text-ink">{single.buildingHistory.title}</p>
+          <p className="max-w-sm text-[12px] text-ink3">{single.buildingHistory.body}</p>
         </Panel>
       ) : (
         <>
@@ -530,10 +583,21 @@ function SingleView({
 
           {/* desktop 50/50, mobile single column */}
           <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
-            {/* left — centerpiece chart, sized to the column */}
-            {single.renderChart(active, setActive)}
+            {/* left — centerpiece chart, sized to the column.
+                ⚠ THE WRAPPER IS LOAD-BEARING, NOT DECORATION — KEEP IT THROUGH THE RETHEME.
+                A slot renders a NODE, and a node that decides internally to render nothing is still
+                a truthy element the frame cannot inspect: renderChart returns <SelectionChart/>,
+                which returns null on its own when there is no selection. Placed as a bare grid
+                child, that empty render let the readout/summary column below take grid cell 1 — the
+                right-hand column silently jumping to the left half of the page. It is reachable
+                today: a scored stock with nothing firing and no not-covered note has no selection,
+                so Divergence draws no chart. An explicit cell holds the column order regardless of
+                what the tool renders into it. Whatever the retheme replaces this grid with must
+                keep that invariant: the chart's cell is reserved by the FRAME, not implied by the
+                tool returning content. */}
+            <div className="min-w-0">{single.renderChart(active, setActive)}</div>
             {/* right — live readout (top) + static summary (bottom) */}
-            <div className="grid gap-3">
+            <div className="grid min-w-0 gap-3">
               {single.renderReadout(active)}
               {single.renderSummary()}
             </div>
