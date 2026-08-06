@@ -9,7 +9,12 @@ import { ChatShortcutsProvider } from "@/components/shortcuts/chat-shortcuts";
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth>
-      <SidebarProvider>
+      {/* ★ THE COLLAPSED RAIL IS WIDER THAN shadcn's 3rem DEFAULT, and it has to be: the collapsed
+          sidebar is a DOCK (components/app-sidebar-dock.tsx), and a magnified tile needs somewhere to
+          grow. 4.25rem is sized so peak scale plus the outward lift lands INSIDE the rail's own box —
+          which is why the dock needs no overflow escapes and nothing clips against the content edge.
+          The expanded width is untouched. */}
+      <SidebarProvider style={{ "--sidebar-width-icon": "4.25rem" } as React.CSSProperties}>
       {/* static grid backdrop (depth from surfaces + hairline grid, no motion) */}
       <div
         aria-hidden

@@ -49,12 +49,15 @@ export function EventRow({ e }: { e: CalEvent }) {
   const impact = IMPACT_META[e.impact];
   const detail = eventDetail(e);
   const health = healthContext(e);
+  const imminent = e.daysAway >= 0 && e.daysAway <= 1;
 
   return (
     <div
       className={cn(
         "group relative flex items-stretch gap-2 rounded-xl border bg-surface-1 py-3 pr-2.5 pl-0 transition-colors hover:border-line3 hover:bg-surface-2/50 sm:gap-3 sm:pr-3",
         e.isHeld ? "border-line2" : "border-line",
+        // a record, not a catalyst — one notch quieter than a live row
+        e.isPast && "opacity-[0.82]",
       )}
     >
       {/* stretched navigation link — covers the whole row (transparent); the set-reminder
@@ -116,25 +119,30 @@ export function EventRow({ e }: { e: CalEvent }) {
         )}
       </div>
 
-      {/* when */}
+      {/* when — `imminent` is today/tomorrow ONLY. The grid reads history now, so a negative
+          daysAway must not borrow the "happening now" emphasis the old `<= 1` gave it. */}
       <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 self-center text-right">
-        <span className="num text-[12.5px] font-semibold text-ink">{fmtDate(e.date)}</span>
+        <span className="num text-[12.5px] font-semibold text-ink">{e.dateLabel}</span>
         <span className="text-[10.5px] text-ink3">{fmtDay(e.date)}</span>
         <span
           className={cn(
             "mt-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-            e.daysAway <= 1 ? "text-ink" : "text-ink3",
+            imminent ? "text-ink" : "text-ink3",
           )}
-          style={e.daysAway <= 1 ? tint("var(--primary)", 12, 28) : undefined}
+          style={imminent ? tint("var(--primary)", 12, 28) : undefined}
         >
           {daysAwayLabel(e.daysAway)}
         </span>
       </div>
 
-      {/* set-reminder — above the stretched link so its clicks stay local */}
-      <div className="relative z-10 flex shrink-0 items-center self-center">
-        <SetReminderButton symbol={e.symbol} stockId={e.stockId} eventType={e.eventType} eventDate={e.eventDate} />
-      </div>
+      {/* set-reminder — above the stretched link so its clicks stay local. Omitted on a past
+          event: there is nothing left to be reminded about, and the backend resolves a rule
+          against the NEXT occurrence, so the control would quietly mean something else here. */}
+      {!e.isPast && (
+        <div className="relative z-10 flex shrink-0 items-center self-center">
+          <SetReminderButton symbol={e.symbol} stockId={e.stockId} eventType={e.eventType} eventDate={e.eventDate} />
+        </div>
+      )}
     </div>
   );
 }

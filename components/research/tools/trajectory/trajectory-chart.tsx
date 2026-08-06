@@ -59,11 +59,7 @@ export function TrajectoryChart({
    *
    * Supplied from the finding's `facts.pillarPair` (or a not-covered note's readings), so a
    * single-pillar pattern draws that pillar and a composite pattern (T1–T4) draws the composite.
-   *
-   * ★ OMITTED IS FULL TRAJECTORY — the tool's general mode. All five lines draw, every one of them
-   * (the composite included) is the reader's to switch off, and no selection frames the chart. This
-   * is not a fallback for "nothing to select": it is a mode the reader picks, and PATTERN MODE IS THE
-   * ONE THAT NARROWS. Passing `focus` is what buys the lock, so the lock cannot leak into full mode.
+   * Omit it for the survey view, where all five lines draw and the pillars stay togglable.
    *
    * ⚠ IN FOCUS MODE THE COMPOSITE IS NOT DRAWN UNLESS THE SELECTION NAMES IT. Keeping it as a
    * permanent backdrop would put a line on screen that the card beneath is not about — the same
@@ -97,13 +93,9 @@ export function TrajectoryChart({
         .map((k) => TRAJECTORY_LINES.find((l) => l.key === k))
         .filter((l): l is (typeof TRAJECTORY_LINES)[number] => !!l && want.has(l.key));
     }
-    return TRAJECTORY_LINES.filter((l) => enabled[l.key]);
+    return TRAJECTORY_LINES.filter((l) => l.key === "composite" || enabled[l.key]);
   }, [focus, enabled]);
   const focused = !!focus?.length;
-  // ⚠ NEVER LET THE READER EMPTY THE CHART. With every line off there is no domain, no marker and no
-  //   tooltip — a blank panel that looks broken rather than chosen. The last enabled line is locked
-  //   on (its button renders disabled), so "turn things off" always terminates at one line, not zero.
-  const lastLineOn = drawn.length === 1 ? drawn[0].key : null;
   const markerKey = (drawn[0]?.key ?? "composite") as LineKey;
   const valueAt = (i: number) => points[i][markerKey as keyof WindowPoint] as number;
 
@@ -383,23 +375,17 @@ export function TrajectoryChart({
         )}
       </div>
 
-      {/* legend — toggles + latest value.
-          ⚠ IN FOCUS MODE THE LINES ARE NOT TOGGLABLE: the selection decides what is drawn, and letting
-          the legend switch off the pattern's own subject would put the chart back out of step with the
-          card beneath it. That lock belongs to focus mode ALONE — in full trajectory every line here,
-          composite included, is the reader's to switch (bar the last one standing). */}
+      {/* legend — toggles + latest value. ⚠ IN FOCUS MODE THE LINES ARE NOT TOGGLABLE: the selection
+          decides what is drawn, and letting the legend switch off the pattern's own subject would put
+          the chart back out of step with the card beneath it. */}
       <div className="mt-3 flex flex-wrap gap-2">
         {(focused ? drawn : TRAJECTORY_LINES).map((l) => {
-          // ONE rule decides this, and it is the MODE — not a per-line flag (see TRAJECTORY_LINES).
-          const togglable = !focused && l.key !== lastLineOn;
+          const togglable = l.togglable && !focused;
           const isOff = togglable && !enabled[l.key];
           return (
             <button
               key={l.key}
               disabled={!togglable}
-              // ⚠ Only in full mode. A single-subject FOCUS also leaves one line in `drawn`, and
-              //   "at least one line stays on" would misdescribe why that one is locked.
-              title={!focused && l.key === lastLineOn ? "At least one line stays on" : undefined}
               onClick={() => togglable && setEnabled((e) => ({ ...e, [l.key]: !e[l.key] }))}
               className={cn(
                 "inline-flex items-center gap-2 rounded-[9px] border border-line2 bg-surface-2 px-3 py-1.5 text-[12px] text-ink2 transition-opacity",

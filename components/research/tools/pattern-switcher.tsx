@@ -41,7 +41,7 @@ export function PatternSwitcher({
       <div className="kicker mb-3">
         {patterns > 0 && `${patterns} ${patterns === 1 ? "reading" : "readings"}`}
         {patterns > 0 && notes > 0 && " · "}
-        {notes > 0 && `${notes} excluded`}
+        {notes > 0 && `${notes} tested, not shipped`}
       </div>
       <div className="space-y-1.5" role="listbox" aria-label="Select a reading to study">
         {items.map((s) => (
@@ -88,17 +88,19 @@ function SwitcherRow({
         <span className={cn("text-[12.5px]", selected ? "font-semibold text-ink" : "font-medium text-ink2", note && "font-normal")}>
           {titleOf(s)}
         </span>
-        {/* ⚠ NO ID BADGE FOR A NOTE. `s.id` (NC1, NC3, …) is the registry's internal identifier —
-            it must never reach a rendered surface. `titleOf(s)` above already names the
-            configuration; a note that has no tier chip simply renders none, same as a pattern
-            with no tier. */}
-        {!note && s.pattern.tier && (
-          <span
-            className="rounded px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wide"
-            style={{ color: a?.color, background: a?.bg }}
-          >
-            {s.pattern.tier}
+        {note ? (
+          <span className="num rounded border border-line2 px-1.5 py-px text-[9.5px] uppercase tracking-wide text-ink3">
+            {s.id}
           </span>
+        ) : (
+          s.pattern.tier && (
+            <span
+              className="rounded px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wide"
+              style={{ color: a?.color, background: a?.bg }}
+            >
+              {s.pattern.tier}
+            </span>
+          )
         )}
         {state && (
           <span

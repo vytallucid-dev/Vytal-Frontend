@@ -177,7 +177,7 @@ function ResultsViewerInner() {
 
       {/* content */}
       <div>
-        {activeTab === "snapshot" && <SnapshotTab data={detail} onTab={(t) => pushParams({ tab: t })} />}
+        {activeTab === "snapshot" && <SnapshotTab data={detail} />}
         {activeTab === "pnl" && <PnlTrendsTab data={detail} />}
         {activeTab === "context" && <ContextTab data={detail} />}
       </div>

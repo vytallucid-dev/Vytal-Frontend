@@ -95,7 +95,7 @@ export function SidebarUser({ collapsed }: { collapsed: boolean }) {
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Account"
-          className="mx-auto grid size-9 place-items-center rounded-full border border-primary/20 bg-primary/12 text-xs font-bold text-primary outline-none ring-primary/40 transition-colors hover:bg-primary/20 focus-visible:ring-2"
+          className="mx-auto grid size-7 place-items-center rounded-full border border-primary/20 bg-primary/12 text-xs font-bold text-primary outline-none ring-primary/40 transition-colors hover:bg-primary/20 focus-visible:ring-2"
         >
           {initials(name)}
         </DropdownMenuTrigger>

@@ -2,33 +2,21 @@
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════════
- * Trajectory — the orchestrator. TWO PRIMARY MODES: pattern, and full trajectory.
+ * Trajectory — the orchestrator. THE PAGE IS ABOUT THE SELECTED READING. Same treatment as Divergence.
  * ═══════════════════════════════════════════════════════════════════════════════════════════════════
  *
- *   PATTERN MODE — the page is about the SELECTED READING. Selection drives the chart series, its
- *     heading, the readout, the promoted banner, the card and its clauses, and the boundary.
- *     `?pattern=` makes it linkable; an unknown key falls back silently. What the chart draws is the
- *     pattern's own `pillarPair`:
- *       single-pillar (T5–T9)  → that pillar's line alone
- *       composite (T1–T4)      → the composite line alone
- *       a not-covered note     → whatever subjects it reports readings for
- *     ⚠ T1–T4's record carries `pillarPair: ["composite"]` precisely so a chart does not read a
- *       doubled pillar name off the key and draw two unrelated lines. The chart reads the record,
- *       never the key.
+ * Selection drives the chart series, its heading, the readout, the promoted banner, the card and its
+ * clauses, and the boundary. `?pattern=` makes it linkable; an unknown key falls back silently.
  *
- *   FULL TRAJECTORY — the pillar explorer this tool started as. All five lines, each individually
- *     togglable, no focus lock and no pattern framing.
+ * ── ★ WHAT THE CHART DRAWS IS THE PATTERN'S OWN `pillarPair` ─────────────────────────────────────
+ *   single-pillar (T5–T9)  → that pillar's line alone
+ *   composite (T1–T4)      → the composite line alone
+ *   a not-covered note     → whatever subjects it reports readings for
+ * The survey view (all five lines, pillars togglable) is what renders when there is nothing to select.
  *
- * ── ★ WHY FULL TRAJECTORY IS A MODE AND NOT AN EMPTY STATE ───────────────────────────────────────
- * Pattern rendering REPLACED the general view rather than joining it, and that cost more than a
- * feature. With nothing selectable the tool rendered NO CHART AT ALL (SelectionChart returns null on a
- * null selection) — and with only a not-covered note selectable it rendered the DIVERGENCE spread
- * instrument, because selection-view.tsx dispatches on `pair` and NC1's pair is present. HDFCBANK hit
- * the second: four scored pillars, six quarters of history, and a trajectory page showing a
- * Foundation-vs-Market spread. The pillars had moved the whole time; nothing would draw them.
- *
- * So there is no path on which this tool declines to open. The mode DEFAULTS (below) put a reader on
- * the right view with no clicks, and the switch puts them on the other one with exactly one.
+ * ⚠ T1–T4's record carries `pillarPair: ["composite"]` precisely so a chart does not read a doubled
+ *   pillar name off the key and draw two unrelated lines. That is why the chart reads the record and
+ *   never the key.
  *
  * ── ★ R1 STILL HOLDS: THIS TOOL DOES NOT RANK BY SIZE ────────────────────────────────────────────
  * The switcher shows no gap tier, because trajectory has none — the study found a bigger move is NOT
@@ -39,10 +27,18 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
-import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
+import { useScoredStocks, useStockScan, useStockScanFacets } from "@/lib/api/hooks/use-stocks";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
-import type { ToolScanItem } from "@/types/research-tools";
+import {
+  EMPTY_SCAN_FILTERS,
+  scanFilterCount,
+  type ScanFilters,
+  type ToolScanItem,
+} from "@/types/research-tools";
+import { BAND_META } from "@/components/stock-detail/health/shared";
+import type { LabelBand } from "@/types/health";
 import { ToolFrame } from "../tool-frame";
+import { ScanFilterBar, relabel } from "../scan-filters";
 import {
   DEFAULT_WINDOW,
   windowQuarters,
@@ -92,7 +88,22 @@ export function TrajectoryTool() {
   }
 
   const stocksQ = useScoredStocks();
-  const scanQ = useStockScan("trajectory", !symbol);
+
+  // ── Landing filters — peer group · pattern, both multi-select ─────────────────────────
+  // ★ Held here and sent to the SERVER, never applied to `scanRows`. The scan is cursor-paged,
+  //   so the client holds only the pages it has scrolled to; filtering those would filter a
+  //   prefix of the ranking and hide matches that live on a page nobody fetched. The narrowing
+  //   is part of the query key, so a change starts a fresh page-1 fetch and the frame's
+  //   infinite-scroll sentinel then pages the NARROWED ranking the same way.
+  const [filters, setFilters] = useState<ScanFilters>(EMPTY_SCAN_FILTERS);
+  const isFiltered = scanFilterCount(filters) > 0;
+
+  // Landing scan — cursor-paged; the frame's sentinel asks for the next page.
+  const scanQ = useStockScan("trajectory", !symbol, filters);
+  const scanRows = useMemo(() => scanQ.data?.pages.flatMap((p) => p.items), [scanQ.data]);
+  // Filter OPTIONS come off the scan itself (only values that return cards), with counts
+  // cross-filtered against the other dropdown's selection.
+  const facetsQ = useStockScanFacets("trajectory", !symbol, filters);
   const healthQ = useStockHealth(symbol ?? "", windowQuarters(window));
 
   const data = healthQ.data;
@@ -124,40 +135,8 @@ export function TrajectoryTool() {
     [params, router],
   );
 
-  // ── THE MODE ─────────────────────────────────────────────────────────────────────────────────
-  // ★ THE DEFAULT IS "IS A TRAJECTORY PATTERN FIRING", not "is anything selectable".
-  //
-  // ⚠ A NOT-COVERED NOTE MUST NOT TRIP PATTERN MODE, and that distinction is the whole HDFCBANK fix.
-  //   Notes ride in `selectables` on BOTH tools (see buildSelectables), so keying the default off
-  //   `selectables.length` would open HDFCBANK — which fires no T pattern at all — into pattern mode
-  //   on NC1, whose pair renders the divergence spread instrument. A note is the record of a decision
-  //   NOT to make a claim; it is not a reading that earns the framing of the page. It stays one click
-  //   away in the switcher, where a reader who wants it can find it.
-  const requestedView = params.get("view");
-  const defaultMode: TrajectoryMode = trajectoryFindings.length > 0 ? "pattern" : "full";
-  // An explicit `?view=` wins — except a request for pattern mode on a stock with nothing to select,
-  // which would render an empty page. Falling back is silent for the same reason an unknown
-  // `?pattern=` is: a reader following an old link should land on the stock, not on a failure.
-  const mode: TrajectoryMode =
-    requestedView === "full" ? "full"
-    : requestedView === "pattern" && selectables.length ? "pattern"
-    : defaultMode;
-  const onModeChange = useCallback(
-    (m: TrajectoryMode) => {
-      const next = new URLSearchParams(Array.from(params.entries()));
-      next.set("view", m);
-      router.replace(`/research/trajectory?${next.toString()}`, { scroll: false });
-    },
-    [params, router],
-  );
-  const patternMode = mode === "pattern";
-
-  // ★ NOTHING IS "SELECTED" IN FULL TRAJECTORY. Gating the selection here rather than at each of the
-  //   six slots below means the mode cannot half-apply — there is no path where the chart unfocuses
-  //   but the banner, the card or the boundary keep speaking for a reading the chart is not drawing.
-  const selection = patternMode ? selected : null;
-  const selectedPattern = selection?.kind === "pattern" ? selection.pattern : null;
-  const selectedNote = selection?.kind === "not_covered" ? selection.note : null;
+  const selectedPattern = selected?.kind === "pattern" ? selected.pattern : null;
+  const selectedNote = selected?.kind === "not_covered" ? selected.note : null;
   // The selected reading first, the rest behind it — so the banner's "+N more" stays true while its
   // title and body describe what is actually on screen.
   const readOrder = useMemo(
@@ -204,71 +183,33 @@ export function TrajectoryTool() {
             : symbol,
         },
         chips: verdict ? buildTrajectoryChips(verdict) : [],
-        // In full trajectory the banner is the stock's OWN trajectory read, unattached to any
-        // selection — the honest "Stable — no material change." line when nothing is firing. It is a
-        // summary of the page, not a frame on the chart, so it does not contradict five drawn lines.
         promotedRead: selectedNote
           ? notCoveredRead(selectedNote)
           : verdict && trajectory
-            ? buildTrajectoryRead(patternMode ? readOrder : trajectoryFindings)
+            ? buildTrajectoryRead(readOrder)
             : null,
         funnelBackHref: `/research/stock-screener/${symbol}?tab=health`,
-        // ★ ALWAYS PRESENT — the mode switch is not conditional on the stock having a pattern. See
-        //   TrajectoryModeSwitch for why the pattern button is disabled rather than hidden.
-        renderModeSwitch: () => (
-          <TrajectoryModeSwitch mode={mode} onChange={onModeChange} hasReadings={selectables.length > 0} />
+        renderChart: (active, setActive) => (
+          <SelectionChart
+            selection={selected}
+            sliced={sliced}
+            crossings={trajectory?.crossings ?? []}
+            active={active}
+            onActiveChange={setActive}
+          />
         ),
-        // ⚠ FULL TRAJECTORY GOES STRAIGHT TO TrajectoryChart, NOT THROUGH SelectionChart. That
-        //   dispatcher exists to route a SELECTION to the right instrument, and with no selection it
-        //   renders nothing at all. Passing no `focus` is what unlocks the legend (see the prop note).
-        renderChart: (active, setActive) =>
-          patternMode ? (
-            <SelectionChart
-              selection={selection}
-              sliced={sliced}
-              crossings={trajectory?.crossings ?? []}
-              active={active}
-              onActiveChange={setActive}
-            />
-          ) : sliced ? (
-            <TrajectoryChart
-              points={sliced.points}
-              crossings={trajectory?.crossings ?? []}
-              isDaily={sliced.isDaily}
-              resultMarks={sliced.resultMarks}
-              clampedEarlier={sliced.clampedEarlier}
-              active={active}
-              onActiveChange={setActive}
-            />
-          ) : null,
-        renderReadout: (active) =>
-          patternMode ? (
-            <SelectionReadout selection={selection} sliced={sliced} active={active} />
-          ) : sliced?.points.length ? (
-            <TrajectoryReadout points={sliced.points} isDaily={sliced.isDaily} active={active} />
-          ) : null,
+        renderReadout: (active) => (
+          <SelectionReadout selection={selected} sliced={sliced} active={active} />
+        ),
         renderSummary: () => (
           <>
-            {/* The side panel, made clickable — every reading on this stock, the notes last.
-                ⚠ PATTERN MODE ONLY: a switcher is a control over the selection, and full trajectory
-                has none. Showing it there would offer a choice that changes nothing on screen. */}
-            {patternMode && (
-              <PatternSwitcher items={selectables} selectedId={selection?.id ?? null} onSelect={onSelect} />
-            )}
-            {/* ★ PATTERN MODE — THE SELECTED READING, COMPLETE, the others one click above in the
-                switcher, and the boundary once beneath it.
-                ★ FULL TRAJECTORY — the whole standing set at once, and NO boundary: that line is the
-                interpretive limit of ONE reading, and printing it under a stack of them would attach
-                one pattern's caveat to all of them. Everything else the panel carries (what closed,
-                what was tested and not shipped, the other tool) is about the stock, not the
-                selection, so it renders identically in both modes. */}
+            {/* The side panel, made clickable — every reading on this stock, the notes last. */}
+            <PatternSwitcher items={selectables} selectedId={selected?.id ?? null} onSelect={onSelect} />
+            {/* ★ THE SELECTED READING, COMPLETE — the others sit one click above, each of them
+                equally complete when selected. The boundary renders once, under the card. */}
             <FindingCards
-              findings={patternMode ? (selectedPattern ? [selectedPattern] : []) : trajectoryFindings}
-              notCovered={
-                patternMode
-                  ? (selectedNote ? [selectedNote] : [])
-                  : (data?.findings?.notCovered ?? [])
-              }
+              findings={selectedPattern ? [selectedPattern] : []}
+              notCovered={selectedNote ? [selectedNote] : []}
               quietNote={data?.findings?.quietNote ?? undefined}
               crossTool={data?.findings?.crossTool?.find((c) => c.tool === "divergence") ?? undefined}
               ended={data?.findings?.recentlyEnded ?? undefined}
@@ -293,14 +234,31 @@ export function TrajectoryTool() {
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}
       landing={{
-        items: scanQ.data?.items,
+        items: scanRows,
         isLoading: scanQ.isLoading,
         isError: scanQ.isError,
         onRetry: () => void scanQ.refetch(),
+        total: scanQ.data?.pages[0]?.total,
+        hasMore: scanQ.hasNextPage,
+        isFetchingMore: scanQ.isFetchingNextPage,
+        fetchMore: () => void scanQ.fetchNextPage(),
         renderCard: (it, onSelectSym) => (
           <TrajectoryScanCard item={it as ToolScanItem} onSelect={onSelectSym} />
         ),
         keyOf: (it) => (it as ToolScanItem).symbol,
+        isFiltered,
+        onClearFilters: () => setFilters(EMPTY_SCAN_FILTERS),
+        filters: (
+          <ScanFilterBar
+            peerGroupOptions={facetsQ.data?.peerGroups ?? []}
+            patternOptions={facetsQ.data?.patterns ?? []}
+            bandOptions={relabel(facetsQ.data?.bands ?? [], (v) => BAND_META[v as LabelBand]?.label)}
+            filters={filters}
+            onChange={setFilters}
+            loading={facetsQ.isLoading}
+            matchCount={scanQ.data?.pages[0]?.total}
+          />
+        ),
       }}
       single={single}
     />

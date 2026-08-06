@@ -37,10 +37,10 @@ import type { CrossingEvent } from "@/types/health";
 /**
  * The chart heading, re-framed onto the selection. Names the reading, then its subjects.
  *
- * ⚠ A NOT-COVERED NOTE'S HEADING IS `configurationTitle` ALONE — not appended to its own subjects.
- * A pattern's name ("Price Ahead of Quality") is a different string from its subjects ("Market ·
- * Foundation"), so showing both is two facts. A note's name IS its subjects ("Foundation vs
- * Market"), so appending them again would repeat the same two words back-to-back.
+ * ⚠ A NOT-COVERED NOTE GETS ITS SUBJECTS AND NOTHING ELSE. It used to be named "Tested, not shipped"
+ * here, which described our process rather than the stock. Its name is now its pillars — which the
+ * `· subjects` suffix would then repeat verbatim ("Foundation vs Market · Foundation · Market"), so
+ * the suffix is skipped rather than the name being padded out to earn it.
  */
 function headingOf(s: Selectable): string {
   if (s.kind === "not_covered") return configurationTitle(s.note.readings);

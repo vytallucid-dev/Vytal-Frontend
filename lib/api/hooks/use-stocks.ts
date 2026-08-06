@@ -1,12 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
 import type {
   ScoredStockLite,
   UniverseStockLite,
   ToolScanItem,
   ToolScanPage,
+  ToolScanFacets,
+  ScanFilters,
   ToolId,
 } from "@/types/research-tools";
 
@@ -43,22 +45,83 @@ export function useUniverseStocks(enabled = true) {
   });
 }
 
+/** Cards per landing-scan page. The scan grid is 1 / 2 / 4 columns and 16 divides all
+ *  three, so a page boundary always lands on a full row. */
+export const SCAN_PAGE_SIZE = 16;
+
 /**
- * Per-tool landing scan → GET /api/stocks/scan?tool=…  Each tool ranks the same
- * scored universe differently and returns its own item shape, so the row type is a
- * type param (defaults to the trajectory item). `trajectory` + `divergence` are
- * backed today; others 400 until implemented.
+ * Per-tool landing scan → GET /api/stocks/scan?tool=…, cursor-paged.
  *
- * ⚠ THE ENDPOINT IS CURSOR-PAGED (tool-scan.page.ts on the backend) — it returns a
- * ToolScanPage<T>, not a bare T[]. A caller wants `.data?.items` for the rows; `.data`
- * itself also carries `total` / `cursor` / `hasMore` for anyone that pages further.
- * This hook always requests page one — see the callers for whether that's enough.
+ * Each tool ranks the same scored universe differently and returns its own item shape, so
+ * the row type is a type param (defaults to the trajectory item). The server owns the
+ * ranking and hands back one page at a time — only the pages actually scrolled to are ever
+ * fetched. `total` describes the whole ranking and rides on every page; read it off
+ * `data.pages[0]`.
  */
-export function useStockScan<T = ToolScanItem>(tool: ToolId, enabled = true) {
-  return useQuery<ToolScanPage<T>>({
-    queryKey: ["stocks", "scan", tool],
-    queryFn: () => apiFetch<ToolScanPage<T>>(`/api/stocks/scan?tool=${tool}`),
+/**
+ * The filter query string, and the query KEY it must agree with.
+ *
+ * ★ SORTED, so the key is stable: selecting A then B and selecting B then A are the same
+ *   narrowing and must share one cache entry rather than fetching the ranking twice.
+ * ★ Empty lists emit NOTHING — an unfiltered landing keeps the exact URL (and the exact cache
+ *   entry) it had before filters existed.
+ */
+function filterParams(filters?: ScanFilters): { qs: string; key: string[] } {
+  const pg = [...(filters?.peerGroups ?? [])].sort();
+  const pat = [...(filters?.patterns ?? [])].sort();
+  const bands = [...(filters?.bands ?? [])].sort();
+  const qs =
+    (pg.length ? `&pg=${encodeURIComponent(pg.join(","))}` : "") +
+    (pat.length ? `&patterns=${encodeURIComponent(pat.join(","))}` : "") +
+    (bands.length ? `&bands=${encodeURIComponent(bands.join(","))}` : "");
+  return { qs, key: [pg.join(","), pat.join(","), bands.join(",")] };
+}
+
+/**
+ * Per-tool landing scan → GET /api/stocks/scan?tool=…, cursor-paged, optionally filtered.
+ *
+ * ⚠ THE FILTERS ARE PART OF THE QUERY KEY, deliberately: a narrowed landing is a DIFFERENT
+ * ranking, with its own cursors and its own `total`. Changing the selection therefore starts a
+ * fresh infinite query at page 1 — which is the only correct behaviour, since a cursor from the
+ * unfiltered ranking names a position that doesn't exist in the filtered one. The frame's scroll
+ * sentinel then pages through the narrowed ranking exactly as it does the full one.
+ */
+export function useStockScan<T = ToolScanItem>(
+  tool: ToolId,
+  enabled = true,
+  filters?: ScanFilters,
+) {
+  const { qs, key } = filterParams(filters);
+  return useInfiniteQuery<ToolScanPage<T>>({
+    queryKey: ["stocks", "scan", tool, ...key],
     enabled,
     staleTime: 5 * 60 * 1000,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? (lastPage.cursor ?? undefined) : undefined),
+    queryFn: ({ pageParam }) =>
+      apiFetch<ToolScanPage<T>>(
+        `/api/stocks/scan?tool=${tool}&limit=${SCAN_PAGE_SIZE}` +
+          qs +
+          (pageParam ? `&cursor=${encodeURIComponent(pageParam as string)}` : ""),
+      ),
+  });
+}
+
+/**
+ * The landing filters' OPTION lists → GET /api/stocks/scan/facets?tool=….
+ *
+ * The current selection is sent along because the counts are cross-filtered (each dimension
+ * counted with the other's selection applied). `placeholderData` keeps the previous options on
+ * screen while those counts refresh — a dropdown that empties itself the instant you tick a row
+ * is unusable, and the option list itself never changes, only the numbers beside it.
+ */
+export function useStockScanFacets(tool: ToolId, enabled = true, filters?: ScanFilters) {
+  const { qs, key } = filterParams(filters);
+  return useQuery<ToolScanFacets>({
+    queryKey: ["stocks", "scan-facets", tool, ...key],
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+    queryFn: () => apiFetch<ToolScanFacets>(`/api/stocks/scan/facets?tool=${tool}${qs}`),
   });
 }

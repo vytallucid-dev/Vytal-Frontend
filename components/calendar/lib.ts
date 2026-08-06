@@ -13,6 +13,7 @@
 
 import {
   addDays,
+  addMonths,
   addWeeks,
   differenceInCalendarDays,
   endOfDay,
@@ -21,10 +22,16 @@ import {
   format,
   parseISO,
   startOfDay,
+  startOfMonth,
   startOfToday,
+  startOfWeek,
 } from "date-fns";
 import { Icons, type Icon } from "@/lib/icons";
-import type { CalendarEvent } from "@/lib/api/hooks/use-events-calendar";
+import type {
+  CalendarBounds,
+  CalendarEvent,
+  CalendarWindow,
+} from "@/lib/api/hooks/use-events-calendar";
 import type { Holding, StockBand } from "@/types/portfolio";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -125,7 +132,12 @@ export function buildHeldIndex(holdings: Holding[]): Map<string, HeldInfo> {
 export interface CalEvent extends CalendarEvent {
   date: Date; // parsed eventDate (local midnight)
   exDateObj: Date | null;
-  daysAway: number; // calendar days from today (0 = today)
+  daysAway: number; // calendar days from today (negative ⇔ already happened)
+  /** Already happened. The grid reads history now, so a row must know it is a record rather
+   *  than a catalyst — no reminder to set, no "imminent" emphasis. */
+  isPast: boolean;
+  /** "6 Jul" this year, "6 Jul 2023" otherwise — a historical row without its year is a lie. */
+  dateLabel: string;
   horizon: Horizon;
   impact: Impact;
   typeGroup: TypeGroup;
@@ -169,11 +181,14 @@ export function enrichEvents(
   return events.map((e) => {
     const date = parseISO(e.eventDate);
     const heldInfo = held.get(e.symbol) ?? null;
+    const daysAway = differenceInCalendarDays(date, b.today);
     return {
       ...e,
       date,
       exDateObj: e.exDate ? parseISO(e.exDate) : null,
-      daysAway: differenceInCalendarDays(date, b.today),
+      daysAway,
+      isPast: daysAway < 0,
+      dateLabel: fmtDateSmart(date, b.today),
       horizon: horizonOf(date, b),
       impact: impactOf(e.impactLevel),
       typeGroup: typeGroupOf(e.eventType),
@@ -300,8 +315,25 @@ export const fmtRupee = (n: number) => `₹${n.toLocaleString("en-IN", { maximum
 export const fmtDate = (d: Date) => format(d, "d MMM"); // "6 Jul"
 export const fmtDay = (d: Date) => format(d, "EEE"); // "Mon"
 export const fmtFull = (d: Date) => format(d, "EEE, d MMM yyyy"); // "Mon, 6 Jul 2026"
+/** Year-aware date: dropped inside the current year (the common case), always shown outside it.
+ *  The grid reads years of history — "6 Jul" alone cannot tell 2023 from 2026. */
+export const fmtDateSmart = (d: Date, today: Date) =>
+  d.getFullYear() === today.getFullYear() ? format(d, "d MMM") : format(d, "d MMM yyyy");
+
+/** Reads in BOTH directions — the past half exists because the month grid now shows history,
+ *  where the old "≤ 0 ⇒ Today" would have labelled a 2023 result as happening now. */
 export function daysAwayLabel(daysAway: number): string {
-  if (daysAway <= 0) return "Today";
+  if (daysAway < 0) {
+    const ago = -daysAway;
+    if (ago === 1) return "Yesterday";
+    if (ago < 7) return `${ago} days ago`;
+    if (ago < 14) return "Last week";
+    if (ago < 60) return `${Math.round(ago / 7)} weeks ago`;
+    if (ago < 365) return `${Math.round(ago / 30)} months ago`;
+    const years = Math.round(ago / 365);
+    return years <= 1 ? "A year ago" : `${years} years ago`;
+  }
+  if (daysAway === 0) return "Today";
   if (daysAway === 1) return "Tomorrow";
   if (daysAway < 7) return `In ${daysAway} days`;
   if (daysAway < 14) return "Next week";
@@ -393,4 +425,53 @@ export function eventsInRange(events: CalEvent[], range: DateRange | null): CalE
     const t = e.date.getTime();
     return t >= lo && t <= hi;
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────
+// SERVER WINDOWS — the calendar no longer downloads one fixed 90-day blob and slices it
+// client-side. Each view asks the API for exactly the window it is showing: the timeline
+// pages forward from today, the grid fetches the month a reader navigated to (history
+// included). These translate a UI intent into the `from`/`to` the endpoint takes.
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+export const toYmd = (d: Date) => format(d, "yyyy-MM-dd");
+
+/** The timeline's window for the active range. "All upcoming" is open-ended forward
+ *  (`to: null`) — what ends the feed now is running out of pages, not a 90-day wall. */
+export function rangeWindow(range: DateRange | null, b: Bounds): CalendarWindow {
+  if (!range) return { from: toYmd(b.today), to: null };
+  return { from: toYmd(range.from), to: toYmd(range.to) };
+}
+
+/** The month grid's window. It renders WHOLE WEEKS, so the fetch has to cover the visible
+ *  grid rather than the calendar month — otherwise the leading/trailing days of the
+ *  neighbouring months render empty and read as "nothing happened", which is false. */
+export function gridWindow(month: Date): CalendarWindow {
+  return {
+    from: toYmd(startOfWeek(startOfMonth(month), { weekStartsOn: 1 })),
+    to: toYmd(endOfWeek(endOfMonth(month), { weekStartsOn: 1 })),
+  };
+}
+
+/** How far the month nav may travel.
+ *
+ *  Backwards: as far as we have ever recorded — that is the whole point of the change, and the
+ *  old "no past months" limit was hiding data rather than the absence of it.
+ *  Forwards: the later of the last event we hold and the old +3-month reach. Keeping that floor
+ *  makes this purely ADDITIVE — the forward-looking reader loses nothing, and a month that has
+ *  not been ingested yet stays browsable (the future fills in; the past does not).
+ *
+ *  Never narrower than the current month, so "Today" is always reachable. With the bounds
+ *  request still in flight this degrades exactly to the previous forward-only behaviour. */
+export function monthNavBounds(
+  bounds: CalendarBounds | undefined,
+  today: Date,
+): { min: Date; max: Date } {
+  const earliest = bounds?.earliest ? parseISO(bounds.earliest) : today;
+  const latest = bounds?.latest ? parseISO(bounds.latest) : today;
+  const forwardFloor = addMonths(today, 3);
+  return {
+    min: startOfMonth(earliest < today ? earliest : today),
+    max: startOfMonth(latest > forwardFloor ? latest : forwardFloor),
+  };
 }

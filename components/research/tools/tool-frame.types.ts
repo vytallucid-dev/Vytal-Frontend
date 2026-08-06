@@ -174,7 +174,11 @@ export interface SingleViewSlots {
 }
 
 /** The LANDING (cold) scan a tool supplies. The hero search is frame-owned
- *  (a scored-universe typeahead); these cards are the curated "top picks". */
+ *  (a scored-universe typeahead); these cards are the ranked scan.
+ *
+ *  The scan is CURSOR-PAGED server-side: `items` is every page fetched so far, and the
+ *  frame owns the infinite-scroll sentinel that asks for the next one. A tool passes the
+ *  paging fields straight off its query — it never slices. */
 export interface LandingSlots<T = unknown> {
   items: T[] | undefined;
   isLoading: boolean;
@@ -183,6 +187,31 @@ export interface LandingSlots<T = unknown> {
   renderCard: (item: T, onSelect: (symbol: string) => void) => ReactNode;
   /** key extractor for list rendering. */
   keyOf: (item: T) => string;
+  /** Size of the whole ranking (not of `items`) — the frame's "showing all N" line.
+   *  ⚠ Under a filter this is the size of the NARROWED ranking, which is what makes the
+   *  frame's counts honest: the server filters before it pages (see tool-scan.page.ts). */
+  total?: number;
+  /** More pages exist behind the last one fetched. */
+  hasMore?: boolean;
+  /** A page is in flight right now (drives the bottom loader). */
+  isFetchingMore?: boolean;
+  /** Ask for the next page. The frame calls this from the scroll sentinel. */
+  fetchMore?: () => void;
+
+  // ── optional FILTER slot ────────────────────────────────────────────────────
+  // A tool that narrows its scan supplies the control here and the frame places it — above
+  // the grid, below the eyebrow. The frame renders it; it never reads or applies a filter.
+  //
+  // ⚠ FILTERING IS THE TOOL'S QUERY, NOT A CLIENT-SIDE PASS OVER `items`. The scan is
+  //   cursor-paged, so `items` is only the pages scrolled to so far; narrowing it here would
+  //   filter a prefix and leave matches unfetched. The tool changes its request instead — see
+  //   useStockScan's filters argument — and everything below stays true under a filter.
+  /** The filter control (e.g. <ScanFilterBar/>). Omit → no filter row is rendered. */
+  filters?: ReactNode;
+  /** Something is currently selected — switches the empty state to "nothing MATCHES". */
+  isFiltered?: boolean;
+  /** Drop every selection. Offered from the filtered-empty panel. */
+  onClearFilters?: () => void;
 }
 
 export interface ToolFrameProps {

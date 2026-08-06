@@ -13,7 +13,7 @@ import { useStockOhlcv } from "@/lib/api/hooks/use-stock-ohlcv";
 import { useStockPrice } from "@/lib/api/hooks/use-stock-price";
 import { useStockNews } from "@/lib/api/hooks/use-stock-news";
 import { useStockEvents } from "@/lib/api/hooks/use-stock-events";
-import { prepareStockFindings, accentVars } from "@/lib/findings";
+import { prepareStockFindings, accentVars, DENSITY_EMPTY_COPY } from "@/lib/findings";
 import { PriceChart } from "@/components/stock-detail/price-chart";
 import { useAlerts, useAlertMutations } from "@/lib/api/hooks/use-alerts";
 import { AlertManageRow } from "@/components/alerts/alert-manage-row";
@@ -289,8 +289,14 @@ function FindingsList({ entry }: { entry: WatchlistEntry }) {
       ) : !entry.scored || !data?.scored ? (
         <NotScored what="Findings" />
       ) : !prepared || prepared.count === 0 ? (
+        // ⚠ THIS LINE USED TO BE HAND-WRITTEN, AND WAS FALSE. It read "Nothing notable fired —
+        // steady, no divergence, no flag." on the same `count === 0` gate as the stock page, so it
+        // rendered on the same four names and asserted the band ("steady": false for three of them)
+        // and the spread ("no divergence": false for all four, every one carries a `wide` flag).
+        // It survived the pass that fixed the stock page's copy purely because it imported nothing.
+        // The shared constant is the fix; do not re-author a variant here. See classify.ts.
         <p className="rounded-lg border border-dashed border-line2 bg-surface-2/50 px-3 py-4 text-center text-[12px] text-ink3">
-          Nothing notable fired — steady, no divergence, no flag.
+          {DENSITY_EMPTY_COPY}
         </p>
       ) : (
         <ul className="space-y-2">

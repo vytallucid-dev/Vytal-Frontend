@@ -4,7 +4,7 @@ import { Fragment, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { HealthRing } from "@/components/ui/health-ring";
-import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
+import { useChartTooltip, useElementWidth, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,8 +16,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icons } from "@/lib/icons";
 import { healthColorVar } from "@/lib/format";
+import { getMetricLabel } from "@/lib/health/metric-labels";
 import { cn } from "@/lib/utils";
-import { BAND_META, PILLAR_META, LABEL_BAND_ORDER, SectionEyebrow } from "@/components/stock-detail/health/shared";
+import {
+  accentVars,
+  prepareMemberFindings,
+  type PreparedMemberFinding,
+  DENSITY_EMPTY_PILL,
+} from "@/lib/findings";
+import { BAND_META, LABEL_BAND_ORDER, PILLAR_META, SectionEyebrow } from "@/components/stock-detail/health/shared";
 import type { LabelBand, PillarKey } from "@/types/health";
 import type { UniverseHealthView, UniverseMemberView } from "@/types/universe-view";
 import {
@@ -25,7 +32,6 @@ import {
   compositeBand,
   flagLabel,
   isRedistributed,
-  memberVerdict,
   recoveryMovers,
   PILLAR_LABEL,
 } from "./lib";
@@ -175,6 +181,12 @@ function buildConditionFilters(view: UniverseHealthView): {
     {
       id: "wide_divergence",
       label: "Divergence",
+      // ⚠ NO THRESHOLD IN COPY, STILL. This used to read "Two pillars ≥ 25 pts apart" (stale the
+      //   day Phase 2 moved the material cut to 12), then "The widest pillar spread on this stock"
+      //   (stale the day the widest-pair derivation itself was retired — Ruling 0). The match below
+      //   now reads Ruling 3's headline, decided once, backend-side.
+      note: "A divergence pattern is currently firing on this stock",
+      match: (m) => m.divergence.headline === "patterns_firing",
       // ⚠ NO THRESHOLD IN COPY, STILL. This used to read "Two pillars ≥ 25 pts apart" (stale the
       //   day Phase 2 moved the material cut to 12), then "The widest pillar spread on this stock"
       //   (stale the day the widest-pair derivation itself was retired — Ruling 0). The match below
@@ -376,47 +388,250 @@ function TrajectoryCell({ m }: { m: UniverseMemberView }) {
   );
 }
 
-// ── expanded row (preserved interaction: ring + verdict + best/worst + funnels) ─
-function MemberDetail({ m }: { m: UniverseMemberView }) {
-  const { best, worst } = bestWorstPillar(m.pillars);
+// ════════════════════════════════════════════════════════════════════════════════
+// THE EXPANDED ROW — it leads with WHAT FIRED, from the catalogue.
+//
+// The row payload has always carried `firedFlags` / `firedPatterns` (retired keys already dropped
+// server-side); this table already read both, but only to build its FILTERS. The expansion showed a
+// templated sentence and a spread chip instead — a proxy for the findings, one field over from the
+// findings themselves. It now renders the findings.
+//
+// ── WHAT IS RENDERED, AND WHAT CANNOT BE ──────────────────────────────────────────────────────────
+// name · description, resolved from the catalogue by `prepareMemberFindings`, ordered by the shared
+// File-1 A→I ladder (orderRankOf → severityWeight → key) — the same ordering the stock page and the
+// Flags board use, so one stock's findings can never sequence differently here. The interpretive
+// boundary line does NOT render on this surface — see MemberFindingCard's note.
+//
+// NOT a verdict. A verdict is bound to the stock's evidence numbers, and this payload carries no
+// evidence — only keys, severity and display state. The catalogue's static rule-level DESCRIPTION is
+// the layer that exists for exactly this case. Inventing a verdict from what is here would be
+// writing a sentence about numbers we do not have.
+// ════════════════════════════════════════════════════════════════════════════════
+
+/** How many finding cards the expansion renders before deferring to the stock page.
+ *
+ *  Chosen from the live distribution, not by taste: across the 94 scored names, with the C-family
+ *  consolidated, the per-stock card count runs 0–7 with a mean of 2.6 — 0:4 · 1:22 · 2:24 · 3:22 ·
+ *  4:12 · 5:5 · 6:2 · 7:3. A cap of 4 renders EVERY card for 89% of names, so the "+N more" line is
+ *  the exception rather than the standard state (a cap of 3 would truncate 23% of the universe).
+ *  And because the order is the risk-first A→I ladder, what gets cut is always the quietest end —
+ *  composition · convergence · ownership events · band transition · notable — never a red flag and
+ *  never a divergence. Raising it to 5 buys 6 more points of coverage for a materially taller row
+ *  inside a table meant to be scanned. */
+const FINDING_CAP = 4;
+
+const LENS_PILLAR_TITLE: Record<string, string> = { foundation: "Foundation", momentum: "Momentum" };
+
+/** A lens finding's instance coordinate as a label — WHICH metric (LM) or WHICH pillar (LP). The
+ *  same resolution the Flags board applies. Without it, a stock firing LM3 on two metrics renders
+ *  two identically-titled cards, because the face label names the SHAPE, not the field. */
+function lensContext(f: PreparedMemberFinding): string | null {
+  if (!f.lensSuffix) return null;
+  return f.key.startsWith("lens_lp")
+    ? (LENS_PILLAR_TITLE[f.lensSuffix] ?? f.lensSuffix)
+    : getMetricLabel(f.lensSuffix).label;
+}
+
+// ── the heading — FACTS ONLY, no verb that evaluates the company ──────────────────
+// name · band label. That is the whole sentence: no "sits in", no "is in good shape". The two
+// pillar facts ("Momentum leads (93)" / weakest pillar) are real facts too, but they are NOT
+// re-typed into this line — they live in the badges directly below, in full (pillar + value), so
+// stating them again here would be the exact duplication §2b below resolves for the spread line.
+// Every colour is a token already used elsewhere for this exact meaning: BAND_META.cssVar is the
+// same one HealthCell paints the Health column with, one row up.
+function MemberHeading({ m }: { m: UniverseMemberView }) {
+  const meta = BAND_META[compositeBand(m.composite)];
   return (
-    <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-[auto_1fr] sm:items-center">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="font-display text-[15px] font-medium text-ink">{m.name}</span>
+      <span
+        className="inline-flex items-center gap-1.5 text-[11.5px] font-medium"
+        style={{ color: meta.cssVar }}
+      >
+        <span className="size-1.5 rounded-full" style={{ background: meta.cssVar }} />
+        {meta.label}
+      </span>
+    </div>
+  );
+}
+
+/** One pillar badge — "Strongest" is a fact (argmax). The second badge is relabelled "Weakest":
+ *  argmin carries no threshold and no relation to any fired finding, so a word implying concern
+ *  ("Watch", "Drag") would claim something the arithmetic doesn't say — CUMMINSIND's Ownership is a
+ *  perfectly healthy 75, lowest of four only because four numbers need a lowest. The pillar dot uses
+ *  the pillar's own IDENTITY colour (PILLAR_META — the same token the table's other pillar reads use
+ *  for this pillar everywhere), never a good/bad accent: identity carries no claim, semantic
+ *  accents (--rec/--high) do — which is exactly why they're not used here. */
+function PillarBadge({ tag, pillarKey, value }: { tag: string; pillarKey: PillarKey; value: number }) {
+  const meta = PILLAR_META[pillarKey];
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-3 px-2.5 py-1 text-[11.5px]">
+      <span className="size-2 shrink-0 rounded-full" style={{ background: meta.cssVar }} />
+      <span className="text-ink2">{tag}</span>
+      <span className="font-medium text-ink">{PILLAR_LABEL[pillarKey]}</span>
+      <span className="num font-semibold text-ink">{Math.round(value)}</span>
+    </span>
+  );
+}
+
+/** The findings pointer — the shared density read (classify.ts `densityOf`), reused VERBATIM from
+ *  the stock page's own findings pill (findings-section.tsx): loud → "N findings", quiet → "context
+ *  only", empty → the shared DENSITY_EMPTY_PILL. Not a new variant — the same three words, the same severity-aware
+ *  split (a Critical flag and three context notes never collapse into the same label), just placed
+ *  here as the line that tells the reader where the rest lives, per the owner's shape: heading, then
+ *  findings, then this. The lead dot marks a red flag leading (`ordered[0].family === "A"`) — a
+ *  fact already computed by the shared A→I ladder, not a new read. */
+function FindingsPointer({
+  ordered,
+  count,
+  density,
+  hidden,
+}: {
+  ordered: PreparedMemberFinding[];
+  count: number;
+  density: "loud" | "quiet" | "empty";
+  hidden: number;
+}) {
+  const label = density === "loud" ? `${count} finding${count === 1 ? "" : "s"}` : density === "quiet" ? "context only" : DENSITY_EMPTY_PILL;
+  const leadsWithFlag = ordered[0]?.family === "A";
+  return (
+    <p className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink2">
+      {leadsWithFlag && <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--crit)" }} />}
+      <span className="font-medium text-ink">{label}</span>
+      {hidden > 0 && (
+        <span>
+          · <span className="num">{hidden}</span> more on the full analysis.
+        </span>
+      )}
+    </p>
+  );
+}
+
+/** One fired finding, compact. Every string is the catalogue's — this component authors none.
+ *
+ *  ⚠ NO BOUNDARY LINE HERE, ON PURPOSE. `doesntMean` is mandatory where a finding is read in FULL —
+ *  the stock page, the tool pages — and stays mandatory there (nothing here touches those). This
+ *  card is a pointer INTO that full read, not the read itself: `Full analysis →`, one click away, is
+ *  where the boundary renders. Dropping it here is what keeps this card a pointer rather than a
+ *  second, partial copy of the real thing.
+ *
+ *  Name renders in `ink`, not the accent colour — the accent still carries the severity signal in
+ *  full via the dot, the border and the tinted background; on the `crit` tile specifically, the
+ *  accent-coloured text alone measured 4.36:1 against its own tile, short of AA (4.5:1) — `ink` on
+ *  the same tile clears 15:1+ on every accent, so severity reads at a glance from three tokens that
+ *  don't ride on text-colour contrast, and the text itself is legible outright. */
+function MemberFindingCard({ f }: { f: PreparedMemberFinding }) {
+  const a = accentVars(f.accent);
+  const ctx = lensContext(f);
+  return (
+    <div className="rounded-lg border px-3 py-2.5" style={{ borderColor: a.bd, background: a.bg }}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="size-1.5 shrink-0 rounded-full" style={{ background: a.color }} />
+        <span className="text-[12.5px] font-semibold text-ink">{f.name}</span>
+        {ctx && <span className="text-[11px] text-ink2">{ctx}</span>}
+        {f.divergenceCount && f.divergenceCount > 2 ? (
+          <span className="num text-[10px] text-ink2">+{f.divergenceCount - 2} more</span>
+        ) : null}
+        {f.displayState !== "active" && (
+          <span className="rounded-md border border-line2 px-1.5 py-px text-[8.5px] uppercase tracking-wider text-ink2">
+            {f.displayState === "dampened" ? "sector-wide" : "pending feed"}
+          </span>
+        )}
+      </div>
+      {/* Consolidated divergence — name the sub-types that actually fired. Without this the reader
+          gets the family word ("Divergence") where the stock page names the pattern. */}
+      {f.subTypes?.length ? (
+        <p className="mt-1 text-[11px] text-ink2">{f.subTypes.map((s) => s.name).join(" · ")}</p>
+      ) : null}
+      {/* Static, rule-level description, clamped to 2 lines — the full string is untouched (never
+          rewritten to fit); only the DISPLAY is capped, so it stays selectable/readable in full via
+          the DOM and on `Full analysis →`. Title-only when the catalogue has no entry — never filler. */}
+      {f.description && (
+        <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-relaxed text-ink2">{f.description}</p>
+      )}
+    </div>
+  );
+}
+
+function MemberDetail({ m }: { m: UniverseMemberView }) {
+  const { ordered, density, count } = useMemo(() => prepareMemberFindings(m), [m]);
+  const shown = ordered.slice(0, FINDING_CAP);
+  const hidden = count - shown.length;
+  const { best, worst } = bestWorstPillar(m.pillars);
+
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 gap-5 p-4 sm:grid-cols-[auto_1fr] sm:items-start">
       <div className="flex items-center gap-4">
         <HealthRing score={m.composite} size={84} strokeWidth={7} showLabel />
       </div>
-      <div className="space-y-3">
-        <p className="font-display text-[14px] italic leading-snug text-ink2">{memberVerdict(m)}</p>
-        <div className="flex flex-wrap gap-2">
-          <span
-            className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
-            style={{ color: "var(--rec)", borderColor: "var(--rec-bd)", background: "var(--rec-bg)" }}
-          >
-            <span className="size-2 rounded-full" style={{ background: PILLAR_META[best.key].cssVar }} />
-            Strongest: {PILLAR_LABEL[best.key]} ({Math.round(best.v)})
-          </span>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
-            style={{ color: "var(--high)", borderColor: "var(--high-bd)", background: "var(--high-bg)" }}
-          >
-            <span className="size-2 rounded-full" style={{ background: PILLAR_META[worst.key].cssVar }} />
-            Watch: {PILLAR_LABEL[worst.key]} ({Math.round(worst.v)})
-          </span>
-          {/* ★ Ruling 3's headline, not the retired "wide"/"notable" band — see the note on the
-              filter preset above. The per-finding pair and tier live on the stock's own page; this
-              row states only what the member-list payload carries: that something is firing, and
-              (when it isn't, but the pillars still disagree) the raw spread. */}
-          {m.divergence.headline === "patterns_firing" && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-3 px-2.5 py-1 text-xs text-ink2">
-              Divergence firing
-              {m.divergence.spread !== null && <> · {Math.round(m.divergence.spread)}</>}
-            </span>
-          )}
-          {m.divergence.headline === "no_pattern" && m.divergence.spread !== null && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-surface-3 px-2.5 py-1 text-xs text-ink3">
-              Spread {Math.round(m.divergence.spread)} · no matching pattern
-            </span>
-          )}
+      <div className="min-w-0 space-y-3">
+        <MemberHeading m={m} />
+
+        <div className="flex flex-wrap gap-1.5">
+          <PillarBadge tag="Strongest" pillarKey={best.key} value={best.v} />
+          <PillarBadge tag="Weakest" pillarKey={worst.key} value={worst.v} />
         </div>
+
+        {count > 0 && (
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+            {shown.map((f) => (
+              <MemberFindingCard key={f.key} f={f} />
+            ))}
+          </div>
+        )}
+
+        <FindingsPointer ordered={ordered} count={count} density={density} hidden={hidden} />
+
+        {/* ── THE PILLAR SPREAD — THE GAP ALONE, NOT THE PILLARS AGAIN ──────────────────────────────
+            Served arithmetic: max − min over SCORED pillar subtotals, banded by the canonical
+            GAP_MATERIAL / GAP_STRETCHED (findings/divergence/bands.ts). Correct, and deliberately
+            demoted beneath the findings.
+
+            ⚠ THE EVALUATIVE WORD IS GONE ON PURPOSE. This read "Wide pillar spread · 18", and a
+            reader reasonably concludes something is diverging — but the descriptor cannot say
+            whether D1, D5, S2 or NOTHING is firing. On the live universe, 34 of 94 names carry a
+            surfaced spread with NO D-family finding behind it at all (DABUR: a 39-point spread and
+            an empty fired set). The bands file says it outright: "a SPREAD DESCRIPTOR for display,
+            not a pattern claim — do not re-derive a pattern from it." So it states the distance and
+            nothing else.
+
+            ⚠ THE PILLAR NAMES ARE GONE FROM THIS LINE TOO — the badges above now carry them
+            (Strongest / Weakest, pillar + value), and bestWorstPillar's pair reproduces this exact
+            gap on 94/94 members, so naming "Momentum vs Ownership" here as well would say the same
+            two numbers twice. This line's only job left is the distance.
+
+            ⚠ THE FIELDS MOVED, AND THE OLD NOTE HERE WAS WRONG ABOUT WHAT IT WAS READING. This
+            said the `flag !== "none"` gate was "the backend's §1.1 suppression of the 8–11 minor
+            band". It was not. `flag` was the LOCAL 15/25 banding that Ruling 3 deleted precisely
+            because it was a third severity scale competing with §1.2's 12/16/25 and S1's ≤7 — a
+            stock could read `flag: "none"` here while carrying a fired S2. The payload now serves
+            `{ headline, spread }` and this call site did not follow, so it read two properties that
+            no longer exist and the file did not compile.
+
+            `spread` IS the old `gap`, not a substitute for it: both are max − min over the SCORED
+            pillar subtotals (read/divergence-headline.ts `pillarSpreadOf`). Same arithmetic, one
+            home now.
+
+            The gate is `headline !== "aligned"`, which is the only honest suppression available and
+            a better one than what it replaces. `aligned` is defined as spread ≤ S1's own ceiling,
+            read off S1's record (`ALIGNED_MAX = gapFloor`) rather than typed anywhere — and it is a
+            statement about THE SPREAD ALONE, evaluated first, so using it here is not the
+            pattern-re-derivation this comment warns against three paragraphs up. It suppresses
+            exactly the case where saying "3 apart" would be noise, and nothing else.
+
+            ⚠ DENSITY, MEASURED, SO THE NEXT READER DOES NOT HAVE TO GUESS: this now renders on 93 of
+            94 members, because a >7 spread across four pillars is ordinary. The old gate hid more,
+            but only by accident — it was banding at a retired 15/25. If this should be rarer, the
+            fix is NOT a number typed here: §1.1's material floor lives in the backend
+            (findings/divergence/bands.ts `GAP_MATERIAL`), so the honest route is to SERVE that bit
+            beside `{ headline, spread }` and gate on it. Re-deriving the floor frontend-side would
+            rebuild the exact defect this file has already corrected twice. */}
+        {m.divergence.spread !== null && m.divergence.headline !== "aligned" && (
+          <p className="text-[11.5px] text-ink2">
+            Pillar spread · <span className="num font-medium text-ink">{Math.round(m.divergence.spread)}</span> apart
+          </p>
+        )}
+
         <div className="flex flex-wrap gap-2 pt-1">
           <Button asChild size="sm" variant="outline" className="h-8">
             <Link href={`/research/stock-screener/${m.symbol}`}>
@@ -507,6 +722,28 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
   const [sortKey, setSortKey] = useState<SortKey>("composite");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // ── MOBILE FIX — the expansion must not inherit the glance table's scroll width ────────────────
+  //
+  // The glance grid is `min-w-[900px]` inside `overflow-x-auto` on purpose (8 dense columns; a
+  // sticky Stock column stays pinned while the rest scrolls — a standard, low-risk pattern for a
+  // wide data table, kept as-is here). The problem was never that table; it's that the expansion
+  // used to live in a `<td colSpan={8}>` of that SAME table, so its box was ALSO at least 900px wide
+  // on every screen. Tailwind's `sm:`/`lg:` breakpoints inside it correctly key off the real
+  // viewport (they're media queries, not container queries) — a 380px phone never lit `sm:`, so the
+  // ring+content pair and the card grid WERE already stacking to one column — but that correctly
+  // "mobile" single column still rendered inside a ≥900px-wide box, so reading it meant scrolling
+  // horizontally past the exact content that was supposedly already stacked for you.
+  //
+  // Fix: measure the SCROLL CONTAINER's own visible width (`useElementWidth`, the same hook
+  // `chart-tooltip.tsx` already exports for this) and pin the expansion to it — `position: sticky;
+  // left: 0` (identical mechanism to the Stock column's own pinning) holds it at the scrolled-to
+  // left edge, and an explicit `width` in px — not a `100%`/`100vw` guess — clamps it to exactly
+  // what's visible, however a sidebar or page padding have already changed that. On desktop, where
+  // the container is usually wider than 900px and nothing scrolls, this measures larger than the
+  // table and the expansion simply renders full width, unchanged from before.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollWidth = useElementWidth(scrollRef, 0);
 
   const sectors = useMemo(() => {
     const set = new Set<string>();
@@ -642,11 +879,11 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
           )}
           <span className="num ml-2 text-ink3">· {rows.length} shown</span>
         </div>
-        <div className="custom-scrollbar overflow-x-auto p-2 sm:p-3">
+        <div ref={scrollRef} className="custom-scrollbar overflow-x-auto p-2 sm:p-3">
           <table className="w-full min-w-[900px] border-collapse text-[12.5px]">
             <thead>
               <tr className="border-b border-line2">
-                <th className="sticky left-0 z-10 bg-surface-1 px-3 pb-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-ink3">
+                <th className=" bg-surface-1 px-3 pb-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-ink3">
                   Stock
                 </th>
                 <th className="whitespace-nowrap px-3 pb-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-ink3">
@@ -672,7 +909,7 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
                         isOpen && "bg-surface-2",
                       )}
                     >
-                      <td className="sticky left-0 z-10 bg-surface-1 px-3 py-2.5">
+                      <td className="  px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <Icons.caretRight
                             className={cn("size-3.5 shrink-0 text-ink3 transition-transform", isOpen && "rotate-90")}
@@ -708,10 +945,16 @@ function OverviewTable({ view }: { view: UniverseHealthView }) {
                     {isOpen && (
                       <tr>
                         <td colSpan={8} className="bg-surface-2/40 p-0">
+                          {/* Pinned to the visible edge of the scroll container (same mechanism as the
+                              sticky Stock column) and clamped to its MEASURED width — see the note by
+                              `scrollWidth` above. `scrollWidth || undefined`: 0 before the first
+                              measurement falls through to unconstrained (`width: undefined`), never a
+                              collapsed 0px box. */}
                           <motion.div
                             initial={{ opacity: 0, y: -6 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                            style={{ position: "sticky", left: 0, width: scrollWidth || undefined }}
                           >
                             <MemberDetail m={m} />
                           </motion.div>

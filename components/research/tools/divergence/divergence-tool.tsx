@@ -23,15 +23,45 @@
  * it through the identical path (selection-view.tsx branches on `pair`, never on `kind`). Only the
  * words and the weight differ — and the banner's tone is pinned neutral, because a note is the record
  * of a decision NOT to make a claim and must never wear a severity accent.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════
+ * Divergence & Convergence — the orchestrator. THE PAGE IS ABOUT THE SELECTED READING.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ── ★ WHAT CHANGED: ONE CHART, THREE READINGS ────────────────────────────────────────────────────
+ * GLENMARK fires D2 (Market 69 vs Momentum 26), D1 (Market 69 vs Foundation 35) and D5 (Foundation 35
+ * vs Momentum 26). This tool charted the lead one and listed the other two in a panel you could not
+ * click — it named readings it then refused to show.
+ *
+ * Selection now drives EVERY slot: chart series, chart heading, readout, chips, the promoted banner,
+ * the card and its clauses, and the boundary. Switching from D2 to D5 does not filter a static view —
+ * it re-frames the page onto a different pair of pillars with a different gap and a different
+ * sentence. Three patterns means three independently complete analyses, not one merged one.
+ *
+ * ⚠ THE SELECTION IS URL STATE (`?pattern=`), so a specific reading is linkable and survives refresh.
+ *   An unknown or no-longer-firing key falls back to the default silently — see resolveSelected.
+ *
+ * ── ★ NOT-COVERED NOTES ARE SELECTABLE HERE TOO, WITH FULL CHART PARITY ──────────────────────────
+ * A note carries the same `pair` and `lifecycle` shapes a finding does, so the chart and readout draw
+ * it through the identical path (selection-view.tsx branches on `pair`, never on `kind`). Only the
+ * words and the weight differ — and the banner's tone is pinned neutral, because a note is the record
+ * of a decision NOT to make a claim and must never wear a severity accent.
  */
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "@/lib/icons";
-import { useScoredStocks, useStockScan } from "@/lib/api/hooks/use-stocks";
+import { useScoredStocks, useStockScan, useStockScanFacets } from "@/lib/api/hooks/use-stocks";
 import { useStockHealth } from "@/lib/api/hooks/use-stock-health";
-import type { ToolScanItem } from "@/types/research-tools";
+import {
+  EMPTY_SCAN_FILTERS,
+  scanFilterCount,
+  type ScanFilters,
+  type ToolScanItem,
+} from "@/types/research-tools";
+import { BAND_META } from "@/components/stock-detail/health/shared";
+import type { LabelBand } from "@/types/health";
 import { ToolFrame } from "../tool-frame";
+import { ScanFilterBar, relabel } from "../scan-filters";
 import {
   DEFAULT_WINDOW,
   windowQuarters,
@@ -77,7 +107,22 @@ export function DivergenceTool() {
   }
 
   const stocksQ = useScoredStocks();
-  const scanQ = useStockScan<ToolScanItem>("divergence", !symbol);
+
+  // ── Landing filters — condition band · peer group · pattern, all multi-select ─────────
+  // ★ Held here and sent to the SERVER, never applied to `scanRows`. The scan is cursor-paged,
+  //   so the client holds only the pages it has scrolled to; filtering those would filter a
+  //   prefix of the ranking and hide matches on a page nobody fetched. The narrowing is part of
+  //   the query key, so a change starts a fresh page-1 fetch and the frame's infinite-scroll
+  //   sentinel then pages the NARROWED ranking the same way.
+  const [filters, setFilters] = useState<ScanFilters>(EMPTY_SCAN_FILTERS);
+  const isFiltered = scanFilterCount(filters) > 0;
+
+  // Landing scan — cursor-paged; the frame's sentinel asks for the next page.
+  const scanQ = useStockScan<ToolScanItem>("divergence", !symbol, filters);
+  const scanRows = useMemo(() => scanQ.data?.pages.flatMap((p) => p.items), [scanQ.data]);
+  // Filter OPTIONS come off the scan itself (only values that return cards), with counts
+  // cross-filtered against the other dropdowns' selections.
+  const facetsQ = useStockScanFacets("divergence", !symbol, filters);
   const healthQ = useStockHealth(symbol ?? "", windowQuarters(window));
 
   const data = healthQ.data;
@@ -149,14 +194,6 @@ export function DivergenceTool() {
   //     3 scored, nothing firing, a not-covered note present   — the note, selectable like any read
   const noSpread = !!data && !!verdict && verdict.divergence.spread === null;
 
-  // ★ GENUINELY EMPTY — state 2 above, and ONLY state 2. Scored, a readable spread, and nothing on it:
-  //   no Formed pattern, no Building one, and no not-covered note either (`selectables` is exactly
-  //   that union). ⚠ NOT the same as `noSpread`, which is a COVERAGE fact and already renders its own
-  //   panel; conflating them would offer "go read the trajectory" to a stock whose pillars are the
-  //   very thing that isn't scored. This state keeps its existing headline read — see `promotedRead`,
-  //   which still resolves through buildHeadlineRead — and only gains a way onward.
-  const nothingFiring = !!data && !!verdict && !noSpread && selectables.length === 0;
-
   const single: SingleViewSlots | null = symbol
     ? {
         isLoading: healthQ.isLoading,
@@ -221,9 +258,6 @@ export function DivergenceTool() {
               regime={data?.regime ?? null}
               symbol={symbol}
               boundary={selectedPattern ? doesntMean(selectedPattern.patternKey) : null}
-              // ★ A DEAD END GETS A DOOR. Nothing firing here → say so plainly and point at
-              //   Trajectory, which always has the stock's pillar history. See `nothingFiring`.
-              pointWhenEmpty={nothingFiring}
             />
             {selectedPair && summarySpread.length >= 2 ? (
               <DivergenceSummary
@@ -249,14 +283,31 @@ export function DivergenceTool() {
       stocks={stocksQ.data}
       stocksLoading={stocksQ.isLoading}
       landing={{
-        items: scanQ.data?.items,
+        items: scanRows,
         isLoading: scanQ.isLoading,
         isError: scanQ.isError,
         onRetry: () => void scanQ.refetch(),
+        total: scanQ.data?.pages[0]?.total,
+        hasMore: scanQ.hasNextPage,
+        isFetchingMore: scanQ.isFetchingNextPage,
+        fetchMore: () => void scanQ.fetchNextPage(),
         renderCard: (it, onSelect2) => (
           <DivergenceScanCard item={it as ToolScanItem} onSelect={onSelect2} />
         ),
         keyOf: (it) => (it as ToolScanItem).symbol,
+        isFiltered,
+        onClearFilters: () => setFilters(EMPTY_SCAN_FILTERS),
+        filters: (
+          <ScanFilterBar
+            peerGroupOptions={facetsQ.data?.peerGroups ?? []}
+            patternOptions={facetsQ.data?.patterns ?? []}
+            bandOptions={relabel(facetsQ.data?.bands ?? [], (v) => BAND_META[v as LabelBand]?.label)}
+            filters={filters}
+            onChange={setFilters}
+            loading={facetsQ.isLoading}
+            matchCount={scanQ.data?.pages[0]?.total}
+          />
+        ),
       }}
       single={single}
     />

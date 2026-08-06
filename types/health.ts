@@ -593,10 +593,6 @@ export interface VerdictClause {
  */
 export interface NotCoveredNote {
   id: string;
-  /** Which spec this configuration came from, and therefore which tool may show it — NC1/NC2 are
-   *  divergence, NC3–NC10 are trajectory. DATA, served by the backend — a consumer filters on this,
-   *  never on the id (an id is an opaque token, not "NC1..NC2 are divergence" folk knowledge). */
-  tool: "divergence" | "trajectory";
   reason:
     | "evidence_conflicted"
     | "superseded_by_D6"

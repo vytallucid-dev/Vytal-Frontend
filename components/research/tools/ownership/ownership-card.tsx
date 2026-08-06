@@ -11,7 +11,10 @@ import { BAND_META } from "@/components/stock-detail/health/shared";
 import { cn } from "@/lib/utils";
 import type { OwnershipScanItem, OwnershipTell } from "@/types/research-tools";
 
-const TELL_META: Record<OwnershipTell, { label: string; color: string }> = {
+/** The tell's reader-facing word + colour. ★ Exported because the landing's FILTER narrows on
+ *  this same dimension (ownership fires no findings — the tell IS its categorical reading), and
+ *  the dropdown must name a tell exactly as the card does. One map, both surfaces. */
+export const TELL_META: Record<OwnershipTell, { label: string; color: string }> = {
   pledge_r1: { label: "Pledge R1", color: "var(--crit)" },
   pledge_high: { label: "High pledging", color: "var(--high)" },
   distribution: { label: "Distribution", color: "var(--crit)" },

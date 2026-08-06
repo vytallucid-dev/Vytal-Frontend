@@ -147,17 +147,57 @@ export interface TimelineItem {
   text: string;
   tag: string;
   dotColor: string;
+  /** Sortable instant behind `when` — see `whenKey`. Never rendered. */
+  at: string;
 }
 
-/** Build the journey timeline from real crossings + corporate events. */
+/**
+ * The sortable instant behind a row, as an ISO-ish date string.
+ *
+ * ── ★ WHY THE SERIES IS THE AUTHORITY AND THE PERIOD KEY IS THE FALLBACK ──────────────────
+ * The two row kinds are dated differently: a crossing carries a fiscal PERIOD ("FY26Q4"), an
+ * event carries a calendar DATE. To interleave them one has to become the other, and the
+ * series already holds the answer — every TrajectoryPoint carries both `periodKey` and the
+ * `asOfDate` that period was scored on. So a crossing borrows its own snapshot's date, which
+ * is exact and needs no calendar assumption.
+ *
+ * ⚠ THE FALLBACK ASSUMES AN APR–MAR FISCAL YEAR, AND THAT ASSUMPTION IS NOT UNIVERSAL — a
+ *   handful of listed companies file Jan–Dec or Jul–Jun (see the backend's deriveFiscalPeriod,
+ *   which is why FY is defined off the fiscal year's END, not off April). It is reached only
+ *   for a crossing whose period is absent from the series, where the alternative is no order
+ *   at all; being a quarter out there cannot reorder rows that are quarters apart.
+ */
+function whenKey(periodKey: string, byPeriod: Map<string, string>): string {
+  const known = byPeriod.get(periodKey);
+  if (known) return known;
+  const m = /^FY(\d{2})Q([1-4])$/.exec(periodKey);
+  if (!m) return periodKey;
+  const fyEnd = 2000 + Number(m[1]);
+  const q = Number(m[2]);
+  // FY26 = Apr 2025 → Mar 2026, so Q1–Q3 end in the PRIOR calendar year.
+  return q === 4
+    ? `${fyEnd}-03-31`
+    : `${fyEnd - 1}-${["06-30", "09-30", "12-31"][q - 1]}`;
+}
+
+/**
+ * Build the journey timeline from real crossings + corporate events.
+ *
+ * ★ NEWEST FIRST. A reader opening a stock asks "what just happened", not "what happened three
+ *   years ago" — the most recent regime change is the one that explains today's score, and it
+ *   belongs at the top of the panel rather than at the bottom of a scroll. (The CHART stays
+ *   left-to-right chronological; that is a different reading and is unaffected.)
+ */
 export function buildTimeline(trajectory: TrajectorySection): TimelineItem[] {
   const items: TimelineItem[] = [];
+  const byPeriod = new Map(trajectory.series.map((p) => [p.periodKey, p.asOfDate]));
 
   for (const c of trajectory.crossings) {
     if (c.type === "band") {
       const up = bandIndex(c.to as LabelBand) > bandIndex(c.from as LabelBand);
       items.push({
         when: shortPeriod(c.toPeriod),
+        at: whenKey(c.toPeriod, byPeriod),
         text: `Crossed ${BAND_META[c.from as LabelBand].label} → ${BAND_META[c.to as LabelBand].label}`,
         tag: "band",
         dotColor: up ? "var(--rec)" : "var(--high)",
@@ -165,6 +205,7 @@ export function buildTimeline(trajectory: TrajectorySection): TimelineItem[] {
     } else if (c.pillar) {
       items.push({
         when: shortPeriod(c.toPeriod),
+        at: whenKey(c.toPeriod, byPeriod),
         text: `${PILLAR_META[c.pillar].label} crossed its ${c.to} mark`,
         tag: c.pillar,
         dotColor: PILLAR_META[c.pillar].cssVar,
@@ -175,11 +216,14 @@ export function buildTimeline(trajectory: TrajectorySection): TimelineItem[] {
   for (const e of trajectory.events) {
     items.push({
       when: e.eventDate,
+      at: e.eventDate,
       text: humanizeKey(e.eventType),
       tag: "event",
       dotColor: "var(--p-mkt)",
     });
   }
 
-  return items;
+  // Latest → oldest. Sort is stable, so same-day rows keep their build order (crossings, then
+  // events) instead of shuffling between renders.
+  return items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 }

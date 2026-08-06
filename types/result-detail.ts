@@ -35,6 +35,10 @@ export interface ViewerQuarter {
 export interface ReactionPoint {
   date: string;
   close: number;
+  /** ⚠ SERVED BUT UNREAD, and it cannot do the job it looks like it does — it is an exact
+   *  date match, so it is `false` on EVERY point of a weekend or holiday filing, which is
+   *  precisely the case a filing-day flag would be reached for. The marker positions off
+   *  `filingDate` against a time axis instead. See the note in SnapshotTab. */
   isFilingDay: boolean;
 }
 
@@ -47,8 +51,13 @@ export interface MarketReaction {
   windowFrom: string;
   windowTo: string;
   points: ReactionPoint[];
+  /** Last close STRICTLY BEFORE filingDate — never the filing day's own. */
   preClose: number | null;
+  /** Closes strictly after filingDate. 0 ⇔ a forming window that has not opened yet. */
   tradingDaysSinceFiling: number;
+  /** Window length in trading days, derived server-side from the served window. Approximate
+   *  (holidays unmodelled) — always render it prefixed "~". */
+  expectedTradingDays: number;
 }
 
 export interface ViewerNews {
@@ -63,11 +72,28 @@ export interface ViewerNews {
   sentiment: string | null;
 }
 
+/** The stored Quarter in Brief for the VIEWED period. Mirrors the backend read-model exactly
+ *  (src/scoring/read/result-detail.types.ts).
+ *
+ *  `available:false` covers three states that are all one thing to a reader: never generated,
+ *  generation refused, or hidden because a correction moved the figures it was written from. A brief
+ *  is whole or absent — there is no partial one. */
 export interface ViewerAi {
   available: boolean;
-  headline: string | null;
+  /** The prose, under a fixed set of headings. The ONLY model-written field here. */
   content: string | null;
-  keyPoints: string[] | null;
+  /** The COMPUTED verdict — rendered as a badge, never written by the model.
+   *  Null with `available:true` is a real state: prose that supported no verdict. */
+  verdictKey: string | null;
+  verdictLabel: string | null;
+  /** ★ PINNED. The as-of date of the health snapshot the brief's health section was written from,
+   *  or null when the stock carried no score at generation time.
+   *
+   *  It must be rendered ADJACENT TO THE SCORE the brief quotes. The health score is recalculated on
+   *  ordinary trading days, so the Health tab and this brief can legitimately show different figures
+   *  for the same quarter — DIXON moved 65.1 → 65.0 in hours with no filing. This date is the only
+   *  thing that makes that difference legible rather than a contradiction. */
+  scoredAsOf: string | null;
   modelVersion: string | null;
   generatedAt: string | null;
 }

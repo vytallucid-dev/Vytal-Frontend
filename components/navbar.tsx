@@ -567,7 +567,7 @@ const Navbar = () => {
   ));
 
   return (
-    <header className="z-100 flex w-full shrink-0 items-center gap-3 px-3 py-3.5 sm:px-5">
+    <header className="z-30 flex w-full shrink-0 items-center gap-3 px-3 py-3.5 sm:px-5">
       <SidebarTrigger className="size-9 rounded-lg text-muted-foreground md:hidden" />
 
       <div className="hidden items-center gap-2.5 sm:flex">

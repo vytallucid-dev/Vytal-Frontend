@@ -11,7 +11,6 @@
  * isn't "better", so the net is neutral-styled, never good/bad coloured.
  */
 
-import { formatCompact } from "@/lib/format";
 import { Icons } from "@/lib/icons";
 import type { Comparee } from "@/types/compare";
 import { A_HUE, B_HUE, SectionTitle } from "./shared";
@@ -49,7 +48,17 @@ function summarize(events: { transactionType: string; value: number | null }[]):
   return { count: events.length, buyCount, sellCount, buyVal, sellVal, hasValue };
 }
 
-const cr = (v: number) => `₹${formatCompact(v)} Cr`;
+/**
+ * These sums are ALREADY in crores (tradeValueCr / valueCr), so they must not go through the
+ * raw-rupee compactor — that would leave a float sum like 0.30000000000000004 unformatted and
+ * turn a 4-digit crore figure into a meaningless "1.5K Cr". Two decimals always, except past
+ * ₹1,000 Cr where the paise are noise and the figure reads better rounded whole.
+ * Indian grouping, matching stock-detail/activity.tsx and peer-group's activity section.
+ */
+const cr = (v: number) => {
+  const dp = Math.abs(v) >= 1000 ? 0 : 2;
+  return `₹${v.toLocaleString("en-IN", { minimumFractionDigits: dp, maximumFractionDigits: dp })} Cr`;
+};
 const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 
 function ActivitySide({

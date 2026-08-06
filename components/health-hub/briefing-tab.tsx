@@ -11,6 +11,7 @@ import {
   SectionEyebrow,
 } from "@/components/stock-detail/health/shared";
 import { useChartTooltip, ChartTooltip, TipBody } from "@/components/ui/chart-tooltip";
+import { accentOf, familyOf, findingName } from "@/lib/findings";
 import type { UniverseHealthView } from "@/types/universe-view";
 import {
   attentionReads,
@@ -24,7 +25,10 @@ import {
   weekRead,
   PILLAR_LABEL,
   compositeBand,
+  BAND_CUTS,
+  formatUniverseMedian,
 } from "./lib";
+import type { LabelBand } from "@/types/health";
 
 // ── distribution columns (hero) — count-scaled cells per band ─────────────────
 // Cell height is derived from the container height + cap so the tallest stack always
@@ -130,10 +134,13 @@ function Hero({ view }: { view: UniverseHealthView }) {
               )}
               <span>
                 Median composite{" "}
-                <span className="num text-ink">{Math.round(agg.medianComposite)}</span>, off{" "}
+                <span className="num text-ink">{formatUniverseMedian(agg.medianComposite)}</span>, off{" "}
+                {/* ⚠ ONE DECIMAL, to match the median in the same sentence. Rounded, "67.5, off −1"
+                    implied a prior of 68.5 when it was 68.9 — two precisions in one clause let a
+                    reader do arithmetic that does not come out. */}
                 <span className="num" style={{ color: agg.medianDrift < 0 ? "var(--high)" : "var(--rec)" }}>
                   {agg.medianDrift > 0 ? "+" : ""}
-                  {Math.round(agg.medianDrift)}
+                  {agg.medianDrift.toFixed(1)}
                 </span>{" "}
                 from {agg.priorPeriodKey} · spread{" "}
                 <span className="num text-ink">
@@ -193,9 +200,12 @@ function KpiRail({ view }: { view: UniverseHealthView }) {
   return (
     <div className="col-span-12 lg:col-span-4">
       <div className="grid h-full grid-cols-2 gap-2.5">
-        <Kpi value={Math.round(k.median)} sub={BAND_META[k.medianBand].label} label="median composite" />
+        {/* ⚠ ONE DECIMAL, because the band label sits RIGHT NEXT TO IT. Rounded, this read
+            "68 · Steady" — and 68 is the Healthy floor on the scale the methodology page publishes.
+            See formatUniverseMedian in ./lib for why the number moved rather than the label. */}
+        <Kpi value={formatUniverseMedian(k.median)} sub={BAND_META[k.medianBand].label} label="median composite" />
         <Kpi
-          value={k.drift == null ? "—" : `${k.drift > 0 ? "+" : ""}${Math.round(k.drift)}`}
+          value={k.drift == null ? "—" : `${k.drift > 0 ? "+" : ""}${k.drift.toFixed(1)}`}
           tone={k.drift != null && k.drift < 0 ? "high" : "neutral"}
           label={`drift vs ${k.priorPeriodKey ?? "prior"}`}
         />
@@ -206,10 +216,17 @@ function KpiRail({ view }: { view: UniverseHealthView }) {
           label={k.redFlags === 1 ? "red flag · watch with care" : "red flags · watch with care"}
         />
         <Kpi value={k.recovering.length} tone="rec" label="recovering from weakness" />
-        {/* ⚠ "wide pillar spread (≥25)" was stale on two counts: Phase 2 moved the material cut
-            to 12, and the widest-pair derivation the ≥25 banding ran on is retired (Ruling 0).
-            Ruling 3's headline carries no size band at this level — just firing or not. */}
-        <Kpi value={k.patternsFiring} tone="ctx" label="divergence patterns firing" />
+        {/* ⚠ THIRD CORRECTION TO THIS ONE TILE, AND THE SHAPE OF THE THIRD IS THE POINT.
+            It first read "wide pillar spread (≥25)" — a threshold typed into copy, stale the moment
+            Phase 2 moved the cut. The number was dropped; the LABEL survived, still describing a
+            gap size. Then the payload itself changed: `divergence.flag` / `.gap` are gone, replaced
+            by `{ headline, spread }`, and lib.ts migrated `wideSpread` → `patternsFiring` (members
+            whose headline is `patterns_firing`) WITHOUT this call site following — so the tile read
+            a property that no longer exists and the file did not compile.
+            What it counts now is names with A DIVERGENCE PATTERN FIRING: not a gap, not a size, and
+            no threshold at all. The sibling AttentionCard below already says exactly that, and the
+            two now agree because they read the same field through the same helper. */}
+        <Kpi value={k.patternsFiring} tone="ctx" label="with a divergence pattern firing" />
       </div>
     </div>
   );
@@ -217,7 +234,7 @@ function KpiRail({ view }: { view: UniverseHealthView }) {
 
 // ── pillar mix ──────────────────────────────────────────────────────────────
 function PillarMix({ view }: { view: UniverseHealthView }) {
-  const { rows, soft } = pillarMix(view.aggregate!);
+  const { rows, soft, firm } = pillarMix(view.aggregate!);
   return (
     <Panel className="col-span-12 md:col-span-6 lg:col-span-4">
       <div className="mb-3 flex items-center justify-between">
@@ -250,10 +267,15 @@ function PillarMix({ view }: { view: UniverseHealthView }) {
           );
         })}
       </div>
+      {/* ⚠ BOTH ENDS ARE READ OFF THE MEDIANS. The second clause used to say "while ownership
+          floors hold highest" — a hardcoded claim about a pillar the function never checked. It is
+          true today and would have gone on being printed on the day it stopped being, directly
+          under bars showing otherwise. Same defect as the retired threshold in KpiRail: a fact
+          typed into copy cannot follow the engine. */}
       <p className="mt-3 border-t border-line pt-3 text-[11.5px] leading-snug text-ink2">
         <span className="font-medium text-ink">{PILLAR_LABEL[soft]} is the soft spot</span> — the
-        median {PILLAR_LABEL[soft].toLowerCase()} read sits lowest across the universe, while ownership
-        floors hold highest.
+        median {PILLAR_LABEL[soft].toLowerCase()} read sits lowest across the universe, while{" "}
+        {PILLAR_LABEL[firm].toLowerCase()} holds highest.
       </p>
     </Panel>
   );
@@ -547,11 +569,106 @@ function Attention({ view }: { view: UniverseHealthView }) {
   );
 }
 
+// ── ★ THE SPOTLIGHT TRACE — TWO POINTS, BECAUSE TWO IS WHAT THE PAYLOAD HAS ───────────────────────
+// This panel used to draw a fixed `points="8,54 95,52 185,40 272,24"` — a FOUR-point curve with an
+// inflection dot at the second vertex — identical for every stock, directly above real prose about
+// that stock's move. `RecoveryMover` carries exactly `prior` and `current`; the two interior
+// vertices and the inflection were invented, and the two band rects sat at hardcoded y-positions
+// with no relation to any composite. A reader takes that line as the name's actual path, and on
+// every card it was the same fabricated path.
+//
+// It now draws the two points that exist, on a real composite scale, with the band zones at their
+// canonical cuts — so the shading says WHICH BANDS THE MOVE CROSSED instead of decorating it. The
+// zones are derived from BAND_CUTS rather than restated, so a cut change moves the chart with it.
+const TRACE_W = 280;
+const TRACE_H = 70;
+const TRACE_PAD = 10;
+
+const BAND_RANGES: { band: LabelBand; from: number; to: number }[] = [
+  { band: "fragile", from: 0, to: BAND_CUTS[0].v },
+  ...BAND_CUTS.map((c, i) => ({ band: c.band, from: c.v, to: BAND_CUTS[i + 1]?.v ?? 100 })),
+];
+
+function RecoveryTrace({ from, to }: { from: number; to: number }) {
+  // Padded around the move so the crossed band lines are actually visible, clamped to the scale's
+  // real ends — a domain wider than the data would flatten every recovery into the same line.
+  const lo = Math.max(0, Math.min(from, to) - 8);
+  const hi = Math.min(100, Math.max(from, to) + 8);
+  const span = hi - lo || 1;
+  const y = (v: number) => TRACE_H - ((v - lo) / span) * TRACE_H;
+  const x0 = TRACE_PAD;
+  const x1 = TRACE_W - TRACE_PAD;
+  return (
+    <svg viewBox={`0 0 ${TRACE_W} ${TRACE_H}`} className="block h-auto w-full">
+      {BAND_RANGES.map((b) => {
+        const top = y(Math.min(b.to, hi));
+        const bottom = y(Math.max(b.from, lo));
+        if (bottom - top <= 0.5) return null; // band not in view
+        return (
+          <rect
+            key={b.band}
+            x="0"
+            y={top}
+            width={TRACE_W}
+            height={bottom - top}
+            fill={BAND_META[b.band].cssVar}
+            opacity={0.08}
+          />
+        );
+      })}
+      <line x1={x0} y1={y(from)} x2={x1} y2={y(to)} stroke="var(--rec)" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx={x0} cy={y(from)} r="3.4" fill="var(--rec)" opacity={0.45} />
+      <circle cx={x1} cy={y(to)} r="3.4" fill="var(--rec)" />
+    </svg>
+  );
+}
+
 // ── right rail: recovery spotlight + flags-mini + honest week panel ────────────
 function RightRail({ view }: { view: UniverseHealthView }) {
   const rec = recoveryMovers(view);
   const spot = rec[0];
   const w = weekRead(view);
+
+  // ── ★ THE SYSTEMIC READ IS DERIVED, NOT ASSERTED ────────────────────────────────────────────────
+  // This panel's closing line used to be the hardcoded sentence "No pattern clusters this snapshot —
+  // risk here is single-name, not systemic." It was unconditional, and it sat DIRECTLY BENEATH the
+  // count of pattern clusters. On the live universe that renders as:
+  //
+  //     27  Shared patterns across the universe
+  //     No pattern clusters this snapshot — risk here is single-name, not systemic.
+  //
+  // — a panel contradicting its own number, and telling the reader the opposite of what the data
+  // says: divergence_S2 fires on 43 of 94 names and D2_price_ahead_trajectory on 19 of 94, both
+  // `widespread` by the backend's own reach cut. Third instance of this defect in this file (see the
+  // retired "≥25" threshold in KpiRail and the hardcoded "promoter pledge rising" in Attention): a
+  // claim typed into copy cannot follow the engine, so it must be computed or it must not be made.
+  //
+  // ⚠ ADVERSE ONLY, AND THAT IS THE WHOLE POINT OF THE FILTER. `momentum_P12_margin_recovery` is
+  // shared by 14 of 94 names and is GOOD NEWS. Counting every shared pattern as evidence of systemic
+  // RISK would let a broad recovery read as a broad danger. The tiers come from `accentOf`, the one
+  // classifier the Flags tab already uses, so the two surfaces cannot drift apart on what counts as
+  // adverse.
+  //
+  // ⚠ RAW CENSUS, NOT `prepareCensus`. The prepared form is right for the Flags board and wrong
+  // here: it consolidates every C-family row into one divergence card whose members are the UNION of
+  // all sub-types, taking its accent from the WORST of them. That card would read `high` while its
+  // member set also contains names whose only divergence is `S2_sticky` (low, 43 of 94) or a green
+  // one — so an "N of 94 adverse" claim built on it would count names that have nothing adverse
+  // firing. Reading each pattern on its own keeps the number and the tier describing the same names.
+  const patterns = view.pathology.filter((p) => p.kind === "pattern");
+  const widest = patterns
+    .filter((p) => {
+      if (p.reach === "isolated") return false;
+      const accent = accentOf(p.severity, familyOf(p.key));
+      return accent === "crit" || accent === "high";
+    })
+    .sort((a, b) => b.memberCount - a.memberCount)[0];
+
+  // Every distinct name carrying a red flag, across ALL red-flag keys — not the first member of the
+  // first key. `redFlagMemberCount` is 5 on the live universe while the old line named exactly one
+  // symbol, which reads as "the red flag is X" when four other names also carry one.
+  const flagged = Array.from(new Set(view.pathology.filter((p) => p.kind === "red_flag").flatMap((p) => p.members)));
+
   return (
     <div className="col-span-12 lg:col-span-4">
       <SectionEyebrow className="mb-3 mt-1" label="Spotlight" icon={Icons.spark} accent="var(--rec)" />
@@ -568,18 +685,7 @@ function RightRail({ view }: { view: UniverseHealthView }) {
           </h4>
           <div className="num mt-0.5 text-[18px] font-medium">{spot.symbol}</div>
           <div className="my-3 rounded-[10px] bg-surface-2 p-2.5">
-            <svg viewBox="0 0 280 70" preserveAspectRatio="none" className="block h-auto w-full">
-              <rect x="0" y="44" width="280" height="26" fill="var(--c-below)" opacity="0.07" />
-              <rect x="0" y="30" width="280" height="14" fill="var(--c-steady)" opacity="0.08" />
-              <polyline
-                points="8,54 95,52 185,40 272,24"
-                fill="none"
-                stroke="var(--rec)"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-              />
-              <circle cx="95" cy="52" r="3.4" fill="var(--rec)" />
-            </svg>
+            <RecoveryTrace from={spot.prior} to={spot.current} />
           </div>
           <p className="text-[12px] leading-snug text-ink2">
             Composite rose{" "}
@@ -599,24 +705,41 @@ function RightRail({ view }: { view: UniverseHealthView }) {
           <span className="eyebrow">Flags &amp; patterns firing</span>
         </div>
         <div className="flex items-center gap-2.5 border-b border-line py-1.5 text-[12.5px]">
-          <span className="num w-6 text-[16px] font-medium" style={{ color: "var(--crit)" }}>
+          <span className="num w-6 shrink-0 text-[16px] font-medium" style={{ color: "var(--crit)" }}>
             {view.aggregate!.redFlagMemberCount}
           </span>
-          <span>
-            Critical red flag{" "}
-            <span className="text-ink3">
-              · {view.pathology.find((p) => p.kind === "red_flag")?.members[0] ?? "—"}
-            </span>
+          <span className="min-w-0">
+            {view.aggregate!.redFlagMemberCount === 1 ? "Critical red flag" : "Critical red flags"}{" "}
+            {flagged.length > 0 && (
+              <span className="num text-ink3">
+                · {flagged.slice(0, 2).join(", ")}
+                {flagged.length > 2 ? ` +${flagged.length - 2} more` : ""}
+              </span>
+            )}
           </span>
         </div>
         <div className="flex items-center gap-2.5 py-1.5 text-[12.5px]">
-          <span className="num w-6 text-[16px] font-medium text-ink2">
-            {view.pathology.filter((p) => p.kind === "pattern").length}
+          <span className="num w-6 shrink-0 text-[16px] font-medium text-ink2">
+            {patterns.length}
           </span>
-          <span className="text-ink2">Shared patterns across the universe</span>
+          <span className="text-ink2">
+            {patterns.length === 1 ? "Shared pattern" : "Shared patterns"} across the universe
+          </span>
         </div>
         <p className="mt-1 text-[11px] italic text-ink3">
-          No pattern clusters this snapshot — risk here is single-name, not systemic.
+          {widest ? (
+            <>
+              Widest is {findingName(widest.key)} —{" "}
+              <span className="num not-italic text-ink2">
+                {widest.memberCount} of {widest.outOf}
+              </span>{" "}
+              names. Risk here is shared, not single-name.
+            </>
+          ) : patterns.length > 0 ? (
+            "No adverse pattern reaches more than one name — risk here is single-name, not systemic."
+          ) : (
+            "No patterns firing this snapshot."
+          )}
         </p>
       </Panel>
 
@@ -652,6 +775,11 @@ function RightRail({ view }: { view: UniverseHealthView }) {
 }
 
 // ── threshold watch ───────────────────────────────────────────────────────────
+/** Points either side of the band line the track spans. A DISPLAY ZOOM, not a threshold: it decides
+ *  how far along the bar a given distance renders, and claims nothing about materiality. The exact
+ *  distance is printed beside it, so the reader is never left inferring a number from a position. */
+const EDGE_TRACK_WINDOW = 2;
+
 function ThresholdWatch({ view }: { view: UniverseHealthView }) {
   const edges = edgeNames(view.members, 4);
   return (
@@ -665,7 +793,15 @@ function ThresholdWatch({ view }: { view: UniverseHealthView }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {edges.map((e) => {
           const meta = BAND_META[e.lineBand];
-          const pos = e.side === "above" ? 56 : 44;
+          // ⚠ THE MARKER USED TO SIT AT A HARDCODED 56% / 44%, so every card drew the same two
+          // positions whatever the real distance was — and `distance` was never shown at all, while
+          // the prose asserted "a whisker" for a name the selection does not bound. Today's four
+          // picks are 0.03–0.34 off their line, so the copy happened to be true and every dot was
+          // drawn six percent out. It is positioned by the served distance now, and the number is
+          // printed, so the track illustrates a stated fact instead of standing in for one.
+          const signed = e.side === "above" ? e.distance : -e.distance;
+          const pos = Math.max(4, Math.min(96, 50 + (signed / EDGE_TRACK_WINDOW) * 50));
+          const away = e.distance < 1 ? e.distance.toFixed(2) : e.distance.toFixed(1);
           return (
             <div key={e.symbol} className="rounded-xl border border-line bg-surface-2 px-4 py-3.5">
               <div className="flex items-center justify-between gap-2">
@@ -673,22 +809,23 @@ function ThresholdWatch({ view }: { view: UniverseHealthView }) {
                 <span className="text-[9.5px] uppercase tracking-wide text-ink3">on a band line</span>
               </div>
               <div className="relative my-4 h-1.5 rounded-[3px] bg-surface-3">
-                <span className="absolute -top-[3px] h-3 w-px bg-line3" style={{ left: "50%" }}>
-                  <small
-                    className="absolute left-1/2 top-[13px] -translate-x-1/2 whitespace-nowrap text-[8.5px] text-ink3"
-                    style={{ position: "absolute" }}
-                  >
+                <span className="absolute -top-0.75 h-3 w-px bg-line3" style={{ left: "50%" }}>
+                  <small className="absolute left-1/2 top-3.25 -translate-x-1/2 whitespace-nowrap text-[8.5px] text-ink3">
                     {meta.label} {e.line}
                   </small>
                 </span>
                 <span
-                  className="absolute top-1/2 size-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px]"
+                  className="absolute top-1/2 size-3.25 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px]"
                   style={{ left: `${pos}%`, background: meta.cssVar, borderColor: "var(--surface2)" }}
                 />
               </div>
+              {/* No "one soft quarter tips it" — that was a claim about a move size nobody measured.
+                  The distance IS the whole of what a band change needs, which is true by definition
+                  at any distance, so it survives a pick that is nowhere near a line. */}
               <p className="mt-4 text-[11.5px] leading-tight text-ink2">
-                Composite <span className="num text-ink">{Math.round(e.composite)}</span> — a whisker{" "}
-                {e.side === "above" ? "above" : "below"} the {meta.label} line. One soft quarter tips it.
+                Composite <span className="num text-ink">{e.composite.toFixed(1)}</span> ·{" "}
+                <span className="num text-ink">{away}</span> {e.side === "above" ? "above" : "below"} the{" "}
+                {meta.label} line — the entire gap to a band change.
               </p>
             </div>
           );

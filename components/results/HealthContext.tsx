@@ -16,7 +16,7 @@
 
 import { cn } from "@/lib/utils";
 import { Icons } from "@/lib/icons";
-import { prepareStockFindings, accentVars, type PreparedFinding } from "@/lib/findings";
+import { prepareStockFindings, accentVars, DENSITY_EMPTY_COPY, type PreparedFinding } from "@/lib/findings";
 import { BAND_META } from "@/components/stock-detail/health/shared";
 import type { ResultHealthBlock } from "@/types/result-detail";
 import { Panel, HonestEmpty, shortPeriod } from "./shared";
@@ -135,9 +135,11 @@ export function HealthContext({
           </span>
         </div>
         {prepared.density === "empty" ? (
-          <HonestEmpty>
-            No flags or patterns fired{tiedToResult ? " for this result." : " in the latest scoring."}
-          </HonestEmpty>
+          // Shared with the stock page, the comparison columns, the watchlist sheet and the Screener
+          // pill — see classify.ts. The scope this line used to carry ("for this result" / "in the
+          // latest scoring") is stated by the alignment-honest header directly above it, which is
+          // where that distinction is actually load-bearing; the shared string loses nothing here.
+          <HonestEmpty>{DENSITY_EMPTY_COPY}</HonestEmpty>
         ) : (
           <div className="space-y-2.5">
             {flags.map((f, i) => (

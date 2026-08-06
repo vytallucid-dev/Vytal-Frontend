@@ -159,10 +159,54 @@ export function densityOf(keys: Iterable<string>): Density {
   return LOUD_FAMILIES.some((f) => fams.has(f)) ? "loud" : "quiet";
 }
 
-// File 1 §5 density-state header copy (verbatim).
+// File 1 §5 density-state header copy.
 export const DENSITY_QUIET_HEADER = "Quiet — only context, nothing pressing";
-export const DENSITY_EMPTY_COPY =
-  "Nothing notable. Steady, average-zone — sound but unremarkable. No divergence, no transition, no flag. You can move on.";
+
+/** ── THE EMPTY DENSITY — ONE FACT, TWO SHAPES, FIVE SURFACES ───────────────────────────────────────
+ *
+ *  An empty finding set means NO RULE FIRED, and that is the whole of what it means. It is not
+ *  evidence about the band and not evidence about the spread. Anything either of these strings says
+ *  has to hold for EVERY empty case whatever its band and whatever its gap — which leaves exactly the
+ *  state label, twice, at the two lengths the surfaces need.
+ *
+ *  ⚠ NOT File 1 §5 VERBATIM ANY MORE, ON PURPOSE. The spec's line read "Nothing notable. Steady,
+ *  average-zone — sound but unremarkable. No divergence, no transition, no flag. You can move on."
+ *  Three of those clauses are claims the finding set cannot make, and on the live universe all three
+ *  were false where it rendered. The four names with an empty set are BAJAJ-AUTO (pristine, 16),
+ *  HEROMOTOCO (pristine, 24), DABUR (below_par, 39) and MARUTI (steady, 20):
+ *
+ *    · "Steady, average-zone" ASSERTS A BAND. False for three of the four. The band is served and
+ *      rendered elsewhere on the page — this line never needs to restate it, and cannot.
+ *    · "No divergence" ASSERTS A SPREAD. False for all four — every one carries a `wide` served
+ *      divergence flag, and the same page prints DABUR's 39-point spread a few hundred pixels away.
+ *      An empty fired set says NOTHING about the spread: 34 of 94 live names carry a surfaced spread
+ *      with no D-family finding behind it (see screen-tab.tsx's pillar-spread note).
+ *    · "You can move on" tells the reader to STOP LOOKING — on a stock whose pillars are 39 apart.
+ *
+ *  ★ WHY THESE ARE CONSTANTS AND NOT FIVE AUTHORED STRINGS. The false line survived a full pass on
+ *  this exact copy because a SECOND, hand-written copy of it sat in watchlist/quick-look-sheet.tsx
+ *  making the identical band-and-spread claim, gated on the identical `count === 0`, and importing
+ *  nothing. Replacing the constant did not reach it. Five surfaces stating one fact in five sets of
+ *  words is not a style problem — it is five places for the claim to regrow, and only one of them
+ *  gets looked at. Every empty-density surface imports one of these two. NONE authors its own.
+ *
+ *  ⚠ NO SCOPE WORD IN EITHER STRING, DELIBERATELY. The two surfaces that carried one ("this period",
+ *  "for this result") both state that scope in the header IMMEDIATELY ABOVE the empty state — the
+ *  comparison's section hint ("What fired for each company this period…") and HealthContext's own
+ *  ("Flags this result triggered" / "Latest health findings (as of …)"). The scope word was echoing
+ *  its own header, so generalising loses nothing; and a scope word baked in here would be WRONG on
+ *  the two surfaces that have no period frame at all (the watchlist sheet, the Screener row). */
+export const DENSITY_EMPTY_COPY = "No pattern or red flag fired.";
+
+/** The same fact at pill length, for the density label the stock page and the Screener share.
+ *
+ *  ⚠ REPLACES "all clear", WHICH WAS A VERDICT ON THE STOCK. "All clear" is the idiom for a check
+ *  that came back clean AND was comprehensive over its subject. The finding set is neither: the
+ *  Screener prints this pill inches from "Pillar spread · 39 apart", and 34 of 94 live names carry a
+ *  surfaced spread no D-family rule covers. Claiming completeness the engine does not have is the
+ *  same failure as the old panel copy, one size down. "none fired" names the finding set and stops —
+ *  and it sits in the register of its two siblings, "context only" and "3 findings". */
+export const DENSITY_EMPTY_PILL = "none fired";
 
 // ── hot-pond mask modifier (File 1 §5 / File 2 §7 — read-layer, never stored) ──
 // Price-linked cards (B, C1, D — and §2 ride) carry the caveat when the stock's PG pond
